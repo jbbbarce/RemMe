@@ -24,5 +24,5 @@
 - [x] 8. Add optional reminder time per note
   Add an alarm-clock button in the header that lets you set a due date/time (simple dialog with DatePicker + time text box, and a "clear" option); store `DueAt` in the note and show it as small text in the header. A `DispatcherTimer` (every 30 s) checks for due notes: when due, the note is shown (if hidden), brought to front, flashes its border/header, and plays the system notification sound until clicked; then `DueAt` is cleared. Add unit tests for the "is due" logic. Check: `dotnet test` passes; set a reminder 1 minute ahead, the note flashes and beeps at that time, clicking it stops the alert, restart shows no reminder.
 
-- [ ] 9. Add "Start with Windows" option and a publish script
+- [x] 9. Add "Start with Windows" option and a publish script
   Add a checkable "Start with Windows" tray menu item that adds/removes a value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` pointing to the running exe. Add `publish.ps1` that runs `dotnet publish src/Reminders -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish`, add `publish/` to .gitignore, and document it in README.md. Check: run publish.ps1, launch the exe from `publish/`, enable "Start with Windows", sign out and back in — notes appear on top automatically; disabling it removes the registry value.
