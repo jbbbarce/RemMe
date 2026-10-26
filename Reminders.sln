@@ -4,12 +4,18 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reminders", "src\Reminders\Reminders.csproj", "{17604743-4B1F-4D16-9C03-F7619E9E9C2A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reminders.Tests", "tests\Reminders.Tests\Reminders.Tests.csproj", "{06346EC9-E35A-460B-9623-87BA7CBE109B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{06346EC9-E35A-460B-9623-87BA7CBE109B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06346EC9-E35A-460B-9623-87BA7CBE109B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06346EC9-E35A-460B-9623-87BA7CBE109B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06346EC9-E35A-460B-9623-87BA7CBE109B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{17604743-4B1F-4D16-9C03-F7619E9E9C2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{17604743-4B1F-4D16-9C03-F7619E9E9C2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{17604743-4B1F-4D16-9C03-F7619E9E9C2A}.Release|Any CPU.ActiveCfg = Release|Any CPU

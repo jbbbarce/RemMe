@@ -30,5 +30,12 @@
                     ToolTip="Close" AutomationProperties.Name="Close"
                     Click="CloseButton_Click" />
         </Grid>
+
+        <TextBox x:Name="NoteTextBox" Grid.Row="1"
+                 Background="Transparent" BorderThickness="0"
+                 Padding="10,8,10,16" FontFamily="Segoe UI" FontSize="14"
+                 TextWrapping="Wrap" AcceptsReturn="True"
+                 VerticalScrollBarVisibility="Auto"
+                 AutomationProperties.Name="Note text" />
     </Grid>
 </Window>
