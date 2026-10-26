@@ -6,7 +6,29 @@
         xmlns:local="clr-namespace:Reminders"
         mc:Ignorable="d"
         Title="Reminders" Height="260" Width="260"
+        MinHeight="80" MinWidth="100"
+        WindowStyle="None" ResizeMode="CanResizeWithGrip"
+        ShowInTaskbar="False"
         Topmost="True" Background="#FFF475">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="28" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Background="#F2E567">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="28" />
+            </Grid.ColumnDefinitions>
+
+            <Border Background="Transparent"
+                    MouseLeftButtonDown="Header_MouseLeftButtonDown" />
+            <Button Grid.Column="1" Content="&#x00D7;"
+                    Background="Transparent" BorderThickness="0"
+                    FontSize="18" Foreground="#514B20"
+                    ToolTip="Close" AutomationProperties.Name="Close"
+                    Click="CloseButton_Click" />
+        </Grid>
     </Grid>
 </Window>
