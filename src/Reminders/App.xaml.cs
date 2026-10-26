@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using Forms = System.Windows.Forms;
 
@@ -35,6 +36,12 @@ public partial class App : Application
         topmostTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         topmostTimer.Tick += (_, _) => notesManager.KeepOnTop();
         topmostTimer.Start();
+    }
+
+    protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
+    {
+        notesManager?.PrepareAndSave(sessionEnding: true);
+        base.OnSessionEnding(e);
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -152,31 +159,56 @@ public sealed class NotesManager
 
     public void KeepOnTop()
     {
-        foreach (var window in windows.Values)
+        var visibleHandles = windows.Values
+            .Where(window => window.IsVisible && window.WindowState != WindowState.Minimized)
+            .Select(window => new WindowInteropHelper(window).Handle)
+            .Where(handle => handle != IntPtr.Zero)
+            .ToHashSet();
+        var frontToBack = new List<IntPtr>();
+        NativeMethods.EnumWindows((hwnd, _) =>
         {
-            if (window.IsVisible && window.WindowState != WindowState.Minimized)
+            if (visibleHandles.Contains(hwnd))
             {
-                window.Topmost = false;
-                window.Topmost = true;
+                frontToBack.Add(hwnd);
             }
+
+            return true;
+        }, IntPtr.Zero);
+
+        // Raise the back note first, preserving the user's current note order.
+        for (var index = frontToBack.Count - 1; index >= 0; index--)
+        {
+            NativeMethods.SetWindowPos(frontToBack[index], NativeMethods.HwndTopmost,
+                0, 0, 0, 0,
+                NativeMethods.SwpNoMove | NativeMethods.SwpNoSize | NativeMethods.SwpNoActivate);
         }
     }
 
     public void Exit()
+    {
+        if (PrepareAndSave())
+        {
+            Application.Current.Shutdown();
+        }
+    }
+
+    public bool PrepareAndSave(bool sessionEnding = false)
     {
         foreach (var window in windows.Values)
         {
             window.PrepareForExit();
         }
 
-        if (Save())
+        var saved = Save(showErrors: !sessionEnding);
+        if (saved || sessionEnding)
         {
             IsExiting = true;
-            Application.Current.Shutdown();
         }
+
+        return saved;
     }
 
-    public bool Save(Window? owner = null)
+    public bool Save(Window? owner = null, bool showErrors = true)
     {
         try
         {
@@ -185,6 +217,11 @@ public sealed class NotesManager
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            if (!showErrors)
+            {
+                return false;
+            }
+
             var message = $"Could not save your notes.\n{ex.Message}";
             if (owner is not null)
             {

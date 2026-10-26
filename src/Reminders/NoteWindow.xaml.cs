@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -52,7 +51,7 @@ public partial class NoteWindow : Window
             initialized = true;
             // Check the native window rectangle so all monitors are considered in
             // physical coordinates, including monitors with different DPI scales.
-            if (MonitorFromWindow(new WindowInteropHelper(this).Handle, 0) == IntPtr.Zero)
+            if (NativeMethods.MonitorFromWindow(new WindowInteropHelper(this).Handle, 0) == IntPtr.Zero)
             {
                 var workArea = SystemParameters.WorkArea;
                 Width = Math.Min(Width, workArea.Width);
@@ -66,9 +65,6 @@ public partial class NoteWindow : Window
             SaveGeometry();
         };
     }
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
 
     private void ScheduleSave()
     {
