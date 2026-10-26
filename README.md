@@ -17,6 +17,8 @@ Type in a note to edit it. All notes save automatically after 500 ms without typ
 
 Use **+** to create a note slightly offset from the current one. Use **×** to delete a note; notes containing text require confirmation. Deleting the last note creates a fresh empty note. To close windows while keeping their notes for the next launch, use **Alt+F4** on each window; closing the last window exits the app.
 
+Use the small color circle in a note's header to choose yellow, pink, green, blue, purple, or orange. Each note keeps its own color, with a darker header in the same shade. To check persistence, choose different colors for two notes, close both with Alt+F4, and restart the app; both colors should return.
+
 Run the storage tests from the repository root:
 
 ```powershell

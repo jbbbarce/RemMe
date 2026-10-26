@@ -1,8 +1,11 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace Reminders;
@@ -19,6 +22,7 @@ public partial class NoteWindow : Window
         this.note = note;
         this.notesManager = notesManager;
         InitializeComponent();
+        ApplyColor(note.Color);
         NoteTextBox.Text = note.Text;
         Width = double.IsFinite(note.Width) && note.Width > 0 ? Math.Max(MinWidth, note.Width) : 260;
         Height = double.IsFinite(note.Height) && note.Height > 0 ? Math.Max(MinHeight, note.Height) : 260;
@@ -108,6 +112,39 @@ public partial class NoteWindow : Window
     {
         SaveGeometry();
         notesManager.CreateNote(note, this);
+    }
+
+    private void ColorButton_Click(object sender, RoutedEventArgs e)
+    {
+        ColorMenu.PlacementTarget = ColorButton;
+        ColorMenu.Placement = PlacementMode.Bottom;
+        ColorMenu.IsOpen = true;
+    }
+
+    private void ColorMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyColor((string)((MenuItem)sender).Tag);
+        ScheduleSave();
+    }
+
+    private void ApplyColor(string? color)
+    {
+        // Only use palette values; older or manually edited files may have an
+        // unknown color, in which case the note returns to yellow.
+        var items = ColorMenu.Items.Cast<MenuItem>().ToList();
+        var selected = items.FirstOrDefault(item =>
+            string.Equals((string)item.Tag, color, StringComparison.OrdinalIgnoreCase)) ?? items[0];
+        note.Color = (string)selected.Tag;
+        var background = (Color)ColorConverter.ConvertFromString(note.Color);
+        Background = new SolidColorBrush(background);
+        ColorSwatch.Fill = Background;
+        HeaderBar.Background = new SolidColorBrush(Color.FromRgb(
+            (byte)(background.R * 0.9), (byte)(background.G * 0.9), (byte)(background.B * 0.9)));
+
+        foreach (var item in items)
+        {
+            item.IsChecked = item == selected;
+        }
     }
 
     private void DeleteNoteButton_Click(object sender, RoutedEventArgs e)

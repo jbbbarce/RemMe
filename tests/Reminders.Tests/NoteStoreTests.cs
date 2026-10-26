@@ -13,9 +13,9 @@ public sealed class NoteStoreTests : IDisposable
         var first = new Note
         {
             Id = Guid.NewGuid(), Text = "Remember milk\nAnd tea ☕", Left = 42.5, Top = 71,
-            Width = 320, Height = 280, Color = "#FFF475"
+            Width = 320, Height = 280, Color = "#F8BBD0"
         };
-        var second = new Note { Text = "Another note" };
+        var second = new Note { Text = "Another note", Color = "#B3E5FC" };
         new NoteStore(FilePath).Save([first, second]);
 
         var loaded = new NoteStore(FilePath).Load();
@@ -30,6 +30,7 @@ public sealed class NoteStoreTests : IDisposable
         Assert.Equal(first.Color, loaded[0].Color);
         Assert.Equal(second.Id, loaded[1].Id);
         Assert.Equal(second.Text, loaded[1].Text);
+        Assert.Equal(second.Color, loaded[1].Color);
     }
 
     [Fact]
