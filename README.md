@@ -22,3 +22,5 @@ dotnet test
 ```
 
 To check persistence manually, type a few lines, close the window immediately, and reopen it. The text should be restored.
+
+The note also remembers its position and size. Move and resize it, close it, and reopen it to check that the same bounds are restored. If its saved position is outside every connected screen, it returns to the primary screen. To check recovery, close the app, set `Left` to `-5000` in `notes.json` (beyond your monitor layout), and reopen it.
