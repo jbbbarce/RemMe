@@ -13,7 +13,8 @@ public sealed class NoteStoreTests : IDisposable
         var first = new Note
         {
             Id = Guid.NewGuid(), Text = "Remember milk\nAnd tea ☕", Left = 42.5, Top = 71,
-            Width = 320, Height = 280, Color = "#F8BBD0"
+            Width = 320, Height = 280, Color = "#F8BBD0",
+            DueAt = new DateTimeOffset(2026, 10, 26, 20, 30, 0, TimeSpan.FromHours(8))
         };
         var second = new Note { Text = "Another note", Color = "#B3E5FC" };
         new NoteStore(FilePath).Save([first, second]);
@@ -28,9 +29,38 @@ public sealed class NoteStoreTests : IDisposable
         Assert.Equal(first.Width, loaded[0].Width);
         Assert.Equal(first.Height, loaded[0].Height);
         Assert.Equal(first.Color, loaded[0].Color);
+        Assert.Equal(first.DueAt, loaded[0].DueAt);
         Assert.Equal(second.Id, loaded[1].Id);
         Assert.Equal(second.Text, loaded[1].Text);
         Assert.Equal(second.Color, loaded[1].Color);
+        Assert.Null(loaded[1].DueAt);
+    }
+
+    [Fact]
+    public void ClearedReminderStaysClearedAfterReload()
+    {
+        var store = new NoteStore(FilePath);
+        store.Save([new Note { DueAt = DateTimeOffset.UtcNow.AddMinutes(-1) }]);
+        var notes = store.Load();
+        Assert.True(notes[0].IsDue(DateTimeOffset.UtcNow));
+
+        notes[0].DueAt = null;
+        store.Save(notes);
+
+        var restored = Assert.Single(new NoteStore(FilePath).Load());
+        Assert.Null(restored.DueAt);
+        Assert.False(restored.IsDue(DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public void OlderNoteWithoutDueAtLoadsWithoutReminder()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+        File.WriteAllText(FilePath, "[{\"Text\":\"Existing note\"}]");
+
+        var restored = Assert.Single(new NoteStore(FilePath).Load());
+        Assert.Equal("Existing note", restored.Text);
+        Assert.Null(restored.DueAt);
     }
 
     [Fact]

@@ -12,6 +12,7 @@ public partial class App : Application
     private Forms.NotifyIcon? trayIcon;
     private Forms.ContextMenuStrip? trayMenu;
     private DispatcherTimer? topmostTimer;
+    private DispatcherTimer? reminderTimer;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -36,6 +37,11 @@ public partial class App : Application
         topmostTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         topmostTimer.Tick += (_, _) => notesManager.KeepOnTop();
         topmostTimer.Start();
+
+        reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        reminderTimer.Tick += (_, _) => notesManager.CheckReminders(DateTimeOffset.Now);
+        reminderTimer.Start();
+        notesManager.CheckReminders(DateTimeOffset.Now);
     }
 
     protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
@@ -47,6 +53,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         topmostTimer?.Stop();
+        reminderTimer?.Stop();
         if (trayIcon is not null)
         {
             trayIcon.Visible = false;
@@ -154,6 +161,30 @@ public sealed class NotesManager
         foreach (var window in windows.Values)
         {
             window.Hide();
+        }
+    }
+
+    public void CheckReminders(DateTimeOffset now)
+    {
+        if (IsExiting)
+        {
+            return;
+        }
+
+        foreach (var note in notes.ToArray())
+        {
+            if (!note.IsDue(now))
+            {
+                continue;
+            }
+
+            if (!windows.TryGetValue(note, out var window))
+            {
+                OpenWindow(note);
+                window = windows[note];
+            }
+
+            window.StartReminder();
         }
     }
 

@@ -9,4 +9,7 @@ public sealed class Note
     public double Width { get; set; } = 260;
     public double Height { get; set; } = 260;
     public string Color { get; set; } = "#FFF475";
+    public DateTimeOffset? DueAt { get; set; }
+
+    public bool IsDue(DateTimeOffset now) => DueAt is { } dueAt && dueAt <= now;
 }

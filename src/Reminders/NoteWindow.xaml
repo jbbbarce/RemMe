@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Reminders"
         mc:Ignorable="d"
         Title="Reminders" Height="260" Width="260"
-        MinHeight="80" MinWidth="100"
+        MinHeight="80" MinWidth="160"
         WindowStyle="None" ResizeMode="CanResizeWithGrip"
         ShowInTaskbar="False"
         Topmost="True" Background="#FFF475">
@@ -22,6 +22,7 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="28" />
                 <ColumnDefinition Width="28" />
+                <ColumnDefinition Width="28" />
             </Grid.ColumnDefinitions>
 
             <Button Content="+"
@@ -30,8 +31,17 @@
                     ToolTip="New note" AutomationProperties.Name="New note"
                     Click="NewNoteButton_Click" />
             <Border Grid.Column="1" Background="Transparent"
-                    MouseLeftButtonDown="Header_MouseLeftButtonDown" />
-            <Button x:Name="ColorButton" Grid.Column="2"
+                    MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <TextBlock x:Name="DueText" FontSize="10" Foreground="#514B20"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           Margin="2,0" />
+            </Border>
+            <Button Grid.Column="2" Content="&#x23F0;" FontFamily="Segoe UI Symbol"
+                    Background="Transparent" BorderThickness="0"
+                    FontSize="14" Foreground="#514B20"
+                    ToolTip="Set or clear reminder" AutomationProperties.Name="Reminder"
+                    Click="ReminderButton_Click" />
+            <Button x:Name="ColorButton" Grid.Column="3"
                     Background="Transparent" BorderThickness="0"
                     ToolTip="Note color" AutomationProperties.Name="Note color"
                     Click="ColorButton_Click">
@@ -48,7 +58,7 @@
                     </ContextMenu>
                 </Button.ContextMenu>
             </Button>
-            <Button Grid.Column="3" Content="&#x00D7;"
+            <Button Grid.Column="4" Content="&#x00D7;"
                     Background="Transparent" BorderThickness="0"
                     FontSize="18" Foreground="#514B20"
                     ToolTip="Delete note" AutomationProperties.Name="Delete note"

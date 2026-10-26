@@ -21,7 +21,11 @@ Right-click the Reminders tray icon (it may be in Windows' hidden icons area) fo
 
 Use the small color circle in a note's header to choose yellow, pink, green, blue, purple, or orange. Each note keeps its own color, with a darker header in the same shade. To check persistence, choose different colors for two notes, use Exit from the tray, and restart the app; both colors should return.
 
-Run the storage tests from the repository root:
+Use the alarm-clock button to set a reminder date and local time in 24-hour `HH:mm` format, or choose Clear to remove it. The due time appears in the header. Reminders are checked every 30 seconds and on startup, so a reminder can appear up to 30 seconds after its due time. When due, even a hidden note appears in front, flashes its header, and repeats the system notification sound until you click the note. Clicking clears and saves the reminder.
+
+To check reminders, set one about a minute ahead and hide its note from the tray. Wait until it appears, flashes, and sounds, then click it. Exit and restart the app to check that the acknowledged reminder stays cleared. You can also set a future reminder, restart before it is due, and check that its header time is restored. The app must be running for reminders to alert; overdue reminders alert when the app starts.
+
+Run the storage and reminder tests from the repository root:
 
 ```powershell
 dotnet test

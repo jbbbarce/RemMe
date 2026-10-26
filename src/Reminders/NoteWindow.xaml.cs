@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Media;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -14,6 +15,9 @@ public partial class NoteWindow : Window
     private readonly NotesManager notesManager;
     private readonly Note note;
     private readonly DispatcherTimer saveTimer;
+    private readonly DispatcherTimer alertTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
+    private Brush normalHeaderBrush = Brushes.Transparent;
+    private int alertTicks;
     private bool deleted;
 
     public NoteWindow(Note note, NotesManager notesManager)
@@ -22,6 +26,7 @@ public partial class NoteWindow : Window
         this.notesManager = notesManager;
         InitializeComponent();
         ApplyColor(note.Color);
+        UpdateDueDisplay();
         NoteTextBox.Text = note.Text;
         Width = double.IsFinite(note.Width) && note.Width > 0 ? Math.Max(MinWidth, note.Width) : 260;
         Height = double.IsFinite(note.Height) && note.Height > 0 ? Math.Max(MinHeight, note.Height) : 260;
@@ -38,6 +43,22 @@ public partial class NoteWindow : Window
         {
             note.Text = NoteTextBox.Text;
             ScheduleSave();
+        };
+
+        alertTimer.Tick += (_, _) =>
+        {
+            alertTicks++;
+            HeaderBar.Background = alertTicks % 2 == 0 ? Brushes.OrangeRed : normalHeaderBrush;
+            if (alertTicks % 4 == 0)
+            {
+                SystemSounds.Exclamation.Play();
+            }
+        };
+        PreviewMouseDown += (_, _) => AcknowledgeReminder();
+        Closed += (_, _) =>
+        {
+            saveTimer.Stop();
+            alertTimer.Stop();
         };
 
         var initialized = false;
@@ -111,6 +132,67 @@ public partial class NoteWindow : Window
     {
         SaveGeometry();
         saveTimer.Stop();
+        StopAlert();
+    }
+
+    public void StartReminder()
+    {
+        if (alertTimer.IsEnabled)
+        {
+            return;
+        }
+
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        Show();
+        NativeMethods.SetWindowPos(new WindowInteropHelper(this).Handle, NativeMethods.HwndTopmost,
+            0, 0, 0, 0, NativeMethods.SwpNoMove | NativeMethods.SwpNoSize | NativeMethods.SwpNoActivate);
+        alertTicks = 0;
+        HeaderBar.Background = Brushes.OrangeRed;
+        alertTimer.Start();
+        SystemSounds.Exclamation.Play();
+    }
+
+    private void StopAlert()
+    {
+        alertTimer.Stop();
+        HeaderBar.Background = normalHeaderBrush;
+    }
+
+    private void AcknowledgeReminder()
+    {
+        if (!alertTimer.IsEnabled)
+        {
+            return;
+        }
+
+        StopAlert();
+        note.DueAt = null;
+        UpdateDueDisplay();
+        saveTimer.Stop();
+        notesManager.Save(this);
+    }
+
+    private void UpdateDueDisplay()
+    {
+        DueText.Text = note.DueAt?.LocalDateTime.ToString("MM/dd HH:mm") ?? string.Empty;
+        DueText.ToolTip = note.DueAt?.LocalDateTime.ToString("f");
+    }
+
+    private void ReminderButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ReminderDialog(note.DueAt) { Owner = this };
+        if (dialog.ShowDialog() == true)
+        {
+            StopAlert();
+            note.DueAt = dialog.DueAt;
+            UpdateDueDisplay();
+            saveTimer.Stop();
+            notesManager.Save(this);
+        }
     }
 
     private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -151,8 +233,9 @@ public partial class NoteWindow : Window
         var background = (Color)ColorConverter.ConvertFromString(note.Color);
         Background = new SolidColorBrush(background);
         ColorSwatch.Fill = Background;
-        HeaderBar.Background = new SolidColorBrush(Color.FromRgb(
+        normalHeaderBrush = new SolidColorBrush(Color.FromRgb(
             (byte)(background.R * 0.9), (byte)(background.G * 0.9), (byte)(background.B * 0.9)));
+        HeaderBar.Background = normalHeaderBrush;
 
         foreach (var item in items)
         {
