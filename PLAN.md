@@ -6,7 +6,7 @@
 - [x] 2. Make the window look and behave like a sticky note
   Set `WindowStyle="None"`, `ResizeMode="CanResizeWithGrip"`, `ShowInTaskbar="False"`, and add a slim header bar (slightly darker yellow) that lets you drag the note with `DragMove()` on mouse-down, plus a "×" close button on the right of the header. Check: the note has no standard title bar, can be dragged by the header, resized from the corner grip, closed with ×, and still stays on top.
 
-- [ ] 3. Add editable note text with autosave
+- [x] 3. Add editable note text with autosave
   Fill the body with a borderless, transparent, multi-line `TextBox` (wrapping, AcceptsReturn, comfortable font such as Segoe Print or Segoe UI 14). Add a `Note` model (Id, Text, Left, Top, Width, Height, Color) and a `NoteStore` class that loads/saves a list of notes as JSON in `%APPDATA%\Reminders\notes.json` (System.Text.Json; create folder if missing; tolerate a missing or corrupt file by starting empty). Save on text change (debounced ~500 ms) and on close. Add an xUnit test project `tests/Reminders.Tests` covering save/load round-trip and corrupt-file handling. Check: `dotnet test` passes; type text, close the app, reopen it, and the text is restored.
 
 - [ ] 4. Remember each note's position and size
