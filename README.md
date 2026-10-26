@@ -15,9 +15,11 @@ To check the window, launch the app and click another application. The yellow Re
 
 Type in a note to edit it. All notes save automatically after 500 ms without typing or moving/resizing and when a window closes, to `%APPDATA%\Reminders\notes.json`. Reopen the app to restore all notes. Missing or corrupt note files start with an empty note.
 
-Use **+** to create a note slightly offset from the current one. Use **×** to delete a note; notes containing text require confirmation. Deleting the last note creates a fresh empty note. To close windows while keeping their notes for the next launch, use **Alt+F4** on each window; closing the last window exits the app.
+Use **+** to create a note slightly offset from the current one. Use **×** to delete a note; notes containing text require confirmation. Deleting the last note leaves the app running in the system tray. **Alt+F4** hides a note while keeping it saved.
 
-Use the small color circle in a note's header to choose yellow, pink, green, blue, purple, or orange. Each note keeps its own color, with a darker header in the same shade. To check persistence, choose different colors for two notes, close both with Alt+F4, and restart the app; both colors should return.
+Right-click the Reminders tray icon (it may be in Windows' hidden icons area) for **New note**, **Show all notes**, **Hide all notes**, and **Exit**. Double-click the icon to show all notes. Exit saves pending changes and quits the app; hiding or deleting notes keeps the tray icon available. Visible notes reapply their always-on-top setting every two seconds.
+
+Use the small color circle in a note's header to choose yellow, pink, green, blue, purple, or orange. Each note keeps its own color, with a darker header in the same shade. To check persistence, choose different colors for two notes, use Exit from the tray, and restart the app; both colors should return.
 
 Run the storage tests from the repository root:
 
@@ -25,6 +27,8 @@ Run the storage tests from the repository root:
 dotnet test
 ```
 
-To check multiple-note persistence, create three notes, give each different text and positions, then close each with Alt+F4 and restart the app. All three should return with their text and bounds. Delete one with ×, confirm, and check that it is absent from `notes.json` and after restarting. Delete the remaining notes to check that a fresh empty note replaces the last one.
+To check multiple-note persistence, create three notes, give each different text and positions, then use Exit from the tray and restart the app. All three should return with their text and bounds. Delete one with ×, confirm, and check that it is absent from `notes.json` and after restarting. Delete the remaining notes to check that the tray stays available, then use New note to create another.
 
-Each note also remembers its position and size. Move and resize it, close it with Alt+F4, and reopen the app to check that the same bounds are restored. If its saved position is outside every connected screen, it returns to the primary screen. To check recovery, close the app, set `Left` to `-5000` in `notes.json` (beyond your monitor layout), and reopen it.
+Each note also remembers its position and size. Move and resize it, use Exit from the tray, and reopen the app to check that the same bounds are restored. If its saved position is outside every connected screen, it returns to the primary screen. To check recovery, exit the app, set `Left` to `-5000` in `notes.json` (beyond your monitor layout), and reopen it.
+
+To check the tray controls, hide all notes and verify that they stay hidden for more than two seconds, show them again, and create a note from the tray. Click a maximized browser and the taskbar; visible notes should return above ordinary windows within two seconds without unhiding hidden notes. Finally, edit a note and immediately use Exit; the icon should disappear and the edit should return after restarting.

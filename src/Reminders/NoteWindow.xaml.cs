@@ -41,8 +41,15 @@ public partial class NoteWindow : Window
             ScheduleSave();
         };
 
+        var initialized = false;
         Loaded += (_, _) =>
         {
+            if (initialized)
+            {
+                return;
+            }
+
+            initialized = true;
             // Check the native window rectangle so all monitors are considered in
             // physical coordinates, including monitors with different DPI scales.
             if (MonitorFromWindow(new WindowInteropHelper(this).Handle, 0) == IntPtr.Zero)
@@ -92,12 +99,22 @@ public partial class NoteWindow : Window
         }
 
         saveTimer.Stop();
-        if (!deleted && !notesManager.Save(this))
+        if (!deleted && !notesManager.IsExiting)
         {
             e.Cancel = true;
+            if (notesManager.Save(this))
+            {
+                Hide();
+            }
         }
 
         base.OnClosing(e);
+    }
+
+    public void PrepareForExit()
+    {
+        SaveGeometry();
+        saveTimer.Stop();
     }
 
     private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
