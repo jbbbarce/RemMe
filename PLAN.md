@@ -21,7 +21,7 @@
 - [x] 7. Add tray icon and keep notes on top reliably
   Add a system tray icon (WinForms `NotifyIcon` via `<UseWindowsForms>true</UseWindowsForms>`, or the H.NotifyIcon.Wpf package) with menu items: New note, Show all notes, Hide all notes, Exit. Set `ShutdownMode="OnExplicitShutdown"` so the app only exits from the tray. Because some apps (full-screen windows, the taskbar) can push topmost windows down, add a lightweight timer (every ~2 s) or `Deactivated` handler that re-applies `Topmost` to visible notes. Check: tray icon appears; hide/show/new/exit work; notes stay above a maximized browser and after clicking the taskbar.
 
-- [ ] 8. Add optional reminder time per note
+- [x] 8. Add optional reminder time per note
   Add an alarm-clock button in the header that lets you set a due date/time (simple dialog with DatePicker + time text box, and a "clear" option); store `DueAt` in the note and show it as small text in the header. A `DispatcherTimer` (every 30 s) checks for due notes: when due, the note is shown (if hidden), brought to front, flashes its border/header, and plays the system notification sound until clicked; then `DueAt` is cleared. Add unit tests for the "is due" logic. Check: `dotnet test` passes; set a reminder 1 minute ahead, the note flashes and beeps at that time, clicking it stops the alert, restart shows no reminder.
 
 - [ ] 9. Add "Start with Windows" option and a publish script
