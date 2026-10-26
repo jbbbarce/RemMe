@@ -9,7 +9,7 @@
 - [x] 3. Add editable note text with autosave
   Fill the body with a borderless, transparent, multi-line `TextBox` (wrapping, AcceptsReturn, comfortable font such as Segoe Print or Segoe UI 14). Add a `Note` model (Id, Text, Left, Top, Width, Height, Color) and a `NoteStore` class that loads/saves a list of notes as JSON in `%APPDATA%\Reminders\notes.json` (System.Text.Json; create folder if missing; tolerate a missing or corrupt file by starting empty). Save on text change (debounced ~500 ms) and on close. Add an xUnit test project `tests/Reminders.Tests` covering save/load round-trip and corrupt-file handling. Check: `dotnet test` passes; type text, close the app, reopen it, and the text is restored.
 
-- [ ] 4. Remember each note's position and size
+- [x] 4. Remember each note's position and size
   Save Left/Top/Width/Height to the note when the window is moved or resized (on `LocationChanged`/`SizeChanged`, through the same debounced save). On load, restore them, and if the saved position is off every current screen (e.g. monitor unplugged) move the note back onto the primary screen. Check: move and resize the note, restart, it reappears in the same place and size; edit the JSON to put it at Left=-5000 and it comes back on-screen.
 
 - [ ] 5. Support multiple notes
