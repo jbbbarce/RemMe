@@ -3,7 +3,7 @@
 - [x] 1. Scaffold WPF app with an always-on-top window
   Create a .NET WPF app (`dotnet new wpf -n Reminders -o src/Reminders`, targeting the newest installed LTS SDK, e.g. net8.0-windows or net10.0-windows) plus a solution file `Reminders.sln` at the repo root and a standard .NET `.gitignore`. Set the main window to `Topmost="True"`, about 260x260, sticky-note yellow background (#FFF475), title "Reminders". Add a short README.md with build/run instructions. Check: `dotnet build` succeeds; `dotnet run --project src/Reminders` opens a yellow window that stays above other windows when you click on another app.
 
-- [ ] 2. Make the window look and behave like a sticky note
+- [x] 2. Make the window look and behave like a sticky note
   Set `WindowStyle="None"`, `ResizeMode="CanResizeWithGrip"`, `ShowInTaskbar="False"`, and add a slim header bar (slightly darker yellow) that lets you drag the note with `DragMove()` on mouse-down, plus a "×" close button on the right of the header. Check: the note has no standard title bar, can be dragged by the header, resized from the corner grip, closed with ×, and still stays on top.
 
 - [ ] 3. Add editable note text with autosave
