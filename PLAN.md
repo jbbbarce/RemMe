@@ -15,7 +15,7 @@
 - [x] 5. Support multiple notes
   Move window creation into an app-level `NotesManager` (in App.xaml.cs) that opens one `NoteWindow` per saved note, or one empty note if none exist. Add a "+" button in the header that creates a new note offset slightly from the current one. Change "×" to delete the note (with a confirm dialog if it has text); the app exits when the last note is deleted only via the tray in a later step, so for now deleting the last note creates a fresh empty one. Check: create three notes, edit each, restart — all three come back with correct text and positions; deleting one removes it from notes.json.
 
-- [ ] 6. Add per-note colors
+- [x] 6. Add per-note colors
   Add a small color button in the header that opens a menu of 5–6 sticky colors (yellow, pink, green, blue, purple, orange); header uses a darker shade of the same color. Store the color in the note. Check: change colors on two notes, restart, colors are kept.
 
 - [ ] 7. Add tray icon and keep notes on top reliably
