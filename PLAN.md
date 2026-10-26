@@ -18,7 +18,7 @@
 - [x] 6. Add per-note colors
   Add a small color button in the header that opens a menu of 5–6 sticky colors (yellow, pink, green, blue, purple, orange); header uses a darker shade of the same color. Store the color in the note. Check: change colors on two notes, restart, colors are kept.
 
-- [ ] 7. Add tray icon and keep notes on top reliably
+- [x] 7. Add tray icon and keep notes on top reliably
   Add a system tray icon (WinForms `NotifyIcon` via `<UseWindowsForms>true</UseWindowsForms>`, or the H.NotifyIcon.Wpf package) with menu items: New note, Show all notes, Hide all notes, Exit. Set `ShutdownMode="OnExplicitShutdown"` so the app only exits from the tray. Because some apps (full-screen windows, the taskbar) can push topmost windows down, add a lightweight timer (every ~2 s) or `Deactivated` handler that re-applies `Topmost` to visible notes. Check: tray icon appears; hide/show/new/exit work; notes stay above a maximized browser and after clicking the taskbar.
 
 - [ ] 8. Add optional reminder time per note
