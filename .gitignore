@@ -8,6 +8,7 @@ x64/
 x86/
 [Bb]uild[Ll]og.*
 *.binlog
+publish/
 
 # IDE and user settings
 .vs/

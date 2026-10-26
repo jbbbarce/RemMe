@@ -36,3 +36,16 @@ To check multiple-note persistence, create three notes, give each different text
 Each note also remembers its position and size. Move and resize it, use Exit from the tray, and reopen the app to check that the same bounds are restored. If its saved position is outside every connected screen, it returns to the primary screen. To check recovery, exit the app, set `Left` to `-5000` in `notes.json` (beyond your monitor layout), and reopen it.
 
 To check the tray controls, hide all notes and verify that they stay hidden for more than two seconds, show them again, and create a note from the tray. Click a maximized browser and the taskbar; visible notes should return above ordinary windows within two seconds without unhiding hidden notes. Finally, edit a note and immediately use Exit; the icon should disappear and the edit should return after restarting.
+
+To publish a Windows x64 build, run this PowerShell script from the repository root:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
+.\publish\Reminders.exe
+```
+
+The script builds in Release mode and writes the single-file app to `publish/`. It requires the .NET 10 SDK to publish; the target PC needs the .NET 10 Desktop Runtime because the build is framework-dependent.
+
+From the published app's tray menu, enable **Start with Windows** to launch it at sign-in for your Windows account. The checked item reflects the `Reminders` value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Enabling it stores the quoted path of the running executable; disabling it removes that value. Keep the published app at that location, or launch it from its new location and turn the option off and back on to update the path.
+
+To check startup, enable the option from `publish\Reminders.exe`, sign out and back in, and verify that the notes and tray icon appear. Disable the option and check that the `Reminders` registry value is removed. Exit any development instance from the tray before launching the published app.

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Security;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -22,6 +23,36 @@ public partial class App : Application
         trayMenu.Items.Add("New note", null, (_, _) => notesManager.CreateNote());
         trayMenu.Items.Add("Show all notes", null, (_, _) => notesManager.ShowAll());
         trayMenu.Items.Add("Hide all notes", null, (_, _) => notesManager.HideAll());
+        trayMenu.Items.Add(new Forms.ToolStripSeparator());
+        var startupItem = new Forms.ToolStripMenuItem("Start with Windows") { CheckOnClick = true };
+        trayMenu.Items.Add(startupItem);
+        trayMenu.Opening += (_, _) =>
+        {
+            try
+            {
+                startupItem.Checked = WindowsStartup.IsEnabled();
+                startupItem.Enabled = true;
+                startupItem.ToolTipText = string.Empty;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                startupItem.Enabled = false;
+                startupItem.ToolTipText = ex.Message;
+            }
+        };
+        startupItem.Click += (_, _) =>
+        {
+            try
+            {
+                WindowsStartup.SetEnabled(startupItem.Checked);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException or InvalidOperationException)
+            {
+                startupItem.Checked = !startupItem.Checked;
+                MessageBox.Show($"Could not change Start with Windows.\n{ex.Message}",
+                    "Reminders", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        };
         trayMenu.Items.Add(new Forms.ToolStripSeparator());
         trayMenu.Items.Add("Exit", null, (_, _) => notesManager.Exit());
         trayIcon = new Forms.NotifyIcon
