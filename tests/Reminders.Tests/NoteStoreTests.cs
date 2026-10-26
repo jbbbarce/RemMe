@@ -33,6 +33,31 @@ public sealed class NoteStoreTests : IDisposable
     }
 
     [Fact]
+    public void SavingEditsAndDeletionKeepsOtherNotes()
+    {
+        var store = new NoteStore(FilePath);
+        var first = new Note { Text = "First", Left = 50, Top = 60 };
+        var second = new Note { Text = "Second", Left = 100, Top = 120 };
+        var third = new Note { Text = "Third", Left = 150, Top = 180 };
+        store.Save([first, second, third]);
+
+        var notes = store.Load();
+        notes[0].Text = "Edited first";
+        notes[2].Width = 350;
+        notes.RemoveAt(1);
+        store.Save(notes);
+
+        var restored = new NoteStore(FilePath).Load();
+        Assert.Equal(new[] { first.Id, third.Id }, restored.Select(note => note.Id));
+        Assert.Equal("Edited first", restored[0].Text);
+        Assert.Equal("Third", restored[1].Text);
+        Assert.Equal(150, restored[1].Left);
+        Assert.Equal(180, restored[1].Top);
+        Assert.Equal(350, restored[1].Width);
+        Assert.DoesNotContain(restored, note => note.Id == second.Id);
+    }
+
+    [Fact]
     public void LoadMissingFileReturnsEmptyList()
     {
         Assert.Empty(new NoteStore(FilePath).Load());

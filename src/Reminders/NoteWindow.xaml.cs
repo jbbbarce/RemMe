@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
@@ -8,22 +7,17 @@ using System.Windows.Threading;
 
 namespace Reminders;
 
-public partial class MainWindow : Window
+public partial class NoteWindow : Window
 {
-    private readonly NoteStore noteStore = new();
-    private readonly List<Note> notes;
+    private readonly NotesManager notesManager;
     private readonly Note note;
     private readonly DispatcherTimer saveTimer;
+    private bool deleted;
 
-    public MainWindow()
+    public NoteWindow(Note note, NotesManager notesManager)
     {
-        notes = noteStore.Load();
-        if (notes.Count == 0)
-        {
-            notes.Add(new Note());
-        }
-
-        note = notes[0];
+        this.note = note;
+        this.notesManager = notesManager;
         InitializeComponent();
         NoteTextBox.Text = note.Text;
         Width = double.IsFinite(note.Width) && note.Width > 0 ? Math.Max(MinWidth, note.Width) : 260;
@@ -35,7 +29,7 @@ public partial class MainWindow : Window
         saveTimer.Tick += (_, _) =>
         {
             saveTimer.Stop();
-            SaveNote();
+            notesManager.Save(this);
         };
         NoteTextBox.TextChanged += (_, _) =>
         {
@@ -88,29 +82,18 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        SaveGeometry();
+        if (!deleted)
+        {
+            SaveGeometry();
+        }
+
         saveTimer.Stop();
-        if (!SaveNote())
+        if (!deleted && !notesManager.Save(this))
         {
             e.Cancel = true;
         }
 
         base.OnClosing(e);
-    }
-
-    private bool SaveNote()
-    {
-        try
-        {
-            noteStore.Save(notes);
-            return true;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            MessageBox.Show(this, $"Could not save your note.\n{ex.Message}",
-                "Reminders", MessageBoxButton.OK, MessageBoxImage.Error);
-            return false;
-        }
     }
 
     private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -121,8 +104,27 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    private void NewNoteButton_Click(object sender, RoutedEventArgs e)
     {
-        Close();
+        SaveGeometry();
+        notesManager.CreateNote(note, this);
+    }
+
+    private void DeleteNoteButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(note.Text) &&
+            MessageBox.Show(this, "Delete this note?", "Reminders",
+                MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.No) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        saveTimer.Stop();
+        if (notesManager.DeleteNote(note, this))
+        {
+            deleted = true;
+            Close();
+        }
     }
 }
