@@ -1,6 +1,6 @@
 # Plan: Personal sticky-note reminders app for Windows that always stays on top of other windows
 
-- [ ] 1. Scaffold WPF app with an always-on-top window
+- [x] 1. Scaffold WPF app with an always-on-top window
   Create a .NET WPF app (`dotnet new wpf -n Reminders -o src/Reminders`, targeting the newest installed LTS SDK, e.g. net8.0-windows or net10.0-windows) plus a solution file `Reminders.sln` at the repo root and a standard .NET `.gitignore`. Set the main window to `Topmost="True"`, about 260x260, sticky-note yellow background (#FFF475), title "Reminders". Add a short README.md with build/run instructions. Check: `dotnet build` succeeds; `dotnet run --project src/Reminders` opens a yellow window that stays above other windows when you click on another app.
 
 - [ ] 2. Make the window look and behave like a sticky note
