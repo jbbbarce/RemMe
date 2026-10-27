@@ -1,51 +1,62 @@
 # Reminders
 
-A Windows WPF app with a 260 × 260 yellow window that stays on top of other windows.
+A Windows reminders app styled after Apple Reminders, with a floating list that stays on top of other windows and can be locked so clicks pass through it.
 
-Requires Windows and the .NET 10 SDK (LTS). A runtime alone is not enough to build the app.
+Built with [Tauri 2](https://tauri.app), React and TypeScript.
 
-From the repository root, build and run:
+## Features
 
-```powershell
-dotnet build
-dotnet run --project src/Reminders
-```
+- **Smart lists:** Today, Scheduled, All, Flagged and Completed tiles with live counts.
+- **Your own lists,** each with a color and an icon. Double-click or right-click a list to edit or delete it.
+- **List and board layouts.** In a list's board view, sections are columns (for example one per person). Drag cards between columns, add sections at the right, and rename or delete them from the column header.
+- **Reminders** have a title, notes, a date with optional time, a flag, a priority (`!`, `!!`, `!!!`), a list and a section. Click **ⓘ** on a reminder to open its details.
+- **Notifications:** a Windows notification appears when a reminder is due. Due checks run every 15 seconds while the app is running, and overdue reminders notify at startup. A due reminder also brings up the floating list.
+- **Floating list:** a small always-on-top window showing any smart list or list. Pick which one from its header.
+  - **Ctrl+Shift+O** shows or hides it from any app.
+  - **Ctrl+Shift+L** locks or unlocks it. When locked, the window is slightly transparent, can't be moved or edited, and mouse clicks go through it to the window behind.
+  - Change either shortcut in **Settings** (gear icon). Click the shortcut, then press the new keys.
+- **Tray icon:** closing a window keeps Reminders running in the tray. Left-click the icon to open the app; right-click it for the floating list controls and **Quit**.
+- **Start with Windows** (in Settings) launches the app at sign-in, hidden in the tray.
 
-To check the window, launch the app and click another application. The yellow Reminders window should remain above it.
+Keyboard: **Ctrl+N** adds a reminder, **Enter** in a title adds the next one, **Esc** leaves a title. A reminder whose title is left empty is removed.
 
-Type in a note to edit it. All notes save automatically after 500 ms without typing or moving/resizing and when a window closes, to `%APPDATA%\Reminders\notes.json`. Reopen the app to restore all notes. Missing or corrupt note files start with an empty note.
+Data is saved to `%APPDATA%\com.reminders.app\reminders.json`. Floating window state and the list of reminders already notified are in `ui-state.json` next to it. A file that can't be read is renamed to `*.json.corrupt` and the app starts fresh.
 
-Use **+** to create a note slightly offset from the current one. Use **×** to delete a note; notes containing text require confirmation. Deleting the last note leaves the app running in the system tray. **Alt+F4** hides a note while keeping it saved.
+## Requirements
 
-Right-click the Reminders tray icon (it may be in Windows' hidden icons area) for **New note**, **Show all notes**, **Hide all notes**, and **Exit**. Double-click the icon to show all notes. Exit saves pending changes and quits the app; hiding or deleting notes keeps the tray icon available. Visible notes reapply their always-on-top setting every two seconds.
+- Windows 10 or 11 with the WebView2 runtime (included in Windows 11)
+- [Node.js](https://nodejs.org) 20 or later
+- [Rust](https://rustup.rs) (stable, MSVC toolchain)
+- Visual Studio C++ build tools ("Desktop development with C++")
 
-Use the small color circle in a note's header to choose yellow, pink, green, blue, purple, or orange. Each note keeps its own color, with a darker header in the same shade. To check persistence, choose different colors for two notes, use Exit from the tray, and restart the app; both colors should return.
+## Develop
 
-Use the alarm-clock button to set a reminder date and local time in 24-hour `HH:mm` format, or choose Clear to remove it. The due time appears in the header. Reminders are checked every 30 seconds and on startup, so a reminder can appear up to 30 seconds after its due time. When due, even a hidden note appears in front, flashes its header, and repeats the system notification sound until you click the note. Clicking clears and saves the reminder.
-
-To check reminders, set one about a minute ahead and hide its note from the tray. Wait until it appears, flashes, and sounds, then click it. Exit and restart the app to check that the acknowledged reminder stays cleared. You can also set a future reminder, restart before it is due, and check that its header time is restored. The app must be running for reminders to alert; overdue reminders alert when the app starts.
-
-Run the storage and reminder tests from the repository root:
-
-```powershell
-dotnet test
-```
-
-To check multiple-note persistence, create three notes, give each different text and positions, then use Exit from the tray and restart the app. All three should return with their text and bounds. Delete one with ×, confirm, and check that it is absent from `notes.json` and after restarting. Delete the remaining notes to check that the tray stays available, then use New note to create another.
-
-Each note also remembers its position and size. Move and resize it, use Exit from the tray, and reopen the app to check that the same bounds are restored. If its saved position is outside every connected screen, it returns to the primary screen. To check recovery, exit the app, set `Left` to `-5000` in `notes.json` (beyond your monitor layout), and reopen it.
-
-To check the tray controls, hide all notes and verify that they stay hidden for more than two seconds, show them again, and create a note from the tray. Click a maximized browser and the taskbar; visible notes should return above ordinary windows within two seconds without unhiding hidden notes. Finally, edit a note and immediately use Exit; the icon should disappear and the edit should return after restarting.
-
-To publish a Windows x64 build, run this PowerShell script from the repository root:
+From the repository root:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\publish.ps1
-.\publish\Reminders.exe
+npm install
+npm run tauri dev
 ```
 
-The script builds in Release mode and writes the single-file app to `publish/`. It requires the .NET 10 SDK to publish; the target PC needs the .NET 10 Desktop Runtime because the build is framework-dependent.
+The first build compiles the Rust dependencies and takes a few minutes; later builds are fast. Edits to files under `src/` reload instantly.
 
-From the published app's tray menu, enable **Start with Windows** to launch it at sign-in for your Windows account. The checked item reflects the `Reminders` value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Enabling it stores the quoted path of the running executable; disabling it removes that value. Keep the published app at that location, or launch it from its new location and turn the option off and back on to update the path.
+Run the tests:
 
-To check startup, enable the option from `publish\Reminders.exe`, sign out and back in, and verify that the notes and tray icon appear. Disable the option and check that the `Reminders` registry value is removed. Exit any development instance from the tray before launching the published app.
+```powershell
+npm test                         # TypeScript: smart lists, dates, sections, shortcut recorder
+cargo test --manifest-path src-tauri/Cargo.toml   # Rust: due-reminder detection, shortcut parsing
+```
+
+## Build an installer
+
+```powershell
+npm run tauri build
+```
+
+This writes an installer to `src-tauri\target\release\bundle\nsis\Reminders_<version>_x64-setup.exe`. The installed app needs nothing else on the target PC except WebView2.
+
+## Project layout
+
+- `src/`: React UI. `model.ts` holds data rules (smart lists, sections, sorting), `store.ts` loads, saves and syncs data between the two windows, and `components/` has the screens.
+- `src-tauri/src/lib.rs`: saving files, reminder notifications, global shortcuts, the tray icon and the floating window's lock.
+- `src-tauri/tauri.conf.json`: window definitions (`main` and `float`).
