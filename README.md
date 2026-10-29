@@ -10,6 +10,10 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
 - **Your own lists,** each with a color and an icon. Double-click or right-click a list to edit or delete it.
 - **List and board layouts.** In a list's board view, sections are columns (for example one per person). Drag cards between columns, add sections at the right, and rename or delete them from the column header.
 - **Reminders** have a title, notes, a date with optional time, a flag, a priority (`!`, `!!`, `!!!`), a list and a section. Click **ⓘ** on a reminder to open its details.
+- **Natural-language add:** type a date, time or priority into a new reminder's title and it is set for you when you finish typing. For example, `Call mom tomorrow 5pm !!` becomes "Call mom", due tomorrow at 5:00 PM with medium priority. It understands today, tonight, tomorrow, weekdays (`friday`, `next mon`), dates (`oct 30`, `30 oct`), `in 3 days`, `in 20 minutes`, times (`5pm`, `5:30 pm`, `17:00`, `at 6`, `noon`) and repeats (`daily`, `every week`, `every thursday`). This also works in the floating list's add box.
+- **Repeating reminders:** set **Repeat** (daily, weekly, monthly or yearly) in a reminder's details. Checking it off keeps the done one in Completed and adds the next one; uncheck it straight away to take that back. A reminder finished late comes back on its next future date.
+- **Subtasks:** add a checklist in a reminder's details. The row shows how many are done, and the next repeat starts with them all unchecked.
+- **Nag mode:** set **Nag** in a reminder's details and its notification repeats every 5, 10, 15, 30 or 60 minutes until you check it off.
 - **Notifications:** a Windows notification appears when a reminder is due. Due checks run every 15 seconds while the app is running, and overdue reminders notify at startup. A due reminder also brings up the floating list.
 - **Floating list:** a small always-on-top window showing any smart list or list. Pick which one from its header.
   - **Ctrl+Shift+O** shows or hides it from any app.

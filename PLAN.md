@@ -8,4 +8,5 @@ The first version (steps 1–9 in git history before the `tauri-rewrite` branch)
 - [x] 4. Floating window: always on top, choosable list, quick add; Ctrl+Shift+O shows or hides it, Ctrl+Shift+L locks it (click-through, translucent)
 - [x] 5. Settings: record new global shortcuts, Start with Windows
 - [x] 6. Tests: TypeScript model tests (vitest) and Rust due-check tests
-- [ ] 7. Ideas for later: natural-language quick add, repeating reminders, subtasks, app-triggered reminders, nag mode, habit streaks
+- [x] 7. Natural-language quick add, repeating reminders, subtasks, nag mode
+- [ ] 8. Ideas for later: app-triggered reminders, habit streaks
