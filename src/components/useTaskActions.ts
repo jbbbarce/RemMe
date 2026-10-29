@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { deleteTask, insertTask, newTaskFor, setCompleted, updateTask } from "../model";
+import { parseQuickAdd } from "../quickAdd";
 import type { AppData, Task, View } from "../types";
 
 const LINGER_MS = 1200;
@@ -9,6 +10,8 @@ export function useTaskActions(update: (change: (d: AppData) => AppData) => void
   const [lingering, setLingering] = useState<ReadonlySet<string>>(new Set());
   const [focusId, setFocusId] = useState<string | null>(null);
   const timers = useRef(new Map<string, number>());
+  /** Reminders added empty whose typed title hasn't been read for a date yet. */
+  const fresh = useRef(new Set<string>());
 
   useEffect(() => {
     const pending = timers.current;
@@ -50,14 +53,25 @@ export function useTaskActions(update: (change: (d: AppData) => AppData) => void
         id = task.id;
         return insertTask(d, task, afterId);
       });
+      if (!overrides.title) fresh.current.add(id);
       setFocusId(id);
     },
     [update, view, now],
   );
 
+  /** A new reminder's title was finished: "Call mom tomorrow 5pm" sets its date and time. */
+  const commit = useCallback(
+    (task: Task) => {
+      if (!fresh.current.delete(task.id)) return;
+      const parsed = parseQuickAdd(task.title, new Date());
+      if (parsed.title !== task.title) update((d) => updateTask(d, task.id, parsed));
+    },
+    [update],
+  );
+
   const remove = useCallback((id: string) => update((d) => deleteTask(d, id)), [update]);
 
-  return { lingering, focusId, toggle, change, add, remove };
+  return { lingering, focusId, toggle, change, add, commit, remove };
 }
 
 function without(set: ReadonlySet<string>, id: string): ReadonlySet<string> {

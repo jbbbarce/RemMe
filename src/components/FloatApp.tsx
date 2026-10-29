@@ -2,6 +2,7 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AppWindow, Lock, LockOpen, Minus, Plus } from "lucide-react";
 import { SMART_LISTS, floatViewOf, tasksFor, viewColor } from "../model";
+import { parseQuickAdd } from "../quickAdd";
 import { shortcutParts } from "../shortcut";
 import { setFloat, useFloatState, useNow } from "../store";
 import type { AppData } from "../types";
@@ -25,9 +26,8 @@ export function FloatApp({ data, update }: Props) {
   const canAdd = !(view.kind === "smart" && view.id === "completed");
 
   const addFromDraft = () => {
-    const title = draft.trim();
-    if (!title) return;
-    actions.add(undefined, { title });
+    if (!draft.trim()) return;
+    actions.add(undefined, parseQuickAdd(draft, new Date()));
     setDraft("");
   };
 
@@ -100,6 +100,7 @@ export function FloatApp({ data, update }: Props) {
             onChange={(patch) => actions.change(task.id, patch)}
             onEnter={() => (document.activeElement as HTMLElement | null)?.blur()}
             onEmpty={() => actions.remove(task.id)}
+            onCommit={() => actions.commit(task)}
           />
         ))}
       </div>

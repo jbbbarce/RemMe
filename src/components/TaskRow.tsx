@@ -21,6 +21,8 @@ interface Props {
   onEnter?(): void;
   /** The title was left empty: remove the reminder. */
   onEmpty?(): void;
+  /** The title lost focus with text in it. */
+  onCommit?(): void;
 }
 
 export function TaskRow(props: Props) {
@@ -77,6 +79,7 @@ export function TaskRow(props: Props) {
             onFocus={props.onSelect}
             onBlur={() => {
               if (!task.title.trim()) props.onEmpty?.();
+              else props.onCommit?.();
             }}
           />
         </div>
