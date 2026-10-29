@@ -812,6 +812,52 @@ select {
   transform: translateX(16px);
 }
 
+.subtask {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  --accent: var(--c-blue);
+}
+
+.subtask .check {
+  width: 16px;
+  height: 16px;
+}
+
+.subtask .check span {
+  width: 9px;
+  height: 9px;
+}
+
+.subtask.done .check {
+  border-color: var(--accent);
+}
+
+.subtask.done .check span {
+  transform: scale(1);
+}
+
+.subtask.done input {
+  color: var(--text-2);
+  text-decoration: line-through;
+}
+
+.subtask input {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  user-select: text;
+}
+
+.subtask-plus {
+  flex: none;
+  margin: 0 1px;
+  color: var(--text-3);
+}
+
 .danger {
   display: inline-flex;
   align-items: center;

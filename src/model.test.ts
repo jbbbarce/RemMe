@@ -21,6 +21,7 @@ function task(over: Partial<Task>): Task {
     createdAt: now.toISOString(),
     section: null,
     repeat: null,
+    subtasks: [],
     ...over,
   };
 }
@@ -169,5 +170,17 @@ describe("repeating reminders", () => {
 
   it("drops a repeat with no date when loading", () => {
     expect(of({ repeat: "daily" }).tasks[0].repeat).toBeNull();
+  });
+});
+
+describe("subtasks", () => {
+  it("are filled in when loading and reset on the next repeat", () => {
+    const data = normalize({
+      tasks: [task({ id: "r", repeat: "daily", dueAt: at(9), subtasks: [{ title: "a", done: true } as never] })],
+    });
+    expect(data.tasks[0].subtasks[0]).toMatchObject({ title: "a", done: true });
+    expect(data.tasks[0].subtasks[0].id).toBeTruthy();
+    const next = setCompleted(data, "r", true, now, "n").tasks.find((t) => t.id === "n")!;
+    expect(next.subtasks.map((s) => [s.title, s.done])).toEqual([["a", false]]);
   });
 });

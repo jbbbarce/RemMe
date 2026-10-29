@@ -22,6 +22,12 @@ export type Priority = 0 | 1 | 2 | 3;
 export const REPEATS = ["daily", "weekly", "monthly", "yearly"] as const;
 export type Repeat = (typeof REPEATS)[number];
 
+export interface Subtask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface Task {
   id: string;
   listId: string;
@@ -38,6 +44,7 @@ export interface Task {
   section: string | null;
   /** Checking off a repeating reminder adds the next one. Needs a due date. */
   repeat: Repeat | null;
+  subtasks: Subtask[];
 }
 
 export interface Settings {

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Flag, Info, Repeat } from "lucide-react";
+import { Flag, Info, ListChecks, Repeat } from "lucide-react";
 import { REPEAT_LABELS, formatDue, isOverdue } from "../dates";
 import type { ReminderList, Task } from "../types";
 
@@ -39,6 +39,7 @@ export function TaskRow(props: Props) {
   const due = formatDue(task, now);
   const overdue = isOverdue(task, now);
   const marks = "!".repeat(task.priority);
+  const subtasksDone = task.subtasks.filter((s) => s.done).length;
 
   return (
     <div
@@ -84,12 +85,18 @@ export function TaskRow(props: Props) {
           />
         </div>
         {!compact && task.notes && <div className="task-notes">{task.notes}</div>}
-        {(due || props.showList) && (
+        {(due || task.subtasks.length > 0 || props.showList) && (
           <div className="task-meta">
             {due && <span className={overdue ? "overdue" : undefined}>{due}</span>}
             {task.repeat && (
               <span className="meta-icon" title={`Repeats ${REPEAT_LABELS[task.repeat].toLowerCase()}`}>
                 <Repeat size={11} />
+              </span>
+            )}
+            {task.subtasks.length > 0 && (
+              <span className="meta-icon" title="Subtasks done">
+                <ListChecks size={12} />
+                {subtasksDone}/{task.subtasks.length}
               </span>
             )}
             {props.showList && list && <span className="meta-list">{list.name}</span>}

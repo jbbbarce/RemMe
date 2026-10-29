@@ -56,6 +56,11 @@ export function normalize(raw: Partial<AppData> | null | undefined): AppData {
     createdAt: t.createdAt ?? new Date().toISOString(),
     section: t.section ?? null,
     repeat: REPEATS.includes(t.repeat!) && t.dueAt ? t.repeat! : null,
+    subtasks: (Array.isArray(t.subtasks) ? t.subtasks : []).map((s) => ({
+      id: s.id ?? newId(),
+      title: s.title ?? "",
+      done: s.done ?? false,
+    })),
   }));
   return { version: 1, lists, tasks, settings: { ...DEFAULT_SETTINGS, ...raw?.settings } };
 }
@@ -137,6 +142,7 @@ export function newTaskFor(data: AppData, view: View, now: Date, section: string
     createdAt: now.toISOString(),
     section,
     repeat: null,
+    subtasks: [],
   };
 }
 
@@ -165,6 +171,7 @@ export function setCompleted(data: AppData, id: string, completed: boolean, now:
     completed: false,
     completedAt: null,
     createdAt: now.toISOString(),
+    subtasks: task.subtasks.map((s) => ({ ...s, id: newId(), done: false })),
   };
   return insertTask(updateTask(done, id, { repeat: null }), next, id);
 }

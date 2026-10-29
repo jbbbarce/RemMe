@@ -1,6 +1,8 @@
-import { Flag, Trash2, X } from "lucide-react";
+import { Flag, Plus, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { newId } from "../model";
 import { REPEAT_LABELS, fromInputs, toDateInput, toTimeInput } from "../dates";
-import { REPEATS, type AppData, type Priority, type Repeat, type Task } from "../types";
+import { REPEATS, type AppData, type Priority, type Repeat, type Subtask, type Task } from "../types";
 
 interface Props {
   data: AppData;
@@ -102,6 +104,8 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
         )}
       </div>
 
+      <Subtasks subtasks={task.subtasks} onChange={(subtasks) => onChange({ subtasks })} />
+
       <div className="group">
         <label className="row">
           <span className="with-icon">
@@ -157,6 +161,54 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
         <Trash2 size={15} /> Delete Reminder
       </button>
     </aside>
+  );
+}
+
+function Subtasks({ subtasks, onChange }: { subtasks: Subtask[]; onChange(subtasks: Subtask[]): void }) {
+  const [draft, setDraft] = useState("");
+  const set = (id: string, patch: Partial<Subtask>) =>
+    onChange(subtasks.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  const add = () => {
+    const title = draft.trim();
+    if (!title) return;
+    onChange([...subtasks, { id: newId(), title, done: false }]);
+    setDraft("");
+  };
+
+  return (
+    <div className="group">
+      <span>Subtasks</span>
+      {subtasks.map((s) => (
+        <div key={s.id} className={`subtask${s.done ? " done" : ""}`}>
+          <button
+            className="check"
+            aria-label={s.done ? "Mark subtask as not done" : "Mark subtask as done"}
+            onClick={() => set(s.id, { done: !s.done })}
+          >
+            <span />
+          </button>
+          <input
+            value={s.title}
+            onChange={(e) => set(s.id, { title: e.target.value })}
+            onBlur={() => !s.title.trim() && onChange(subtasks.filter((x) => x.id !== s.id))}
+            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+          />
+          <button className="icon-btn" aria-label="Delete subtask" onClick={() => onChange(subtasks.filter((x) => x.id !== s.id))}>
+            <X size={13} />
+          </button>
+        </div>
+      ))}
+      <div className="subtask">
+        <Plus size={14} className="subtask-plus" />
+        <input
+          value={draft}
+          placeholder="Add Subtask"
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          onBlur={add}
+        />
+      </div>
+    </div>
   );
 }
 
