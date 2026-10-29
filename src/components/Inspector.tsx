@@ -1,6 +1,6 @@
 import { Flag, Trash2, X } from "lucide-react";
-import { fromInputs, toDateInput, toTimeInput } from "../dates";
-import type { AppData, Priority, Task } from "../types";
+import { REPEAT_LABELS, fromInputs, toDateInput, toTimeInput } from "../dates";
+import { REPEATS, type AppData, type Priority, type Repeat, type Task } from "../types";
 
 interface Props {
   data: AppData;
@@ -24,7 +24,7 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
   const time = task.dueAt && task.dueHasTime ? toTimeInput(task.dueAt) : "";
 
   const setDate = (on: boolean) => {
-    if (!on) return onChange({ dueAt: null, dueHasTime: false });
+    if (!on) return onChange({ dueAt: null, dueHasTime: false, repeat: null });
     onChange({ dueAt: fromInputs(toDateInput(now.toISOString()), "09:00"), dueHasTime: false });
   };
   const setTime = (on: boolean) => {
@@ -83,6 +83,22 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
             value={time}
             onChange={(e) => e.target.value && onChange({ dueAt: fromInputs(date, e.target.value) })}
           />
+        )}
+        {task.dueAt && (
+          <label className="row">
+            <span>Repeat</span>
+            <select
+              value={task.repeat ?? ""}
+              onChange={(e) => onChange({ repeat: (e.target.value || null) as Repeat | null })}
+            >
+              <option value="">Never</option>
+              {REPEATS.map((r) => (
+                <option key={r} value={r}>
+                  {REPEAT_LABELS[r]}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
       </div>
 

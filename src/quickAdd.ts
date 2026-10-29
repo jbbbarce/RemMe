@@ -1,5 +1,5 @@
 import { startOfDay } from "./dates";
-import type { Priority, Task } from "./types";
+import type { Priority, Repeat, Task } from "./types";
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -10,17 +10,18 @@ const FULL_DAY = String.raw`(sunday|monday|tuesday|wednesday|thursday|friday|sat
 const SHORT_DAY = String.raw`(sun|mon|tues?|wed|thu(?:rs?)?|fri|sat)`;
 
 /** What a typed title like "Call mom tomorrow 5pm !!" means. Fields that weren't mentioned are left out. */
-export type QuickAdd = Pick<Task, "title"> & Partial<Pick<Task, "dueAt" | "dueHasTime" | "priority">>;
+export type QuickAdd = Pick<Task, "title"> & Partial<Pick<Task, "dueAt" | "dueHasTime" | "priority" | "repeat">>;
 
 /**
  * Reads a date, time and priority out of a reminder title and removes them from it.
  * Understands today, tonight, tomorrow, weekdays, "oct 30", "30 oct", "in 3 days", "in 2 hours",
- * times like 5pm, 5:30 pm, 17:00, "at 6" and noon, and `!`, `!!` or `!!!` for priority.
+ * times like 5pm, 5:30 pm, 17:00, "at 6" and noon, `!`, `!!` or `!!!` for priority, and repeats
+ * like daily, weekly, "every month" or "every friday". A repeat with no date starts today.
  * If nothing would be left for a title, the text is kept as typed.
  */
 export function parseQuickAdd(text: string, now: Date): QuickAdd {
   let rest = ` ${text} `;
-  const found: { day?: Date; time?: { h: number; m: number }; exact?: Date; priority?: Priority } = {};
+  const found: { day?: Date; time?: { h: number; m: number }; exact?: Date; priority?: Priority; repeat?: Repeat } = {};
 
   const take = (pattern: string, read: (match: RegExpMatchArray) => boolean) => {
     const regex = new RegExp(String.raw`(?<=\s)${pattern}(?=[\s,.!?]|$)`, "i");
@@ -44,6 +45,30 @@ export function parseQuickAdd(text: string, now: Date): QuickAdd {
     return true;
   });
 
+  const weekday = (name: string) => {
+    if (found.day) return false;
+    const target = WEEKDAYS.indexOf(name.slice(0, 3).toLowerCase());
+    const ahead = (target - now.getDay() + 7) % 7 || 7;
+    found.day = addDays(startOfDay(now), ahead);
+    return true;
+  };
+  const REPEAT_WORDS: Record<string, Repeat> = { day: "daily", week: "weekly", month: "monthly", year: "yearly" };
+  take(String.raw`(daily|weekly|monthly|yearly|annually)`, (m) => {
+    const word = m[1].toLowerCase();
+    found.repeat = word === "annually" ? "yearly" : (word as Repeat);
+    return true;
+  });
+  take(String.raw`every\s+(day|week|month|year)`, (m) => {
+    if (found.repeat) return false;
+    found.repeat = REPEAT_WORDS[m[1].toLowerCase()];
+    return true;
+  });
+  take(String.raw`every\s+(?:${FULL_DAY}|${SHORT_DAY})`, (m) => {
+    if (found.repeat) return false;
+    found.repeat = "weekly";
+    return weekday(m[1] ?? m[2]);
+  });
+
   const monthDay = (month: string, date: string) => {
     const mi = MONTHS.indexOf(month.slice(0, 3).toLowerCase());
     const d = Number(date);
@@ -64,13 +89,6 @@ export function parseQuickAdd(text: string, now: Date): QuickAdd {
     if (word === "tonight") found.time ??= { h: 20, m: 0 };
     return true;
   });
-  const weekday = (name: string) => {
-    if (found.day) return false;
-    const target = WEEKDAYS.indexOf(name.slice(0, 3).toLowerCase());
-    const ahead = (target - now.getDay() + 7) % 7 || 7;
-    found.day = addDays(startOfDay(now), ahead);
-    return true;
-  };
   take(String.raw`(?:(?:on|next|this)\s+)?${FULL_DAY}`, (m) => weekday(m[1]));
   take(String.raw`(?:on|next|this)\s+${SHORT_DAY}`, (m) => weekday(m[1]));
 
@@ -103,6 +121,10 @@ export function parseQuickAdd(text: string, now: Date): QuickAdd {
 
   const result: QuickAdd = { title };
   if (found.priority) result.priority = found.priority;
+  if (found.repeat) {
+    result.repeat = found.repeat;
+    if (!found.day && !found.time && !found.exact) found.day = startOfDay(now);
+  }
   if (found.exact) {
     result.dueAt = found.exact.toISOString();
     result.dueHasTime = true;

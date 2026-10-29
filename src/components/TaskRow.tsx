@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Flag, Info } from "lucide-react";
-import { formatDue, isOverdue } from "../dates";
+import { Flag, Info, Repeat } from "lucide-react";
+import { REPEAT_LABELS, formatDue, isOverdue } from "../dates";
 import type { ReminderList, Task } from "../types";
 
 interface Props {
@@ -87,6 +87,11 @@ export function TaskRow(props: Props) {
         {(due || props.showList) && (
           <div className="task-meta">
             {due && <span className={overdue ? "overdue" : undefined}>{due}</span>}
+            {task.repeat && (
+              <span className="meta-icon" title={`Repeats ${REPEAT_LABELS[task.repeat].toLowerCase()}`}>
+                <Repeat size={11} />
+              </span>
+            )}
             {props.showList && list && <span className="meta-list">{list.name}</span>}
           </div>
         )}

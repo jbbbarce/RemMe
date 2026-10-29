@@ -1,4 +1,4 @@
-import type { Task } from "./types";
+import type { Repeat, Task } from "./types";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -53,6 +53,36 @@ export function formatDue(task: Task, now: Date): string {
   if (!task.dueHasTime) return day;
   return `${day}, ${due.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
 }
+
+/**
+ * The due date after `task`'s for its repeat, skipping any that have already passed:
+ * a reminder done late comes back on its next future day, not on a day already gone.
+ * Monthly and yearly repeats keep the original day, using the month's last day when it is shorter.
+ */
+export function nextDue(task: Task, repeat: Repeat, now: Date): string {
+  const base = new Date(task.dueAt!);
+  const tomorrow = new Date(startOfDay(now).getTime() + DAY);
+  for (let k = 1; ; k++) {
+    const next = stepDate(base, repeat, k);
+    if (task.dueHasTime ? next > now : next >= tomorrow) return next.toISOString();
+  }
+}
+
+function stepDate(base: Date, repeat: Repeat, k: number): Date {
+  const [y, m, d, h, min] = [base.getFullYear(), base.getMonth(), base.getDate(), base.getHours(), base.getMinutes()];
+  if (repeat === "daily") return new Date(y, m, d + k, h, min);
+  if (repeat === "weekly") return new Date(y, m, d + 7 * k, h, min);
+  const [year, month] = repeat === "monthly" ? [y, m + k] : [y + k, m];
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return new Date(year, month, Math.min(d, lastDay), h, min);
+}
+
+export const REPEAT_LABELS: Record<Repeat, string> = {
+  daily: "Daily",
+  weekly: "Weekly",
+  monthly: "Monthly",
+  yearly: "Yearly",
+};
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");

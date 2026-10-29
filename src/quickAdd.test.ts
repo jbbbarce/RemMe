@@ -57,3 +57,16 @@ describe("quick add", () => {
     expect(parseQuickAdd("tomorrow", now)).toEqual({ title: "tomorrow" });
   });
 });
+
+describe("quick add repeats", () => {
+  it("reads repeat words, starting today when no date is given", () => {
+    expect(parseQuickAdd("Water plants daily", now)).toEqual({
+      title: "Water plants",
+      repeat: "daily",
+      dueAt: local(10, 27),
+      dueHasTime: false,
+    });
+    expect(parseQuickAdd("Pay rent every month on nov 1", now)).toMatchObject({ title: "Pay rent", repeat: "monthly", dueAt: local(11, 1) });
+    expect(parseQuickAdd("Bins every thursday 7pm", now)).toMatchObject({ title: "Bins", repeat: "weekly", dueAt: local(10, 29, 19) });
+  });
+});

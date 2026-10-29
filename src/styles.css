@@ -516,6 +516,12 @@ button:disabled {
   color: var(--c-red);
 }
 
+.meta-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 .meta-list::before {
   content: "· ";
 }

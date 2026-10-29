@@ -1,7 +1,8 @@
-import { endOfDay, startOfDay } from "./dates";
+import { endOfDay, nextDue, startOfDay } from "./dates";
 import {
   LIST_COLORS,
   LIST_ICONS,
+  REPEATS,
   type AppData,
   type ReminderList,
   type Settings,
@@ -54,6 +55,7 @@ export function normalize(raw: Partial<AppData> | null | undefined): AppData {
     completedAt: t.completedAt ?? null,
     createdAt: t.createdAt ?? new Date().toISOString(),
     section: t.section ?? null,
+    repeat: REPEATS.includes(t.repeat!) && t.dueAt ? t.repeat! : null,
   }));
   return { version: 1, lists, tasks, settings: { ...DEFAULT_SETTINGS, ...raw?.settings } };
 }
@@ -134,6 +136,7 @@ export function newTaskFor(data: AppData, view: View, now: Date, section: string
     completedAt: null,
     createdAt: now.toISOString(),
     section,
+    repeat: null,
   };
 }
 
@@ -141,8 +144,29 @@ export function updateTask(data: AppData, id: string, patch: Partial<Task>): App
   return { ...data, tasks: data.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) };
 }
 
-export function setCompleted(data: AppData, id: string, completed: boolean, now: Date): AppData {
-  return updateTask(data, id, { completed, completedAt: completed ? now.toISOString() : null });
+/**
+ * Checks a reminder off or back on. Checking off a repeating reminder keeps it as done and adds
+ * the next one after it, with id `nextId`; unchecking with that same id takes the next one back.
+ */
+export function setCompleted(data: AppData, id: string, completed: boolean, now: Date, nextId?: string): AppData {
+  const task = data.tasks.find((t) => t.id === id);
+  if (!task) return data;
+  if (!completed) {
+    const next = data.tasks.find((t) => t.id === nextId && !t.completed);
+    const restored = next ? deleteTask(data, next.id) : data;
+    return updateTask(restored, id, { completed, completedAt: null, ...(next && { repeat: next.repeat }) });
+  }
+  const done = updateTask(data, id, { completed, completedAt: now.toISOString() });
+  if (!task.repeat || !task.dueAt || task.completed) return done;
+  const next: Task = {
+    ...task,
+    id: nextId ?? newId(),
+    dueAt: nextDue(task, task.repeat, now),
+    completed: false,
+    completedAt: null,
+    createdAt: now.toISOString(),
+  };
+  return insertTask(updateTask(done, id, { repeat: null }), next, id);
 }
 
 export function insertTask(data: AppData, task: Task, afterId?: string): AppData {

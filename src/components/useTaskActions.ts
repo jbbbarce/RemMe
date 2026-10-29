@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { deleteTask, insertTask, newTaskFor, setCompleted, updateTask } from "../model";
+import { deleteTask, insertTask, newId, newTaskFor, setCompleted, updateTask } from "../model";
 import { parseQuickAdd } from "../quickAdd";
 import type { AppData, Task, View } from "../types";
 
@@ -12,6 +12,8 @@ export function useTaskActions(update: (change: (d: AppData) => AppData) => void
   const timers = useRef(new Map<string, number>());
   /** Reminders added empty whose typed title hasn't been read for a date yet. */
   const fresh = useRef(new Set<string>());
+  /** Repeating reminders checked off here, and the id of the next one each added. */
+  const nextIds = useRef(new Map<string, string>());
 
   useEffect(() => {
     const pending = timers.current;
@@ -20,7 +22,15 @@ export function useTaskActions(update: (change: (d: AppData) => AppData) => void
 
   const toggle = useCallback(
     (task: Task, completed: boolean) => {
-      update((d) => setCompleted(d, task.id, completed, new Date()));
+      let nextId: string | undefined;
+      if (completed && task.repeat && task.dueAt) {
+        nextId = newId();
+        nextIds.current.set(task.id, nextId);
+      } else if (!completed) {
+        nextId = nextIds.current.get(task.id);
+        nextIds.current.delete(task.id);
+      }
+      update((d) => setCompleted(d, task.id, completed, new Date(), nextId));
       window.clearTimeout(timers.current.get(task.id));
       if (!completed) {
         setLingering((s) => without(s, task.id));

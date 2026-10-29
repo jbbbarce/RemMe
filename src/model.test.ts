@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatDue, isOverdue } from "./dates";
-import { deleteList, deleteSection, floatViewOf, normalize, renameSection, smartCount, tasksFor } from "./model";
+import { deleteList, deleteSection, floatViewOf, normalize, renameSection, setCompleted, smartCount, tasksFor } from "./model";
 import { shortcutFromEvent } from "./shortcut";
 import type { Task } from "./types";
 
@@ -20,6 +20,7 @@ function task(over: Partial<Task>): Task {
     completedAt: null,
     createdAt: now.toISOString(),
     section: null,
+    repeat: null,
     ...over,
   };
 }
@@ -135,5 +136,38 @@ describe("shortcut recorder", () => {
 
   it("rejects shortcuts that would capture typing", () => {
     expect(shortcutFromEvent(key("KeyL", { shiftKey: true }))).toHaveProperty("error");
+  });
+});
+
+describe("repeating reminders", () => {
+  const later = new Date(2026, 9, 27, 18, 0);
+  const of = (over: Partial<Task>) => normalize({ tasks: [task({ id: "r", ...over })] });
+
+  it("adds the next one when checked off, and takes it back when unchecked", () => {
+    const data = of({ repeat: "daily", dueAt: at(9), dueHasTime: true });
+    const done = setCompleted(data, "r", true, later, "next");
+    expect(done.tasks.map((t) => [t.id, t.completed, t.repeat, t.dueAt])).toEqual([
+      ["r", true, null, at(9)],
+      ["next", false, "daily", at(9, 1)],
+    ]);
+    const undone = setCompleted(done, "r", false, later, "next");
+    expect(undone.tasks.map((t) => [t.id, t.completed, t.repeat])).toEqual([["r", false, "daily"]]);
+  });
+
+  it("skips repeats that already passed", () => {
+    const data = of({ repeat: "weekly", dueAt: at(9, -15) });
+    const next = setCompleted(data, "r", true, now, "n").tasks.find((t) => t.id === "n")!;
+    expect(next.dueAt).toBe(at(9, 6));
+  });
+
+  it("keeps the day of the month, using the last day of shorter months", () => {
+    const jan31 = new Date(2026, 0, 31, 9).toISOString();
+    const data = { ...of({ repeat: "monthly", dueAt: jan31 }) };
+    const next = setCompleted(data, "r", true, new Date(2026, 0, 31, 12), "n").tasks.find((t) => t.id === "n")!;
+    expect(next.dueAt).toBe(new Date(2026, 1, 28, 9).toISOString());
+  });
+
+  it("drops a repeat with no date when loading", () => {
+    expect(of({ repeat: "daily" }).tasks[0].repeat).toBeNull();
   });
 });
