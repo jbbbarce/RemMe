@@ -61,6 +61,7 @@ export function normalize(raw: Partial<AppData> | null | undefined): AppData {
       title: s.title ?? "",
       done: s.done ?? false,
     })),
+    nagMinutes: typeof t.nagMinutes === "number" && t.nagMinutes > 0 ? t.nagMinutes : null,
   }));
   return { version: 1, lists, tasks, settings: { ...DEFAULT_SETTINGS, ...raw?.settings } };
 }
@@ -143,6 +144,7 @@ export function newTaskFor(data: AppData, view: View, now: Date, section: string
     section,
     repeat: null,
     subtasks: [],
+    nagMinutes: null,
   };
 }
 

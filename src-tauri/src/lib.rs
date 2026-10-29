@@ -1,4 +1,12 @@
-use std::{collections::HashSet, fs, path::Path, path::PathBuf, sync::Mutex, thread, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::Path,
+    path::PathBuf,
+    sync::Mutex,
+    thread,
+    time::Duration,
+};
 
 use chrono::{DateTime, Utc};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -26,6 +34,8 @@ struct UiState {
     float_locked: bool,
     /// `taskId|dueAt` keys that already raised a notification.
     notified: Vec<String>,
+    /// When each nagging reminder last notified, in Unix seconds, by the same keys.
+    last_nag: HashMap<String, i64>,
 }
 
 #[derive(Default)]
@@ -99,9 +109,18 @@ fn setting(data: &Value, key: &str, fallback: &str) -> String {
     data["settings"][key].as_str().unwrap_or(fallback).to_string()
 }
 
-/// Returns `(key, title)` for every unfinished task whose due time has passed,
+#[derive(Debug, PartialEq)]
+struct DueTask {
+    /// `taskId|dueAt`, so moving the due time notifies again.
+    key: String,
+    title: String,
+    /// Notify again this many minutes after the last one until the task is done.
+    nag_minutes: Option<i64>,
+}
+
+/// Returns every unfinished task whose due time has passed,
 /// plus the set of keys for all tasks that have a due time.
-fn due_tasks(data: &Value, now: DateTime<Utc>) -> (Vec<(String, String)>, HashSet<String>) {
+fn due_tasks(data: &Value, now: DateTime<Utc>) -> (Vec<DueTask>, HashSet<String>) {
     let mut due = Vec::new();
     let mut all_keys = HashSet::new();
     for task in data["tasks"].as_array().into_iter().flatten() {
@@ -115,30 +134,53 @@ fn due_tasks(data: &Value, now: DateTime<Utc>) -> (Vec<(String, String)>, HashSe
         all_keys.insert(key.clone());
         if !task["completed"].as_bool().unwrap_or(false) && when <= now {
             let title = task["title"].as_str().unwrap_or("").trim();
-            due.push((key, if title.is_empty() { "Reminder".into() } else { title.into() }));
+            due.push(DueTask {
+                key,
+                title: if title.is_empty() { "Reminder".into() } else { title.into() },
+                nag_minutes: task["nagMinutes"].as_i64().filter(|m| *m > 0),
+            });
         }
     }
     (due, all_keys)
 }
 
+/// Whether a due task should notify now: the first time it is due, then again
+/// every `nag_minutes` for as long as it stays unfinished.
+fn should_notify(task: &DueTask, ui: &UiState, now: i64) -> bool {
+    if !ui.notified.contains(&task.key) {
+        return true;
+    }
+    let Some(minutes) = task.nag_minutes else { return false };
+    ui.last_nag.get(&task.key).map_or(true, |last| now - last >= minutes * 60)
+}
+
 fn check_reminders(app: &AppHandle) {
     let state = app.state::<AppState>();
     let data = state.data.lock().unwrap().clone();
-    let (due, all_keys) = due_tasks(&data, Utc::now());
+    let now = Utc::now();
+    let (due, all_keys) = due_tasks(&data, now);
 
     let mut ui = state.ui.lock().unwrap();
-    let before = ui.notified.len();
+    let before = (ui.notified.len(), ui.last_nag.len());
     ui.notified.retain(|key| all_keys.contains(key));
+    ui.last_nag.retain(|key, _| all_keys.contains(key));
     let mut fired = false;
-    for (key, title) in due {
-        if ui.notified.contains(&key) {
+    for task in due {
+        if !should_notify(&task, &ui, now.timestamp()) {
             continue;
         }
-        let _ = app.notification().builder().title("Reminder").body(&title).show();
-        ui.notified.push(key);
+        let again = ui.notified.contains(&task.key);
+        let heading = if again { "Still to do" } else { "Reminder" };
+        let _ = app.notification().builder().title(heading).body(&task.title).show();
+        if !again {
+            ui.notified.push(task.key.clone());
+        }
+        if task.nag_minutes.is_some() {
+            ui.last_nag.insert(task.key, now.timestamp());
+        }
         fired = true;
     }
-    if fired || ui.notified.len() != before {
+    if fired || (ui.notified.len(), ui.last_nag.len()) != before {
         save_ui(&state, &ui);
     }
     drop(ui);
@@ -454,7 +496,10 @@ mod tests {
             { "id": "d", "title": "No date", "dueAt": null, "completed": false }
         ]});
         let (due, keys) = due_tasks(&data, now());
-        assert_eq!(due, vec![("a|2026-10-27T11:59:00Z".to_string(), "Pay bills".to_string())]);
+        assert_eq!(
+            due,
+            vec![DueTask { key: "a|2026-10-27T11:59:00Z".into(), title: "Pay bills".into(), nag_minutes: None }]
+        );
         assert_eq!(keys.len(), 3);
     }
 
@@ -464,7 +509,7 @@ mod tests {
             { "id": "a", "title": "", "dueAt": "2026-10-27T19:30:00+08:00", "completed": false }
         ]});
         let (due, _) = due_tasks(&data, now());
-        assert_eq!(due[0].1, "Reminder");
+        assert_eq!(due[0].title, "Reminder");
     }
 
     #[test]
@@ -472,6 +517,27 @@ mod tests {
         let data = json!({ "tasks": [ { "id": "a", "title": "x", "dueAt": "tomorrow", "completed": false } ] });
         let (due, keys) = due_tasks(&data, now());
         assert!(due.is_empty() && keys.is_empty());
+    }
+
+    #[test]
+    fn nagging_tasks_notify_again_after_their_interval() {
+        let data = json!({ "tasks": [
+            { "id": "a", "title": "x", "dueAt": "2026-10-27T11:00:00Z", "completed": false, "nagMinutes": 10 },
+            { "id": "b", "title": "y", "dueAt": "2026-10-27T11:00:00Z", "completed": false, "nagMinutes": null }
+        ]});
+        let (due, _) = due_tasks(&data, now());
+        let (nag, plain) = (&due[0], &due[1]);
+        assert_eq!(nag.nag_minutes, Some(10));
+
+        let mut ui = UiState::default();
+        let t = now().timestamp();
+        assert!(should_notify(nag, &ui, t) && should_notify(plain, &ui, t));
+
+        ui.notified = vec![nag.key.clone(), plain.key.clone()];
+        ui.last_nag.insert(nag.key.clone(), t);
+        assert!(!should_notify(nag, &ui, t + 9 * 60));
+        assert!(should_notify(nag, &ui, t + 10 * 60));
+        assert!(!should_notify(plain, &ui, t + 60 * 60));
     }
 
     #[test]

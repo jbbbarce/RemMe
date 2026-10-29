@@ -45,6 +45,8 @@ export interface Task {
   /** Checking off a repeating reminder adds the next one. Needs a due date. */
   repeat: Repeat | null;
   subtasks: Subtask[];
+  /** While due and unfinished, notify again every this many minutes. */
+  nagMinutes: number | null;
 }
 
 export interface Settings {

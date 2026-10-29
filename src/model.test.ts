@@ -22,6 +22,7 @@ function task(over: Partial<Task>): Task {
     section: null,
     repeat: null,
     subtasks: [],
+    nagMinutes: null,
     ...over,
   };
 }

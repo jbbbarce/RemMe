@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Flag, Info, ListChecks, Repeat } from "lucide-react";
+import { BellRing, Flag, Info, ListChecks, Repeat } from "lucide-react";
 import { REPEAT_LABELS, formatDue, isOverdue } from "../dates";
 import type { ReminderList, Task } from "../types";
 
@@ -91,6 +91,11 @@ export function TaskRow(props: Props) {
             {task.repeat && (
               <span className="meta-icon" title={`Repeats ${REPEAT_LABELS[task.repeat].toLowerCase()}`}>
                 <Repeat size={11} />
+              </span>
+            )}
+            {task.nagMinutes && task.dueAt && !task.completed && (
+              <span className="meta-icon" title={`Nags every ${task.nagMinutes} minutes until done`}>
+                <BellRing size={11} />
               </span>
             )}
             {task.subtasks.length > 0 && (

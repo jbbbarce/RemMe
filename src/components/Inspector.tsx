@@ -1,4 +1,4 @@
-import { Flag, Plus, Trash2, X } from "lucide-react";
+import { BellRing, Flag, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { newId } from "../model";
 import { REPEAT_LABELS, fromInputs, toDateInput, toTimeInput } from "../dates";
@@ -13,6 +13,8 @@ interface Props {
   onClose(): void;
 }
 
+const NAG_MINUTES = [5, 10, 15, 30, 60];
+
 const PRIORITIES: { value: Priority; label: string }[] = [
   { value: 0, label: "None" },
   { value: 1, label: "Low" },
@@ -26,7 +28,7 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
   const time = task.dueAt && task.dueHasTime ? toTimeInput(task.dueAt) : "";
 
   const setDate = (on: boolean) => {
-    if (!on) return onChange({ dueAt: null, dueHasTime: false, repeat: null });
+    if (!on) return onChange({ dueAt: null, dueHasTime: false, repeat: null, nagMinutes: null });
     onChange({ dueAt: fromInputs(toDateInput(now.toISOString()), "09:00"), dueHasTime: false });
   };
   const setTime = (on: boolean) => {
@@ -97,6 +99,24 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
               {REPEATS.map((r) => (
                 <option key={r} value={r}>
                   {REPEAT_LABELS[r]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {task.dueAt && (
+          <label className="row" title="Keep notifying until it's done">
+            <span className="with-icon">
+              <BellRing size={14} /> Nag
+            </span>
+            <select
+              value={task.nagMinutes ?? ""}
+              onChange={(e) => onChange({ nagMinutes: e.target.value ? Number(e.target.value) : null })}
+            >
+              <option value="">Off</option>
+              {NAG_MINUTES.map((m) => (
+                <option key={m} value={m}>
+                  Every {m === 60 ? "hour" : `${m} min`}
                 </option>
               ))}
             </select>
