@@ -25,7 +25,7 @@ Data is saved to `%APPDATA%\com.reminders.app\reminders.json`. Floating window s
 ## Requirements
 
 - Windows 10 or 11 with the WebView2 runtime (included in Windows 11)
-- [Node.js](https://nodejs.org) 20 or later
+- [Node.js](https://nodejs.org) 20 or later and [pnpm](https://pnpm.io)
 - [Rust](https://rustup.rs) (stable, MSVC toolchain)
 - Visual Studio C++ build tools ("Desktop development with C++")
 
@@ -34,8 +34,8 @@ Data is saved to `%APPDATA%\com.reminders.app\reminders.json`. Floating window s
 From the repository root:
 
 ```powershell
-npm install
-npm run tauri dev
+pnpm install
+pnpm tauri dev
 ```
 
 The first build compiles the Rust dependencies and takes a few minutes; later builds are fast. Edits to files under `src/` reload instantly.
@@ -43,14 +43,14 @@ The first build compiles the Rust dependencies and takes a few minutes; later bu
 Run the tests:
 
 ```powershell
-npm test                         # TypeScript: smart lists, dates, sections, shortcut recorder
+pnpm test                        # TypeScript: smart lists, dates, sections, shortcut recorder
 cargo test --manifest-path src-tauri/Cargo.toml   # Rust: due-reminder detection, shortcut parsing
 ```
 
 ## Build an installer
 
 ```powershell
-npm run tauri build
+pnpm tauri build
 ```
 
 This writes an installer to `src-tauri\target\release\bundle\nsis\Reminders_<version>_x64-setup.exe`. The installed app needs nothing else on the target PC except WebView2.
