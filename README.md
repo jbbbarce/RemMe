@@ -14,6 +14,8 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
 - **Repeating reminders:** set **Repeat** (daily, weekly, monthly or yearly) in a reminder's details. Checking it off keeps the done one in Completed and adds the next one; uncheck it straight away to take that back. A reminder finished late comes back on its next future date.
 - **Subtasks:** add a checklist in a reminder's details. The row shows how many are done, and the next repeat starts with them all unchecked.
 - **Nag mode:** set **Nag** in a reminder's details and its notification repeats every 5, 10, 15, 30 or 60 minutes until you check it off.
+- **Habit streaks:** a repeating reminder shows a flame and how many times in a row it was done by its due day. Finishing one late, or letting its day pass, starts the count over.
+- **App-triggered reminders:** set **When I open** in a reminder's details to an app, such as `chrome.exe` (the box suggests apps that are running now). Each time that app starts, you get a notification about the reminder until it's done. Apps already running when Reminders starts don't count.
 - **Notifications:** a Windows notification appears when a reminder is due. Due checks run every 15 seconds while the app is running, and overdue reminders notify at startup. A due reminder also brings up the floating list.
 - **Floating list:** a small always-on-top window showing any smart list or list. Pick which one from its header.
   - **Ctrl+Shift+O** shows or hides it from any app.
