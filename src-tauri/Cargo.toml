@@ -1,6 +1,6 @@
 [package]
 name = "reminders"
-version = "0.2.0"
+version = "0.3.0"
 description = "Apple Reminders-style task app with a floating, lockable list"
 authors = ["John Barce"]
 edition = "2024"
