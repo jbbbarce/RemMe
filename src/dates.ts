@@ -77,6 +77,17 @@ function stepDate(base: Date, repeat: Repeat, k: number): Date {
   return new Date(year, month, Math.min(d, lastDay), h, min);
 }
 
+/** Done by the end of its due day. */
+export function doneOnTime(task: Task, doneAt: Date): boolean {
+  return !!task.dueAt && doneAt <= endOfDay(new Date(task.dueAt));
+}
+
+/** The streak to show on an unfinished repeating reminder: none once its due day has gone by. */
+export function currentStreak(task: Task, now: Date): number {
+  if (!task.repeat || !task.dueAt || task.completed || !doneOnTime(task, now)) return 0;
+  return task.streak;
+}
+
 export const REPEAT_LABELS: Record<Repeat, string> = {
   daily: "Daily",
   weekly: "Weekly",

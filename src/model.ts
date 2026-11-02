@@ -1,4 +1,4 @@
-import { endOfDay, nextDue, startOfDay } from "./dates";
+import { doneOnTime, endOfDay, nextDue, startOfDay } from "./dates";
 import {
   LIST_COLORS,
   LIST_ICONS,
@@ -62,6 +62,7 @@ export function normalize(raw: Partial<AppData> | null | undefined): AppData {
       done: s.done ?? false,
     })),
     nagMinutes: typeof t.nagMinutes === "number" && t.nagMinutes > 0 ? t.nagMinutes : null,
+    streak: typeof t.streak === "number" && t.streak > 0 ? Math.floor(t.streak) : 0,
   }));
   return { version: 1, lists, tasks, settings: { ...DEFAULT_SETTINGS, ...raw?.settings } };
 }
@@ -145,6 +146,7 @@ export function newTaskFor(data: AppData, view: View, now: Date, section: string
     repeat: null,
     subtasks: [],
     nagMinutes: null,
+    streak: 0,
   };
 }
 
@@ -166,9 +168,11 @@ export function setCompleted(data: AppData, id: string, completed: boolean, now:
   }
   const done = updateTask(data, id, { completed, completedAt: now.toISOString() });
   if (!task.repeat || !task.dueAt || task.completed) return done;
+  const streak = doneOnTime(task, now) ? task.streak + 1 : 0;
   const next: Task = {
     ...task,
     id: nextId ?? newId(),
+    streak,
     dueAt: nextDue(task, task.repeat, now),
     completed: false,
     completedAt: null,

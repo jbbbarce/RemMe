@@ -47,6 +47,8 @@ export interface Task {
   subtasks: Subtask[];
   /** While due and unfinished, notify again every this many minutes. */
   nagMinutes: number | null;
+  /** For repeating reminders: how many times in a row the earlier ones were done by their due day. */
+  streak: number;
 }
 
 export interface Settings {

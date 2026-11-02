@@ -522,6 +522,10 @@ button:disabled {
   gap: 3px;
 }
 
+.meta-icon.streak {
+  color: var(--c-orange);
+}
+
 .meta-list::before {
   content: "· ";
 }

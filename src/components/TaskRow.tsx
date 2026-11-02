@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { BellRing, Flag, Info, ListChecks, Repeat } from "lucide-react";
-import { REPEAT_LABELS, formatDue, isOverdue } from "../dates";
+import { BellRing, Flag, Flame, Info, ListChecks, Repeat } from "lucide-react";
+import { REPEAT_LABELS, currentStreak, formatDue, isOverdue } from "../dates";
 import type { ReminderList, Task } from "../types";
 
 interface Props {
@@ -40,6 +40,7 @@ export function TaskRow(props: Props) {
   const overdue = isOverdue(task, now);
   const marks = "!".repeat(task.priority);
   const subtasksDone = task.subtasks.filter((s) => s.done).length;
+  const streak = currentStreak(task, now);
 
   return (
     <div
@@ -91,6 +92,12 @@ export function TaskRow(props: Props) {
             {task.repeat && (
               <span className="meta-icon" title={`Repeats ${REPEAT_LABELS[task.repeat].toLowerCase()}`}>
                 <Repeat size={11} />
+              </span>
+            )}
+            {streak > 0 && (
+              <span className="meta-icon streak" title={`Done on time ${streak} ${streak === 1 ? "time" : "times"} in a row`}>
+                <Flame size={11} />
+                {streak}
               </span>
             )}
             {task.nagMinutes && task.dueAt && !task.completed && (

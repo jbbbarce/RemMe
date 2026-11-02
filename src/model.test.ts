@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDue, isOverdue } from "./dates";
+import { currentStreak, formatDue, isOverdue } from "./dates";
 import { deleteList, deleteSection, floatViewOf, normalize, renameSection, setCompleted, smartCount, tasksFor } from "./model";
 import { shortcutFromEvent } from "./shortcut";
 import type { Task } from "./types";
@@ -23,6 +23,7 @@ function task(over: Partial<Task>): Task {
     repeat: null,
     subtasks: [],
     nagMinutes: null,
+    streak: 0,
     ...over,
   };
 }
@@ -183,5 +184,33 @@ describe("subtasks", () => {
     expect(data.tasks[0].subtasks[0].id).toBeTruthy();
     const next = setCompleted(data, "r", true, now, "n").tasks.find((t) => t.id === "n")!;
     expect(next.subtasks.map((s) => [s.title, s.done])).toEqual([["a", false]]);
+  });
+});
+
+describe("habit streaks", () => {
+  const daily = (over: Partial<Task>) => normalize({ tasks: [task({ id: "r", repeat: "daily", dueAt: at(9), ...over })] });
+  const next = (d: ReturnType<typeof normalize>) => d.tasks.find((t) => t.id === "n")!;
+
+  it("grows when a repeat is done by its due day", () => {
+    const done = setCompleted(daily({ streak: 4 }), "r", true, new Date(2026, 9, 27, 23, 0), "n");
+    expect(next(done).streak).toBe(5);
+    expect(currentStreak(next(done), now)).toBe(5);
+  });
+
+  it("starts over when a repeat is done late", () => {
+    const done = setCompleted(daily({ streak: 4, dueAt: at(9, -1) }), "r", true, now, "n");
+    expect(next(done).streak).toBe(0);
+  });
+
+  it("shows no streak once the due day has passed undone", () => {
+    const missed = daily({ streak: 3, dueAt: at(9, -1) }).tasks[0];
+    expect(currentStreak(missed, now)).toBe(0);
+    expect(currentStreak({ ...missed, dueAt: at(9) }, now)).toBe(3);
+  });
+
+  it("is restored by unchecking straight away", () => {
+    const done = setCompleted(daily({ streak: 2 }), "r", true, now, "n");
+    const undone = setCompleted(done, "r", false, now, "n");
+    expect(undone.tasks.map((t) => [t.id, t.streak])).toEqual([["r", 2]]);
   });
 });
