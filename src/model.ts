@@ -47,7 +47,8 @@ export function normalize(raw: Partial<AppData> | null | undefined): AppData {
     listId: listIds.has(t.listId) ? t.listId : lists[0].id,
     title: t.title ?? "",
     notes: t.notes ?? "",
-    dueAt: t.dueAt ?? null,
+    // An unreadable date would break due checks and repeats, so it is dropped.
+    dueAt: t.dueAt && !Number.isNaN(Date.parse(t.dueAt)) ? t.dueAt : null,
     dueHasTime: t.dueHasTime ?? false,
     flagged: t.flagged ?? false,
     priority: t.priority ?? 0,
@@ -55,7 +56,7 @@ export function normalize(raw: Partial<AppData> | null | undefined): AppData {
     completedAt: t.completedAt ?? null,
     createdAt: t.createdAt ?? new Date().toISOString(),
     section: t.section ?? null,
-    repeat: REPEATS.includes(t.repeat!) && t.dueAt ? t.repeat! : null,
+    repeat: REPEATS.includes(t.repeat!) && t.dueAt && !Number.isNaN(Date.parse(t.dueAt)) ? t.repeat! : null,
     subtasks: (Array.isArray(t.subtasks) ? t.subtasks : []).map((s) => ({
       id: s.id ?? newId(),
       title: s.title ?? "",
@@ -64,6 +65,7 @@ export function normalize(raw: Partial<AppData> | null | undefined): AppData {
     nagMinutes: typeof t.nagMinutes === "number" && t.nagMinutes > 0 ? t.nagMinutes : null,
     streak: typeof t.streak === "number" && t.streak > 0 ? Math.floor(t.streak) : 0,
     appTrigger: typeof t.appTrigger === "string" && t.appTrigger.trim() ? t.appTrigger.trim() : null,
+    nextId: typeof t.nextId === "string" ? t.nextId : null,
   }));
   return { version: 1, lists, tasks, settings: { ...DEFAULT_SETTINGS, ...raw?.settings } };
 }
@@ -149,6 +151,7 @@ export function newTaskFor(data: AppData, view: View, now: Date, section: string
     nagMinutes: null,
     streak: 0,
     appTrigger: null,
+    nextId: null,
   };
 }
 
@@ -156,17 +159,22 @@ export function updateTask(data: AppData, id: string, patch: Partial<Task>): App
   return { ...data, tasks: data.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) };
 }
 
+/** How long after checking off a repeating reminder unchecking it takes back the next one. */
+export const REPEAT_UNDO_MS = 60_000;
+
 /**
  * Checks a reminder off or back on. Checking off a repeating reminder keeps it as done and adds
- * the next one after it, with id `nextId`; unchecking with that same id takes the next one back.
+ * the next one after it (with id `nextId`, if given). Unchecking it within `REPEAT_UNDO_MS` takes
+ * the next one back; later, the next one is left alone and keeps the repeat.
  */
 export function setCompleted(data: AppData, id: string, completed: boolean, now: Date, nextId?: string): AppData {
   const task = data.tasks.find((t) => t.id === id);
   if (!task) return data;
   if (!completed) {
-    const next = data.tasks.find((t) => t.id === nextId && !t.completed);
+    const recent = !!task.completedAt && now.getTime() - Date.parse(task.completedAt) <= REPEAT_UNDO_MS;
+    const next = recent ? data.tasks.find((t) => t.id === task.nextId && !t.completed) : undefined;
     const restored = next ? deleteTask(data, next.id) : data;
-    return updateTask(restored, id, { completed, completedAt: null, ...(next && { repeat: next.repeat }) });
+    return updateTask(restored, id, { completed, completedAt: null, nextId: null, ...(next && { repeat: next.repeat }) });
   }
   const done = updateTask(data, id, { completed, completedAt: now.toISOString() });
   if (!task.repeat || !task.dueAt || task.completed) return done;
@@ -174,6 +182,7 @@ export function setCompleted(data: AppData, id: string, completed: boolean, now:
   const next: Task = {
     ...task,
     id: nextId ?? newId(),
+    nextId: null,
     streak,
     dueAt: nextDue(task, task.repeat, now),
     completed: false,
@@ -181,7 +190,7 @@ export function setCompleted(data: AppData, id: string, completed: boolean, now:
     createdAt: now.toISOString(),
     subtasks: task.subtasks.map((s) => ({ ...s, id: newId(), done: false })),
   };
-  return insertTask(updateTask(done, id, { repeat: null }), next, id);
+  return insertTask(updateTask(done, id, { repeat: null, nextId: next.id }), next, id);
 }
 
 export function insertTask(data: AppData, task: Task, afterId?: string): AppData {

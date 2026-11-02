@@ -21,7 +21,14 @@ export type QuickAdd = Pick<Task, "title"> & Partial<Pick<Task, "dueAt" | "dueHa
  */
 export function parseQuickAdd(text: string, now: Date): QuickAdd {
   let rest = ` ${text} `;
-  const found: { day?: Date; time?: { h: number; m: number }; exact?: Date; priority?: Priority; repeat?: Repeat } = {};
+  const found: {
+    day?: Date;
+    time?: { h: number; m: number };
+    exact?: Date;
+    priority?: Priority;
+    repeat?: Repeat;
+    tonight?: boolean;
+  } = {};
 
   const take = (pattern: string, read: (match: RegExpMatchArray) => boolean) => {
     const regex = new RegExp(String.raw`(?<=\s)${pattern}(?=[\s,.!?]|$)`, "i");
@@ -86,7 +93,7 @@ export function parseQuickAdd(text: string, now: Date): QuickAdd {
     if (found.day) return false;
     const word = m[1].toLowerCase();
     found.day = word === "today" || word === "tonight" ? startOfDay(now) : addDays(startOfDay(now), 1);
-    if (word === "tonight") found.time ??= { h: 20, m: 0 };
+    found.tonight = word === "tonight";
     return true;
   });
   take(String.raw`(?:(?:on|next|this)\s+)?${FULL_DAY}`, (m) => weekday(m[1]));
@@ -98,16 +105,18 @@ export function parseQuickAdd(text: string, now: Date): QuickAdd {
     found.time = { h: (h % 12) + (m[3].toLowerCase() === "p" ? 12 : 0), m: Number(m[2] ?? 0) };
     return true;
   });
-  take(String.raw`(?:at\s+|@\s*)?([01]?\d|2[0-3]):([0-5]\d)`, (m) => {
-    if (found.time) return false;
-    found.time = { h: Number(m[1]), m: Number(m[2]) };
+  // A bare 17:00 needs "at" or a day in the same title, so "John 3:16" or "16:9" stay in the title.
+  take(String.raw`(at\s+|@\s*)?([01]?\d|2[0-3]):([0-5]\d)`, (m) => {
+    if (found.time || (!m[1] && !found.day)) return false;
+    found.time = { h: Number(m[2]), m: Number(m[3]) };
     return true;
   });
-  take(String.raw`(?:at|@)\s*(\d{1,2})`, (m) => {
+  // "at 6" only at the end of the title, so "Look at 3 options" stays as it is.
+  take(String.raw`(?:at|@)\s*(\d{1,2})(?=[\s,.!?]*$)`, (m) => {
     const h = Number(m[1]);
     if (found.time || h < 1 || h > 12) return false;
-    // Without am/pm, small hours are more likely afternoon: "at 6" means 6pm.
-    found.time = { h: h === 12 ? 12 : h <= 6 ? h + 12 : h, m: 0 };
+    // Without am/pm, small hours are more likely afternoon: "at 6" means 6pm, and so does "tonight at 9".
+    found.time = { h: h === 12 ? 12 : h <= 6 || found.tonight ? h + 12 : h, m: 0 };
     return true;
   });
   take(String.raw`(?:at\s+)?(noon|midday)`, () => {
@@ -115,6 +124,7 @@ export function parseQuickAdd(text: string, now: Date): QuickAdd {
     found.time = { h: 12, m: 0 };
     return true;
   });
+  if (found.tonight) found.time ??= { h: 20, m: 0 };
 
   const title = rest.replace(/\s+/g, " ").replace(/^[\s,]+|[\s,]+$/g, "");
   if (!title) return { title: text.trim() };

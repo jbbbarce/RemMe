@@ -187,7 +187,7 @@ fn check_reminders(app: &AppHandle) {
     drop(ui);
 
     if fired {
-        set_float_visible(app, true);
+        show_float_for_notification(app);
     }
 }
 
@@ -217,16 +217,28 @@ fn app_triggered(data: &Value, started: &HashSet<String>) -> Vec<(String, String
     hits
 }
 
+fn has_app_triggers(data: &Value) -> bool {
+    data["tasks"].as_array().into_iter().flatten().any(|task| {
+        !task["completed"].as_bool().unwrap_or(false)
+            && task["appTrigger"].as_str().is_some_and(|a| !a.trim().is_empty())
+    })
+}
+
 /// Every few seconds, notifies for reminders tied to an app that has just started.
-/// Apps already running when Reminders starts don't count as just started.
+/// Processes are only scanned while some reminder waits for an app, and apps already
+/// running when that scanning starts don't count as just started.
 fn watch_apps(app: AppHandle) {
     let Ok(mut system) = System::new() else { return };
-    let mut before = running_apps_now(&mut system);
+    let mut before: Option<HashSet<String>> = None;
     loop {
         thread::sleep(Duration::from_secs(3));
+        if !has_app_triggers(&app.state::<AppState>().data.lock().unwrap()) {
+            before = None;
+            continue;
+        }
         let now = running_apps_now(&mut system);
-        let started: HashSet<String> = now.difference(&before).cloned().collect();
-        before = now;
+        let Some(previous) = before.replace(now.clone()) else { continue };
+        let started: HashSet<String> = now.difference(&previous).cloned().collect();
         if started.is_empty() {
             continue;
         }
@@ -236,7 +248,7 @@ fn watch_apps(app: AppHandle) {
             let _ = app.notification().builder().title(format!("You opened {name}")).body(title).show();
         }
         if !hits.is_empty() {
-            set_float_visible(&app, true);
+            show_float_for_notification(&app);
         }
     }
 }
@@ -266,6 +278,50 @@ fn set_float_visible(app: &AppHandle, visible: bool) {
     drop(ui);
     emit_float_state(app);
 }
+
+/// Brings up the floating list for a notification, without taking the keyboard
+/// from the app the user is in. Does nothing if it is already showing.
+fn show_float_for_notification(app: &AppHandle) {
+    let Some(window) = app.get_webview_window(FLOAT) else { return };
+    let state = app.state::<AppState>();
+    let mut ui = state.ui.lock().unwrap();
+    if ui.float_visible {
+        return;
+    }
+    let previous = foreground_window();
+    let _ = window.show();
+    restore_foreground(app, previous);
+    ui.float_visible = true;
+    save_ui(&state, &ui);
+    drop(ui);
+    emit_float_state(app);
+}
+
+#[cfg(windows)]
+fn foreground_window() -> isize {
+    unsafe { windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow().0 as isize }
+}
+
+#[cfg(not(windows))]
+fn foreground_window() -> isize {
+    0
+}
+
+/// Showing a window on Windows also activates it, so give the foreground back to
+/// `previous` once the show has run. Both go through the event loop in order.
+#[cfg(windows)]
+fn restore_foreground(app: &AppHandle, previous: isize) {
+    if previous == 0 {
+        return;
+    }
+    let _ = app.run_on_main_thread(move || {
+        use windows::Win32::{Foundation::HWND, UI::WindowsAndMessaging::SetForegroundWindow};
+        let _ = unsafe { SetForegroundWindow(HWND(previous as *mut _)) };
+    });
+}
+
+#[cfg(not(windows))]
+fn restore_foreground(_app: &AppHandle, _previous: isize) {}
 
 fn set_float_locked(app: &AppHandle, locked: bool) {
     let Some(window) = app.get_webview_window(FLOAT) else { return };
@@ -401,8 +457,9 @@ fn show_main(app: AppHandle) {
 }
 
 /// Names of running apps, for picking which one a reminder waits for.
+/// Async so the process scan runs off the main thread and never freezes the windows.
 #[tauri::command]
-fn running_apps() -> Vec<String> {
+async fn running_apps() -> Vec<String> {
     let Ok(mut system) = System::new() else { return Vec::new() };
     system.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing());
     let mut seen = HashSet::new();
@@ -626,6 +683,16 @@ mod tests {
         ]});
         let started = HashSet::from(["teams".to_string()]);
         assert_eq!(app_triggered(&data, &started), vec![("Teams.exe".to_string(), "Log hours".to_string())]);
+    }
+
+    #[test]
+    fn only_unfinished_tasks_with_an_app_need_scanning() {
+        assert!(!has_app_triggers(&json!({ "tasks": [
+            { "id": "a", "appTrigger": "teams", "completed": true },
+            { "id": "b", "appTrigger": "  ", "completed": false },
+            { "id": "c", "completed": false }
+        ]})));
+        assert!(has_app_triggers(&json!({ "tasks": [ { "id": "a", "appTrigger": "teams", "completed": false } ] })));
     }
 
     #[test]

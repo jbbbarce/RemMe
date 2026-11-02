@@ -25,6 +25,7 @@ function task(over: Partial<Task>): Task {
     nagMinutes: null,
     streak: 0,
     appTrigger: null,
+    nextId: null,
     ...over,
   };
 }
@@ -154,8 +155,22 @@ describe("repeating reminders", () => {
       ["r", true, null, at(9)],
       ["next", false, "daily", at(9, 1)],
     ]);
-    const undone = setCompleted(done, "r", false, later, "next");
+    const undone = setCompleted(done, "r", false, later);
     expect(undone.tasks.map((t) => [t.id, t.completed, t.repeat])).toEqual([["r", false, "daily"]]);
+  });
+
+  it("leaves the next one alone when unchecked later, even from another window", () => {
+    const done = setCompleted(of({ repeat: "daily", dueAt: at(9) }), "r", true, now, "next");
+    const muchLater = new Date(now.getTime() + 5 * 60_000);
+    const undone = setCompleted(done, "r", false, muchLater);
+    expect(undone.tasks.map((t) => [t.id, t.completed, t.repeat])).toEqual([
+      ["r", false, null],
+      ["next", false, "daily"],
+    ]);
+  });
+
+  it("drops dates that can't be read", () => {
+    expect(of({ dueAt: "tomorrow", repeat: "daily" }).tasks[0]).toMatchObject({ dueAt: null, repeat: null });
   });
 
   it("skips repeats that already passed", () => {
@@ -211,7 +226,7 @@ describe("habit streaks", () => {
 
   it("is restored by unchecking straight away", () => {
     const done = setCompleted(daily({ streak: 2 }), "r", true, now, "n");
-    const undone = setCompleted(done, "r", false, now, "n");
+    const undone = setCompleted(done, "r", false, now);
     expect(undone.tasks.map((t) => [t.id, t.streak])).toEqual([["r", 2]]);
   });
 });

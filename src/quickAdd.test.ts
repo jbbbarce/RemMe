@@ -34,7 +34,13 @@ describe("quick add", () => {
   it("uses today for a bare time, or tomorrow once it has passed", () => {
     expect(parseQuickAdd("Lunch at noon", now).dueAt).toBe(local(10, 28, 12));
     expect(parseQuickAdd("Call at 3", now).dueAt).toBe(local(10, 27, 15));
-    expect(parseQuickAdd("Train 18:45", now).dueAt).toBe(local(10, 27, 18, 45));
+    expect(parseQuickAdd("Train at 18:45", now).dueAt).toBe(local(10, 27, 18, 45));
+    expect(parseQuickAdd("Call at 3 tomorrow", now)).toMatchObject({ title: "Call", dueAt: local(10, 28, 15) });
+  });
+
+  it("lets a time after tonight win over the 8pm default", () => {
+    expect(parseQuickAdd("Dinner tonight at 9", now)).toMatchObject({ title: "Dinner", dueAt: local(10, 27, 21) });
+    expect(parseQuickAdd("Train tonight 21:30", now)).toMatchObject({ title: "Train", dueAt: local(10, 27, 21, 30) });
   });
 
   it("reads relative hours and minutes as an exact time", () => {
@@ -48,7 +54,7 @@ describe("quick add", () => {
   });
 
   it("leaves ordinary words and numbers alone", () => {
-    for (const text of ["Buy sun hat", "Read 1984", "Mark the 3 boxes", "Ask May about it"]) {
+    for (const text of ["Buy sun hat", "Read 1984", "Mark the 3 boxes", "Ask May about it", "Read John 3:16", "Set screen to 16:9", "Look at 3 options"]) {
       expect(parseQuickAdd(text, now)).toEqual({ title: text });
     }
   });

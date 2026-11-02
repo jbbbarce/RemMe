@@ -51,6 +51,8 @@ export interface Task {
   streak: number;
   /** An app such as "chrome.exe": opening it notifies about this reminder while it is unfinished. */
   appTrigger: string | null;
+  /** On a done repeating reminder: the id of the next one checking it off added. */
+  nextId: string | null;
 }
 
 export interface Settings {
