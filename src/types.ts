@@ -49,6 +49,8 @@ export interface Task {
   nagMinutes: number | null;
   /** For repeating reminders: how many times in a row the earlier ones were done by their due day. */
   streak: number;
+  /** An app such as "chrome.exe": opening it notifies about this reminder while it is unfinished. */
+  appTrigger: string | null;
 }
 
 export interface Settings {

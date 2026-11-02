@@ -1,5 +1,6 @@
-import { BellRing, Flag, Plus, Trash2, X } from "lucide-react";
+import { AppWindow, BellRing, Flag, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { newId } from "../model";
 import { REPEAT_LABELS, fromInputs, toDateInput, toTimeInput } from "../dates";
 import { REPEATS, type AppData, type Priority, type Repeat, type Subtask, type Task } from "../types";
@@ -124,6 +125,8 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
         )}
       </div>
 
+      <AppTrigger value={task.appTrigger} onChange={(appTrigger) => onChange({ appTrigger })} />
+
       <Subtasks subtasks={task.subtasks} onChange={(subtasks) => onChange({ subtasks })} />
 
       <div className="group">
@@ -181,6 +184,33 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
         <Trash2 size={15} /> Delete Reminder
       </button>
     </aside>
+  );
+}
+
+function AppTrigger({ value, onChange }: { value: string | null; onChange(value: string | null): void }) {
+  const [apps, setApps] = useState<string[]>([]);
+  return (
+    <div className="group">
+      <label className="row" title="Get a notification each time this app opens, until the reminder is done">
+        <span className="with-icon">
+          <AppWindow size={14} /> When I open
+        </span>
+        <input
+          className="field app-field"
+          list="running-apps"
+          value={value ?? ""}
+          placeholder="e.g. chrome.exe"
+          spellCheck={false}
+          onFocus={() => invoke<string[]>("running_apps").then(setApps, () => setApps([]))}
+          onChange={(e) => onChange(e.target.value.trim() ? e.target.value : null)}
+        />
+      </label>
+      <datalist id="running-apps">
+        {apps.map((a) => (
+          <option key={a} value={a} />
+        ))}
+      </datalist>
+    </div>
   );
 }
 

@@ -24,6 +24,7 @@ function task(over: Partial<Task>): Task {
     subtasks: [],
     nagMinutes: null,
     streak: 0,
+    appTrigger: null,
     ...over,
   };
 }

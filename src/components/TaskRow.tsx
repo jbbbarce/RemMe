@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { BellRing, Flag, Flame, Info, ListChecks, Repeat } from "lucide-react";
+import { AppWindow, BellRing, Flag, Flame, Info, ListChecks, Repeat } from "lucide-react";
 import { REPEAT_LABELS, currentStreak, formatDue, isOverdue } from "../dates";
 import type { ReminderList, Task } from "../types";
 
@@ -86,7 +86,7 @@ export function TaskRow(props: Props) {
           />
         </div>
         {!compact && task.notes && <div className="task-notes">{task.notes}</div>}
-        {(due || task.subtasks.length > 0 || props.showList) && (
+        {(due || task.subtasks.length > 0 || task.appTrigger || props.showList) && (
           <div className="task-meta">
             {due && <span className={overdue ? "overdue" : undefined}>{due}</span>}
             {task.repeat && (
@@ -103,6 +103,12 @@ export function TaskRow(props: Props) {
             {task.nagMinutes && task.dueAt && !task.completed && (
               <span className="meta-icon" title={`Nags every ${task.nagMinutes} minutes until done`}>
                 <BellRing size={11} />
+              </span>
+            )}
+            {task.appTrigger && (
+              <span className="meta-icon" title={`Reminds you when ${task.appTrigger} opens`}>
+                <AppWindow size={11} />
+                {task.appTrigger}
               </span>
             )}
             {task.subtasks.length > 0 && (

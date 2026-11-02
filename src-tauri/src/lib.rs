@@ -11,6 +11,7 @@ use std::{
 use chrono::{DateTime, Utc};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
+use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -190,6 +191,56 @@ fn check_reminders(app: &AppHandle) {
     }
 }
 
+/// How an app is matched: "Chrome.exe", "chrome" and " chrome.EXE " are the same app.
+fn app_key(name: &str) -> String {
+    let name = name.trim().to_lowercase();
+    name.strip_suffix(".exe").unwrap_or(&name).to_string()
+}
+
+/// Names of the apps running now, as `app_key`s.
+fn running_apps_now(system: &mut System) -> HashSet<String> {
+    system.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing());
+    system.processes().values().map(|p| app_key(&p.name().to_string_lossy())).collect()
+}
+
+/// Returns `(app, title)` for every unfinished task set to remind when one of the `started` apps opens.
+fn app_triggered(data: &Value, started: &HashSet<String>) -> Vec<(String, String)> {
+    let mut hits = Vec::new();
+    for task in data["tasks"].as_array().into_iter().flatten() {
+        let Some(app) = task["appTrigger"].as_str().filter(|a| !a.trim().is_empty()) else { continue };
+        if task["completed"].as_bool().unwrap_or(false) || !started.contains(&app_key(app)) {
+            continue;
+        }
+        let title = task["title"].as_str().unwrap_or("").trim();
+        hits.push((app.trim().to_string(), if title.is_empty() { "Reminder".into() } else { title.into() }));
+    }
+    hits
+}
+
+/// Every few seconds, notifies for reminders tied to an app that has just started.
+/// Apps already running when Reminders starts don't count as just started.
+fn watch_apps(app: AppHandle) {
+    let Ok(mut system) = System::new() else { return };
+    let mut before = running_apps_now(&mut system);
+    loop {
+        thread::sleep(Duration::from_secs(3));
+        let now = running_apps_now(&mut system);
+        let started: HashSet<String> = now.difference(&before).cloned().collect();
+        before = now;
+        if started.is_empty() {
+            continue;
+        }
+        let data = app.state::<AppState>().data.lock().unwrap().clone();
+        let hits = app_triggered(&data, &started);
+        for (name, title) in &hits {
+            let _ = app.notification().builder().title(format!("You opened {name}")).body(title).show();
+        }
+        if !hits.is_empty() {
+            set_float_visible(&app, true);
+        }
+    }
+}
+
 fn emit_float_state(app: &AppHandle) {
     let state = app.state::<AppState>();
     let ui = state.ui.lock().unwrap();
@@ -349,6 +400,22 @@ fn show_main(app: AppHandle) {
     show_main_window(&app);
 }
 
+/// Names of running apps, for picking which one a reminder waits for.
+#[tauri::command]
+fn running_apps() -> Vec<String> {
+    let Ok(mut system) = System::new() else { return Vec::new() };
+    system.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing());
+    let mut seen = HashSet::new();
+    let mut names: Vec<String> = system
+        .processes()
+        .values()
+        .map(|p| p.name().to_string_lossy().into_owned())
+        .filter(|name| name.to_lowercase().ends_with(".exe") && seen.insert(app_key(name)))
+        .collect();
+    names.sort_by_key(|name| name.to_lowercase());
+    names
+}
+
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Open Reminders", true, None::<&str>)?;
     let float = MenuItem::with_id(app, "float", "Show or hide floating list", true, None::<&str>)?;
@@ -423,7 +490,8 @@ pub fn run() {
             suspend_shortcuts,
             get_float_state,
             set_float,
-            show_main
+            show_main,
+            running_apps
         ])
         .on_window_event(|window, event| {
             // Closing a window hides it; the app keeps running in the tray until Quit.
@@ -469,6 +537,8 @@ pub fn run() {
                 }
             }
 
+            let watcher = handle.clone();
+            thread::spawn(move || watch_apps(watcher));
             thread::spawn(move || loop {
                 check_reminders(&handle);
                 thread::sleep(Duration::from_secs(15));
@@ -538,6 +608,24 @@ mod tests {
         assert!(!should_notify(nag, &ui, t + 9 * 60));
         assert!(should_notify(nag, &ui, t + 10 * 60));
         assert!(!should_notify(plain, &ui, t + 60 * 60));
+    }
+
+    #[test]
+    fn app_names_match_loosely() {
+        assert_eq!(app_key(" Chrome.EXE "), "chrome");
+        assert_eq!(app_key("chrome"), "chrome");
+    }
+
+    #[test]
+    fn unfinished_tasks_for_a_started_app_trigger() {
+        let data = json!({ "tasks": [
+            { "id": "a", "title": "Log hours", "appTrigger": "Teams.exe", "completed": false },
+            { "id": "b", "title": "Done", "appTrigger": "teams", "completed": true },
+            { "id": "c", "title": "Other", "appTrigger": "chrome", "completed": false },
+            { "id": "d", "title": "None", "appTrigger": null, "completed": false }
+        ]});
+        let started = HashSet::from(["teams".to_string()]);
+        assert_eq!(app_triggered(&data, &started), vec![("Teams.exe".to_string(), "Log hours".to_string())]);
     }
 
     #[test]

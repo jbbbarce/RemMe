@@ -63,6 +63,7 @@ export function normalize(raw: Partial<AppData> | null | undefined): AppData {
     })),
     nagMinutes: typeof t.nagMinutes === "number" && t.nagMinutes > 0 ? t.nagMinutes : null,
     streak: typeof t.streak === "number" && t.streak > 0 ? Math.floor(t.streak) : 0,
+    appTrigger: typeof t.appTrigger === "string" && t.appTrigger.trim() ? t.appTrigger.trim() : null,
   }));
   return { version: 1, lists, tasks, settings: { ...DEFAULT_SETTINGS, ...raw?.settings } };
 }
@@ -147,6 +148,7 @@ export function newTaskFor(data: AppData, view: View, now: Date, section: string
     subtasks: [],
     nagMinutes: null,
     streak: 0,
+    appTrigger: null,
   };
 }
 

@@ -816,6 +816,11 @@ select {
   transform: translateX(16px);
 }
 
+.app-field {
+  max-width: 160px;
+  padding: 4px 8px;
+}
+
 .subtask {
   display: flex;
   align-items: center;
