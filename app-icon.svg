@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Source for every app icon size: regenerate with `pnpm tauri icon app-icon.svg`. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b95ff"/>
+      <stop offset="1" stop-color="#4b47d6"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb02e"/>
+      <stop offset="1" stop-color="#ff8a00"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+
+  <!-- Tile -->
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#tile)"/>
+
+  <!-- Floating list card and its shadow -->
+  <rect x="214" y="268" width="596" height="552" rx="84" fill="#0b1f6b" opacity="0.32" filter="url(#shadow)"/>
+  <rect x="214" y="236" width="596" height="552" rx="84" fill="#ffffff"/>
+
+  <!-- Done item -->
+  <circle cx="330" cy="380" r="50" fill="#0a84ff"/>
+  <path d="M306 381 l17 18 l33 -36" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="418" y="360" width="290" height="40" rx="20" fill="#d4dbe6"/>
+
+  <!-- Open items -->
+  <circle cx="330" cy="512" r="43" fill="none" stroke="#9aa6b8" stroke-width="15"/>
+  <rect x="418" y="492" width="320" height="40" rx="20" fill="#5b6576"/>
+  <circle cx="330" cy="644" r="43" fill="none" stroke="#9aa6b8" stroke-width="15"/>
+  <rect x="418" y="624" width="230" height="40" rx="20" fill="#5b6576"/>
+
+  <!-- Reminder badge with a bell -->
+  <circle cx="790" cy="248" r="112" fill="#ffffff"/>
+  <circle cx="790" cy="248" r="96" fill="url(#badge)"/>
+  <circle cx="790" cy="184" r="13" fill="#ffffff"/>
+  <path d="M790 192 c-33 0 -54 25 -54 58 v26 c0 12 -8 20 -20 28 h148 c-12 -8 -20 -16 -20 -28 v-26 c0 -33 -21 -58 -54 -58 z" fill="#ffffff"/>
+  <circle cx="790" cy="326" r="15" fill="#ffffff"/>
+</svg>
