@@ -7,8 +7,16 @@ const isFloat = getCurrentWindow().label === "float";
 document.documentElement.classList.toggle("is-float", isFloat);
 
 export default function App() {
-  const { data, update, saveError } = useAppData();
-  if (!data) return null;
+  const { data, update, saveError, loadError } = useAppData();
+  if (!data) {
+    return loadError ? (
+      <p className="empty">
+        Couldn't load your reminders: {loadError}
+        <br />
+        <button onClick={() => window.location.reload()}>Try again</button>
+      </p>
+    ) : null;
+  }
   return isFloat ? (
     <FloatApp data={data} update={update} />
   ) : (

@@ -6,6 +6,9 @@ import { normalize } from "./model";
 import type { AppData, FloatState } from "./types";
 
 const SAVE_DELAY_MS = 250;
+/** Loading can fail while the webview is still starting up, so it is tried a few times. */
+const LOAD_ATTEMPTS = 5;
+const LOAD_RETRY_MS = 400;
 
 /**
  * Loads the shared task data and keeps it in sync with the other window.
@@ -14,6 +17,7 @@ const SAVE_DELAY_MS = 250;
 export function useAppData() {
   const [data, setData] = useState<AppData | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const dataRef = useRef<AppData | null>(null);
   const timer = useRef<number | undefined>(undefined);
 
@@ -29,10 +33,22 @@ export function useAppData() {
 
   useEffect(() => {
     const label = getCurrentWindow().label;
-    invoke<AppData>("load_data").then((loaded) => {
-      dataRef.current = normalize(loaded);
-      setData(dataRef.current);
-    });
+    let cancelled = false;
+    const load = (attempt: number) =>
+      invoke<AppData>("load_data").then(
+        (loaded) => {
+          if (cancelled) return;
+          dataRef.current = normalize(loaded);
+          setData(dataRef.current);
+          setLoadError(null);
+        },
+        (error) => {
+          if (cancelled) return;
+          if (attempt < LOAD_ATTEMPTS) window.setTimeout(() => load(attempt + 1), LOAD_RETRY_MS);
+          else setLoadError(String(error));
+        },
+      );
+    load(1);
     const unlisten = listen<{ source: string; data: AppData }>("data-changed", (event) => {
       // Our own saves echo back; a pending local edit wins over a remote one.
       if (event.payload.source === label || timer.current !== undefined) return;
@@ -41,7 +57,8 @@ export function useAppData() {
     });
     window.addEventListener("beforeunload", flush);
     return () => {
-      unlisten.then((stop) => stop());
+      cancelled = true;
+      unlisten.then((stop) => stop(), () => {});
       window.removeEventListener("beforeunload", flush);
     };
   }, [flush]);
@@ -57,7 +74,7 @@ export function useAppData() {
     [flush],
   );
 
-  return { data, update, saveError };
+  return { data, update, saveError, loadError };
 }
 
 export function useFloatState(): FloatState {
