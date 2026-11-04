@@ -36,7 +36,7 @@
 
   --ui: #8b95ff;
   --ui-text: #0b0c0f;
-  --font: "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  --font: "Geist Variable", "Segoe UI", system-ui, sans-serif;
   --font-head: var(--font);
   --head-size: 20px;
   --head-weight: 600;
@@ -83,7 +83,7 @@
 
   --ui: #2f7f73;
   --ui-text: #ffffff;
-  --font: "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  --font: "Nunito Variable", "Segoe UI", system-ui, sans-serif;
   --font-head: var(--font);
   --head-size: 26px;
   --head-weight: 600;
@@ -1017,6 +1017,17 @@ select {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--field);
+}
+
+/* Windows draws the open list itself, on white unless told otherwise. */
+option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+optgroup {
+  background: var(--surface);
+  color: var(--text-2);
 }
 
 .switch {
