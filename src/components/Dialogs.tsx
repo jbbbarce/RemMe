@@ -3,7 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { ListBadge, LIST_ICON_COMPONENTS } from "../icons";
 import { shortcutFromEvent, shortcutParts } from "../shortcut";
-import { LIST_COLORS, LIST_ICONS, type AppData, type ReminderList } from "../types";
+import { THEME_NAMES } from "../theme";
+import { LIST_COLORS, LIST_ICONS, THEMES, type AppData, type ReminderList, type ThemeId } from "../types";
 import { Switch } from "./Inspector";
 
 function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose(): void }) {
@@ -98,10 +99,11 @@ export function ListDialog({ list, isNew, canDelete, taskCount, onSave, onDelete
 interface SettingsProps {
   data: AppData;
   onShortcuts(toggle: string, lock: string): void;
+  onTheme(theme: ThemeId): void;
   onClose(): void;
 }
 
-export function SettingsDialog({ data, onShortcuts, onClose }: SettingsProps) {
+export function SettingsDialog({ data, onShortcuts, onTheme, onClose }: SettingsProps) {
   const [startup, setStartup] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toggleShortcut, lockShortcut } = data.settings;
@@ -131,6 +133,38 @@ export function SettingsDialog({ data, onShortcuts, onClose }: SettingsProps) {
 
   return (
     <Modal title="Settings" onClose={onClose}>
+      <h3 className="settings-head">Theme</h3>
+      <div className="themes">
+        {THEMES.map((theme) => (
+          <button
+            key={theme}
+            className={`theme-choice${data.settings.theme === theme ? " on" : ""}`}
+            aria-pressed={data.settings.theme === theme}
+            onClick={() => onTheme(theme)}
+          >
+            <span className="theme-preview" data-theme={theme} aria-hidden="true">
+              <span className="tp-side">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span className="tp-main">
+                <span className="tp-title">Today</span>
+                <span className="tp-row">
+                  <b />
+                  <i />
+                </span>
+                <span className="tp-row">
+                  <b />
+                  <i />
+                </span>
+              </span>
+            </span>
+            <span className="theme-name">{THEME_NAMES[theme]}</span>
+          </button>
+        ))}
+      </div>
+
       <h3 className="settings-head">Floating list</h3>
       <div className="group">
         <div className="row">

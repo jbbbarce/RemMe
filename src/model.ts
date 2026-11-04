@@ -3,6 +3,7 @@ import {
   LIST_COLORS,
   LIST_ICONS,
   REPEATS,
+  THEMES,
   type AppData,
   type ReminderList,
   type Settings,
@@ -15,14 +16,15 @@ export const DEFAULT_SETTINGS: Settings = {
   toggleShortcut: "Ctrl+Shift+O",
   lockShortcut: "Ctrl+Shift+L",
   floatView: "today",
+  theme: "pro",
 };
 
 export const SMART_LISTS: { id: SmartId; name: string; color: string }[] = [
   { id: "today", name: "Today", color: "blue" },
-  { id: "scheduled", name: "Scheduled", color: "red" },
+  { id: "scheduled", name: "Upcoming", color: "red" },
   { id: "all", name: "All", color: "graphite" },
   { id: "flagged", name: "Flagged", color: "orange" },
-  { id: "completed", name: "Completed", color: "gray" },
+  { id: "completed", name: "Done", color: "gray" },
 ];
 
 export function newId(): string {
@@ -30,7 +32,10 @@ export function newId(): string {
 }
 
 /** Fills in anything missing from older or hand-edited files. */
-export function normalize(raw: Partial<AppData> | null | undefined): AppData {
+/** What a saved file may hold: any part of the data, including settings from before a setting existed. */
+export type SavedData = Partial<Omit<AppData, "settings">> & { settings?: Partial<Settings> };
+
+export function normalize(raw: SavedData | null | undefined): AppData {
   const lists: ReminderList[] = (raw?.lists ?? []).map((l) => ({
     id: l.id ?? newId(),
     name: l.name ?? "Untitled",
@@ -67,7 +72,9 @@ export function normalize(raw: Partial<AppData> | null | undefined): AppData {
     appTrigger: typeof t.appTrigger === "string" && t.appTrigger.trim() ? t.appTrigger.trim() : null,
     nextId: typeof t.nextId === "string" ? t.nextId : null,
   }));
-  return { version: 1, lists, tasks, settings: { ...DEFAULT_SETTINGS, ...raw?.settings } };
+  const settings = { ...DEFAULT_SETTINGS, ...raw?.settings };
+  if (!THEMES.includes(settings.theme)) settings.theme = DEFAULT_SETTINGS.theme;
+  return { version: 1, lists, tasks, settings };
 }
 
 export function matchesSmart(id: SmartId, task: Task, now: Date): boolean {

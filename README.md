@@ -6,7 +6,12 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
 
 ## Features
 
-- **Smart lists:** Today, Scheduled, All, Flagged and Completed tiles with live counts.
+- **Themes:** pick one in **Settings** (gear icon). It applies at once to both windows.
+  - **Sharp dark pro** (default): near-black, thin borders, an indigo accent.
+  - **Calm minimal:** warm and roomy, with a teal accent. Follows Windows light or dark mode.
+  - **Paper and ink:** cream paper, serif headings, hand-drawn-style checkboxes.
+  - **Windows Fluent:** Segoe UI and Windows colours. Follows Windows light or dark mode, with the see-through Mica background on Windows 11.
+- **Smart lists:** Today, Upcoming, All, Flagged and Done, with live counts.
 - **Your own lists,** each with a color and an icon. Double-click or right-click a list to edit or delete it.
 - **List and board layouts.** In a list's board view, sections are columns (for example one per person). Drag cards between columns, add sections at the right, and rename or delete them from the column header.
 - **Reminders** have a title, notes, a date with optional time, a flag, a priority (`!`, `!!`, `!!!`), a list and a section. Click **ⓘ** on a reminder to open its details.

@@ -1,5 +1,5 @@
 import { CirclePlus, Search, X } from "lucide-react";
-import { ListBadge, SMART_ICONS } from "../icons";
+import { LIST_ICON_COMPONENTS, SMART_ICONS } from "../icons";
 import { SMART_LISTS, smartCount } from "../model";
 import type { AppData, ReminderList, View } from "../types";
 
@@ -34,35 +34,35 @@ export function Sidebar({ data, view, now, search, onSearch, onView, onAddList, 
         )}
       </label>
 
-      <div className="tiles">
+      <nav className="lists" aria-label="Smart lists">
         {SMART_LISTS.map((smart) => {
           const Icon = SMART_ICONS[smart.id];
           const active = view.kind === "smart" && view.id === smart.id;
           return (
             <button
               key={smart.id}
-              className={`tile${active ? " active" : ""}${smart.id === "completed" ? " wide" : ""}`}
-              style={{ "--tile": `var(--c-${smart.color})` } as React.CSSProperties}
+              className={`nav-item${active ? " active" : ""}`}
               onClick={() => onView({ kind: "smart", id: smart.id })}
             >
-              <span className="tile-icon">
-                <Icon size={15} strokeWidth={2.6} />
+              <span className="nav-icon">
+                <Icon size={15} />
               </span>
-              <span className="tile-count">{smart.id === "completed" ? "" : smartCount(data, smart.id, now)}</span>
-              <span className="tile-name">{smart.name}</span>
+              <span className="nav-name">{smart.name}</span>
+              {smart.id !== "completed" && <span className="nav-count">{smartCount(data, smart.id, now)}</span>}
             </button>
           );
         })}
-      </div>
+      </nav>
 
-      <div className="section-label">My Lists</div>
-      <nav className="lists">
+      <div className="section-label">Lists</div>
+      <nav className="lists" aria-label="Your lists">
         {data.lists.map((list) => {
           const active = view.kind === "list" && view.id === list.id;
+          const Icon = LIST_ICON_COMPONENTS[list.icon];
           return (
             <button
               key={list.id}
-              className={`list-item${active ? " active" : ""}`}
+              className={`nav-item${active ? " active" : ""}`}
               onClick={() => onView({ kind: "list", id: list.id })}
               onDoubleClick={() => onEditList(list)}
               onContextMenu={(e) => {
@@ -71,17 +71,19 @@ export function Sidebar({ data, view, now, search, onSearch, onView, onAddList, 
               }}
               title="Double-click or right-click to edit"
             >
-              <ListBadge icon={list.icon} color={list.color} />
-              <span className="list-name">{list.name}</span>
-              <span className="list-count">{openCount(list.id)}</span>
+              <span className="nav-icon" style={{ color: `var(--c-${list.color})` }}>
+                <Icon size={15} />
+              </span>
+              <span className="nav-name">{list.name}</span>
+              <span className="nav-count">{openCount(list.id)}</span>
             </button>
           );
         })}
       </nav>
 
       <button className="add-list" onClick={onAddList}>
-        <CirclePlus size={18} />
-        Add List
+        <CirclePlus size={15} />
+        Add list
       </button>
     </aside>
   );

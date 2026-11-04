@@ -6,7 +6,6 @@ import {
   newId,
   tasksFor,
   upsertList,
-  viewColor,
   viewTitle,
 } from "../model";
 import { setFloat, useFloatState, useNow } from "../store";
@@ -170,29 +169,35 @@ export function MainApp({ data, update, saveError }: Props) {
         </div>
 
         <header className="view-head">
-          <h1 style={{ color: `var(--c-${viewColor(data, view)})` }}>{viewTitle(data, view)}</h1>
-          <span className="view-count" style={{ color: `var(--c-${viewColor(data, view)})` }}>
-            {isCompletedView ? completedCount : openCount}
-          </span>
-        </header>
-        {!isCompletedView && (
-          <div className="completed-line">
-            <span>{completedCount} Completed</span>
-            {completedCount > 0 && (
+          <h1>{viewTitle(data, view)}</h1>
+          <div className="view-sub">
+            {isCompletedView ? (
+              <span>{completedCount} done</span>
+            ) : (
               <>
-                <span className="dot">•</span>
-                <button className="link" onClick={() => update((d) => clearCompleted(d, view, now))}>
-                  Clear
-                </button>
+                <span>{openCount} open</span>
+                <span className="dot">·</span>
+                <span>{completedCount} done</span>
+                {completedCount > 0 && (
+                  <>
+                    <span className="dot">·</span>
+                    <button className="link" onClick={() => update((d) => clearCompleted(d, view, now))}>
+                      Clear
+                    </button>
+                  </>
+                )}
+                {view.kind !== "smart" && (
+                  <>
+                    <span className="dot">·</span>
+                    <button className="link" onClick={() => setShowCompleted(!showCompleted)}>
+                      {showCompleted ? "Hide done" : "Show done"}
+                    </button>
+                  </>
+                )}
               </>
             )}
-            {view.kind !== "smart" && (
-              <button className="link right" onClick={() => setShowCompleted(!showCompleted)}>
-                {showCompleted ? "Hide" : "Show"}
-              </button>
-            )}
           </div>
-        )}
+        </header>
 
         <div className={`view-body ${layout}`} onClick={(e) => e.target === e.currentTarget && setSelectedId(null)}>
           {layout === "list" ? <ListView {...viewProps} /> : <BoardView {...viewProps} />}
@@ -239,6 +244,7 @@ export function MainApp({ data, update, saveError }: Props) {
           onShortcuts={(toggleShortcut, lockShortcut) =>
             update((d) => ({ ...d, settings: { ...d.settings, toggleShortcut, lockShortcut } }))
           }
+          onTheme={(theme) => update((d) => ({ ...d, settings: { ...d.settings, theme } }))}
           onClose={() => setSettingsOpen(false)}
         />
       )}

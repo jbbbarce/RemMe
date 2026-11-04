@@ -55,11 +55,15 @@ export interface Task {
   nextId: string | null;
 }
 
+export const THEMES = ["pro", "calm", "paper", "fluent"] as const;
+export type ThemeId = (typeof THEMES)[number];
+
 export interface Settings {
   toggleShortcut: string;
   lockShortcut: string;
   /** Smart list id or list id shown in the floating window. */
   floatView: string;
+  theme: ThemeId;
 }
 
 export interface AppData {

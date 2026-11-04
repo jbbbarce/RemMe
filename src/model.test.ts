@@ -230,3 +230,11 @@ describe("habit streaks", () => {
     expect(undone.tasks.map((t) => [t.id, t.streak])).toEqual([["r", 2]]);
   });
 });
+
+describe("themes", () => {
+  it("defaults to Sharp dark pro, and replaces a theme it doesn't know", () => {
+    expect(normalize({}).settings.theme).toBe("pro");
+    expect(normalize({ settings: { theme: "paper" } }).settings.theme).toBe("paper");
+    expect(normalize({ settings: { theme: "neon" as never } }).settings.theme).toBe("pro");
+  });
+});
