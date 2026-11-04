@@ -12,4 +12,4 @@ The first version (steps 1–9 in git history before the `tauri-rewrite` branch)
 - [x] 8. App-triggered reminders, habit streaks
 - [x] 9. Rename to RemMe (new app id, data copied from the old folder) and add an MIT license
 - [x] 10. Themes: shared non-Apple layout; Sharp dark pro (default), Calm minimal, Paper and ink, Windows Fluent with Mica; new logo
-- [ ] 11. Pomodoro timer: standalone or on a reminder, runs in the backend, floating-list pill, sidebar panel, Ctrl+Shift+P, tomato counts
+- [x] 11. Pomodoro timer: standalone or on a reminder, runs in the backend, floating-list pill, sidebar panel, Ctrl+Shift+P, tomato counts

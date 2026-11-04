@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { formatDue, isOverdue } from "../dates";
 import { deleteSection, renameSection, upsertList } from "../model";
+import { startFocus } from "../pomodoro";
 import type { AppData, ReminderList, Task, View } from "../types";
 import { TaskRow } from "./TaskRow";
 import type { useTaskActions } from "./useTaskActions";
@@ -82,6 +83,7 @@ export function ListView({ data, view, tasks, now, actions, selectedId, onSelect
               onChange={(patch) => actions.change(task.id, patch)}
               onSelect={() => onSelect(task.id)}
               onInfo={() => onInfo(task.id)}
+              onFocus={() => startFocus(task.id)}
               onEnter={() => actions.add(task.id, { listId: task.listId, section: task.section })}
               onEmpty={() => actions.remove(task.id)}
               onCommit={() => actions.commit(task)}
@@ -204,6 +206,7 @@ export function BoardView({ data, view, tasks, now, actions, selectedId, onSelec
                 onChange={(patch) => actions.change(task.id, patch)}
                 onSelect={() => onSelect(task.id)}
                 onInfo={() => onInfo(task.id)}
+                onFocus={() => startFocus(task.id)}
                 onEnter={() => actions.add(task.id, { ...col.patch })}
                 onEmpty={() => actions.remove(task.id)}
                 onCommit={() => actions.commit(task)}

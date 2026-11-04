@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { Columns3, LayoutList, Lock, LockOpen, PanelTopOpen, Plus, Settings as SettingsIcon } from "lucide-react";
 import {
   clearCompleted,
@@ -8,8 +9,9 @@ import {
   upsertList,
   viewTitle,
 } from "../model";
+import { playChime } from "../pomodoro";
 import { setFloat, useFloatState, useNow } from "../store";
-import type { AppData, ReminderList, View } from "../types";
+import type { AppData, ReminderList, TimerFinished, View } from "../types";
 import { ListDialog, SettingsDialog } from "./Dialogs";
 import { Inspector } from "./Inspector";
 import { Sidebar } from "./Sidebar";
@@ -67,6 +69,24 @@ export function MainApp({ data, update, saveError }: Props) {
   const completedCount = tasksFor(data, view, now, true).filter((t) => t.completed).length;
   const isCompletedView = view.kind === "smart" && view.id === "completed";
   const canAdd = view.kind !== "search" && !isCompletedView;
+
+  // Only the main window records finished sessions and chimes, so nothing happens twice.
+  const chime = data.settings.pomodoroChime;
+  useEffect(() => {
+    const unlisten = listen<TimerFinished>("pomodoro-done", ({ payload }) => {
+      if (chime) playChime();
+      const id = payload.taskId;
+      if (payload.counted && id) {
+        update((d) => ({
+          ...d,
+          tasks: d.tasks.map((t) => (t.id === id ? { ...t, pomodoros: t.pomodoros + 1 } : t)),
+        }));
+      }
+    });
+    return () => {
+      unlisten.then((stop) => stop(), () => {});
+    };
+  }, [chime, update]);
 
   useEffect(() => writeLocal(VIEW_KEY, baseView), [baseView]);
   useEffect(() => writeLocal(LAYOUT_KEY, layout), [layout]);
@@ -241,9 +261,10 @@ export function MainApp({ data, update, saveError }: Props) {
       {settingsOpen && (
         <SettingsDialog
           data={data}
-          onShortcuts={(toggleShortcut, lockShortcut) =>
-            update((d) => ({ ...d, settings: { ...d.settings, toggleShortcut, lockShortcut } }))
+          onShortcuts={(toggleShortcut, lockShortcut, pomodoroShortcut) =>
+            update((d) => ({ ...d, settings: { ...d.settings, toggleShortcut, lockShortcut, pomodoroShortcut } }))
           }
+          onSettings={(patch) => update((d) => ({ ...d, settings: { ...d.settings, ...patch } }))}
           onTheme={(theme) => update((d) => ({ ...d, settings: { ...d.settings, theme } }))}
           onClose={() => setSettingsOpen(false)}
         />

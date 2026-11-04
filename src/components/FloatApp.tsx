@@ -6,6 +6,7 @@ import { parseQuickAdd } from "../quickAdd";
 import { shortcutParts } from "../shortcut";
 import { setFloat, useFloatState, useNow } from "../store";
 import type { AppData } from "../types";
+import { PomodoroPill } from "./Pomodoro";
 import { TaskRow } from "./TaskRow";
 import { useTaskActions } from "./useTaskActions";
 
@@ -58,6 +59,7 @@ export function FloatApp({ data, update }: Props) {
           {tasks.filter((t) => !t.completed).length}
         </span>
         <span className="spacer" data-tauri-drag-region />
+        <PomodoroPill data={data} disabled={locked} />
         {locked ? (
           <span className="lock-badge" title="Locked">
             <Lock size={12} />

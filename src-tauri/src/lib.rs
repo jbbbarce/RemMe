@@ -8,7 +8,9 @@ use std::{
     time::Duration,
 };
 
-use chrono::{DateTime, Utc};
+mod pomodoro;
+
+use chrono::{DateTime, Local, Utc};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
@@ -20,12 +22,15 @@ use tauri::{
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use tauri_plugin_notification::NotificationExt;
 
+use pomodoro::{Lengths, Phase, Timer};
+
 const DATA_FILE: &str = "reminders.json";
 const UI_FILE: &str = "ui-state.json";
 /// The data folder name before the app was renamed to RemMe.
 const OLD_DATA_DIR: &str = "com.reminders.app";
 const DEFAULT_TOGGLE: &str = "Ctrl+Shift+O";
 const DEFAULT_LOCK: &str = "Ctrl+Shift+L";
+const DEFAULT_POMODORO: &str = "Ctrl+Shift+P";
 const MAIN: &str = "main";
 const FLOAT: &str = "float";
 
@@ -39,12 +44,22 @@ struct UiState {
     notified: Vec<String>,
     /// When each nagging reminder last notified, in Unix seconds, by the same keys.
     last_nag: HashMap<String, i64>,
+    /// Focus sessions finished on `pomodoro_day` (local `yyyy-mm-dd`), kept across restarts.
+    pomodoro_day: String,
+    pomodoro_today: u32,
 }
 
 #[derive(Default)]
 struct Shortcuts {
     toggle: Option<(String, Shortcut)>,
     lock: Option<(String, Shortcut)>,
+    pomodoro: Option<(String, Shortcut)>,
+}
+
+impl Shortcuts {
+    fn all(&self) -> impl Iterator<Item = &(String, Shortcut)> {
+        self.toggle.iter().chain(self.lock.iter()).chain(self.pomodoro.iter())
+    }
 }
 
 struct AppState {
@@ -52,6 +67,7 @@ struct AppState {
     data: Mutex<Value>,
     ui: Mutex<UiState>,
     shortcuts: Mutex<Shortcuts>,
+    timer: Mutex<Timer>,
 }
 
 #[derive(Clone, Serialize)]
@@ -77,6 +93,7 @@ fn default_data() -> Value {
         "settings": {
             "toggleShortcut": DEFAULT_TOGGLE,
             "lockShortcut": DEFAULT_LOCK,
+            "pomodoroShortcut": DEFAULT_POMODORO,
             "floatView": "today"
         }
     })
@@ -380,11 +397,11 @@ fn parse_shortcut(text: &str) -> Result<Shortcut, String> {
 }
 
 /// Replaces the registered hotkeys. On failure the previous hotkeys are restored.
-fn register_shortcuts(app: &AppHandle, toggle: &str, lock: &str) -> Result<(), String> {
-    let toggle_key = parse_shortcut(toggle)?;
-    let lock_key = parse_shortcut(lock)?;
-    if toggle_key == lock_key {
-        return Err("The two shortcuts must be different.".into());
+fn register_shortcuts(app: &AppHandle, toggle: &str, lock: &str, pomodoro: &str) -> Result<(), String> {
+    let wanted = [toggle, lock, pomodoro];
+    let keys = wanted.iter().map(|text| parse_shortcut(text)).collect::<Result<Vec<_>, _>>()?;
+    if keys[0] == keys[1] || keys[0] == keys[2] || keys[1] == keys[2] {
+        return Err("Each shortcut must be different.".into());
     }
 
     let state = app.state::<AppState>();
@@ -392,29 +409,138 @@ fn register_shortcuts(app: &AppHandle, toggle: &str, lock: &str) -> Result<(), S
     let manager = app.global_shortcut();
     let _ = manager.unregister_all();
 
-    let result = manager
-        .register(toggle_key)
-        .map_err(|_| format!("{toggle} is already used by another app."))
-        .and_then(|_| {
-            manager
-                .register(lock_key)
-                .map_err(|_| format!("{lock} is already used by another app."))
-        });
+    let result = wanted.iter().zip(&keys).try_for_each(|(text, key)| {
+        manager.register(*key).map_err(|_| format!("{text} is already used by another app."))
+    });
 
     match result {
         Ok(()) => {
-            current.toggle = Some((toggle.to_string(), toggle_key));
-            current.lock = Some((lock.to_string(), lock_key));
+            current.toggle = Some((toggle.to_string(), keys[0]));
+            current.lock = Some((lock.to_string(), keys[1]));
+            current.pomodoro = Some((pomodoro.to_string(), keys[2]));
             Ok(())
         }
         Err(error) => {
             let _ = manager.unregister_all();
-            for (_, key) in current.toggle.iter().chain(current.lock.iter()) {
+            for (_, key) in current.all() {
                 let _ = manager.register(*key);
             }
             Err(error)
         }
     }
+}
+
+fn now_ms() -> i64 {
+    Utc::now().timestamp_millis()
+}
+
+fn today() -> String {
+    Local::now().format("%Y-%m-%d").to_string()
+}
+
+/// Session lengths from the settings, in minutes, falling back to 25, 5 and 15.
+fn timer_lengths(data: &Value) -> Lengths {
+    let minutes = |key: &str, fallback: i64| {
+        data["settings"][key].as_i64().filter(|m| (1..=180).contains(m)).unwrap_or(fallback)
+    };
+    Lengths::from_minutes(minutes("pomodoroFocus", 25), minutes("pomodoroShort", 5), minutes("pomodoroLong", 15))
+}
+
+fn emit_timer(app: &AppHandle) {
+    let timer = app.state::<AppState>().timer.lock().unwrap().clone();
+    let _ = app.emit("pomodoro", timer);
+}
+
+/// Runs `change` on the timer with the current lengths, then tells the windows.
+/// What it returns is a phase that just ended, if any.
+fn change_timer(app: &AppHandle, change: impl FnOnce(&mut Timer, Lengths, i64) -> Option<pomodoro::Finished>) {
+    let state = app.state::<AppState>();
+    let lengths = timer_lengths(&state.data.lock().unwrap());
+    let finished = change(&mut state.timer.lock().unwrap(), lengths, now_ms());
+    if let Some(finished) = finished {
+        announce(app, &finished, lengths);
+    }
+    emit_timer(app);
+}
+
+/// Notifies about a phase that ended and records today's count.
+fn announce(app: &AppHandle, finished: &pomodoro::Finished, lengths: Lengths) {
+    let state = app.state::<AppState>();
+    let timer = state.timer.lock().unwrap().clone();
+    let (title, body) = match (finished.phase, finished.next) {
+        (Phase::Focus, next) => {
+            let minutes = if next == Phase::LongBreak { lengths.long_break } else { lengths.short_break } / 60_000;
+            let kind = if next == Phase::LongBreak { "long break" } else { "break" };
+            (
+                if finished.counted { "Focus session done" } else { "Focus session skipped" },
+                format!("Time for a {minutes}-minute {kind}."),
+            )
+        }
+        _ => ("Break over", "Start your next focus session when you're ready.".to_string()),
+    };
+    let _ = app.notification().builder().title(title).body(&body).show();
+    let _ = app.emit("pomodoro-done", finished.clone());
+
+    let mut ui = state.ui.lock().unwrap();
+    ui.pomodoro_day = timer.day;
+    ui.pomodoro_today = timer.today;
+    save_ui(&state, &ui);
+}
+
+/// Ends phases whose time is up. Runs for as long as the app does.
+fn run_timer(app: AppHandle) {
+    loop {
+        thread::sleep(Duration::from_millis(500));
+        let state = app.state::<AppState>();
+        let lengths = timer_lengths(&state.data.lock().unwrap());
+        let (finished, new_day) = {
+            let mut timer = state.timer.lock().unwrap();
+            let before = timer.day.clone();
+            let finished = timer.tick(lengths, now_ms(), &today());
+            (finished, before != timer.day)
+        };
+        if let Some(finished) = &finished {
+            announce(&app, finished, lengths);
+        }
+        if finished.is_some() || new_day {
+            emit_timer(&app);
+        }
+    }
+}
+
+#[tauri::command]
+fn pomodoro_state(state: State<AppState>) -> Timer {
+    state.timer.lock().unwrap().clone()
+}
+
+/// Starts a focus session now, on `task_id` if given.
+#[tauri::command]
+fn pomodoro_start(app: AppHandle, task_id: Option<String>) {
+    change_timer(&app, |timer, lengths, now| {
+        timer.start_focus(task_id, lengths, now);
+        None
+    });
+}
+
+#[tauri::command]
+fn pomodoro_toggle(app: AppHandle) {
+    change_timer(&app, |timer, lengths, now| {
+        timer.toggle(lengths, now);
+        None
+    });
+}
+
+#[tauri::command]
+fn pomodoro_skip(app: AppHandle) {
+    change_timer(&app, |timer, lengths, now| timer.skip(lengths, now));
+}
+
+#[tauri::command]
+fn pomodoro_reset(app: AppHandle) {
+    change_timer(&app, |timer, _, _| {
+        timer.reset();
+        None
+    });
 }
 
 #[tauri::command]
@@ -431,8 +557,8 @@ fn save_data(app: AppHandle, window: WebviewWindow, state: State<AppState>, data
 }
 
 #[tauri::command]
-fn set_shortcuts(app: AppHandle, toggle: String, lock: String) -> Result<(), String> {
-    register_shortcuts(&app, &toggle, &lock)
+fn set_shortcuts(app: AppHandle, toggle: String, lock: String, pomodoro: String) -> Result<(), String> {
+    register_shortcuts(&app, &toggle, &lock, &pomodoro)
 }
 
 /// Turns the hotkeys off while the settings screen records new keys, so pressing
@@ -444,7 +570,7 @@ fn suspend_shortcuts(app: AppHandle, suspended: bool) -> Result<(), String> {
     }
     let state = app.state::<AppState>();
     let current = state.shortcuts.lock().unwrap();
-    for (text, key) in current.toggle.iter().chain(current.lock.iter()) {
+    for (text, key) in current.all() {
         app.global_shortcut()
             .register(*key)
             .map_err(|_| format!("{text} is already used by another app."))?;
@@ -532,11 +658,14 @@ pub fn run() {
             let current = state.shortcuts.lock().unwrap();
             let is_toggle = current.toggle.as_ref().is_some_and(|(_, key)| key == shortcut);
             let is_lock = current.lock.as_ref().is_some_and(|(_, key)| key == shortcut);
+            let is_pomodoro = current.pomodoro.as_ref().is_some_and(|(_, key)| key == shortcut);
             drop(current);
             if is_toggle {
                 toggle_float_visible(app);
             } else if is_lock {
                 toggle_float_locked(app);
+            } else if is_pomodoro {
+                pomodoro_toggle(app.clone());
             }
         })
         .build();
@@ -565,7 +694,12 @@ pub fn run() {
             get_float_state,
             set_float,
             show_main,
-            running_apps
+            running_apps,
+            pomodoro_state,
+            pomodoro_start,
+            pomodoro_toggle,
+            pomodoro_skip,
+            pomodoro_reset
         ])
         .on_window_event(|window, event| {
             // Closing a window hides it; the app keeps running in the tray until Quit.
@@ -592,16 +726,24 @@ pub fn run() {
             let ui = read_json::<UiState>(&dir.join(UI_FILE)).unwrap_or_default();
             let toggle = setting(&data, "toggleShortcut", DEFAULT_TOGGLE);
             let lock = setting(&data, "lockShortcut", DEFAULT_LOCK);
+            let pomodoro_key = setting(&data, "pomodoroShortcut", DEFAULT_POMODORO);
+            let day = today();
+            let timer = Timer {
+                today: if ui.pomodoro_day == day { ui.pomodoro_today } else { 0 },
+                day,
+                ..Timer::default()
+            };
             let (float_visible, float_locked) = (ui.float_visible, ui.float_locked);
             app.manage(AppState {
                 dir,
                 data: Mutex::new(data),
                 ui: Mutex::new(ui),
                 shortcuts: Mutex::new(Shortcuts::default()),
+                timer: Mutex::new(timer),
             });
 
             let handle = app.handle().clone();
-            if let Err(error) = register_shortcuts(&handle, &toggle, &lock) {
+            if let Err(error) = register_shortcuts(&handle, &toggle, &lock, &pomodoro_key) {
                 eprintln!("{error}");
             }
             build_tray(&handle)?;
@@ -616,6 +758,8 @@ pub fn run() {
                 }
             }
 
+            let ticker = handle.clone();
+            thread::spawn(move || run_timer(ticker));
             let watcher = handle.clone();
             thread::spawn(move || watch_apps(watcher));
             thread::spawn(move || loop {
@@ -747,9 +891,16 @@ mod tests {
     }
 
     #[test]
+    fn timer_lengths_come_from_settings_within_limits() {
+        let lengths = timer_lengths(&json!({ "settings": { "pomodoroFocus": 50, "pomodoroShort": 0, "pomodoroLong": "x" } }));
+        assert_eq!(lengths, Lengths::from_minutes(50, 5, 15));
+    }
+
+    #[test]
     fn default_shortcuts_parse() {
         assert!(parse_shortcut(DEFAULT_TOGGLE).is_ok());
         assert!(parse_shortcut(DEFAULT_LOCK).is_ok());
+        assert!(parse_shortcut(DEFAULT_POMODORO).is_ok());
         assert!(parse_shortcut("Ctrl+Shift+Nope").is_err());
     }
 }

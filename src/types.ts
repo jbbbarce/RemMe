@@ -53,6 +53,8 @@ export interface Task {
   appTrigger: string | null;
   /** On a done repeating reminder: the id of the next one checking it off added. */
   nextId: string | null;
+  /** Focus sessions finished on this reminder. */
+  pomodoros: number;
 }
 
 export const THEMES = ["pro", "calm", "paper", "fluent"] as const;
@@ -64,6 +66,38 @@ export interface Settings {
   /** Smart list id or list id shown in the floating window. */
   floatView: string;
   theme: ThemeId;
+  pomodoroShortcut: string;
+  /** Session lengths in minutes. */
+  pomodoroFocus: number;
+  pomodoroShort: number;
+  pomodoroLong: number;
+  pomodoroChime: boolean;
+}
+
+export type TimerPhase = "idle" | "focus" | "shortBreak" | "longBreak";
+
+/** The Pomodoro timer as the backend reports it. Times are Unix milliseconds. */
+export interface TimerState {
+  phase: TimerPhase;
+  running: boolean;
+  endsAt: number | null;
+  /** Time left while paused. */
+  remaining: number;
+  total: number;
+  taskId: string | null;
+  /** Focus sessions finished in the current set of four. */
+  inSet: number;
+  /** Focus sessions finished today. */
+  today: number;
+  day: string;
+}
+
+/** A timer phase that just ended. */
+export interface TimerFinished {
+  phase: TimerPhase;
+  next: TimerPhase;
+  taskId: string | null;
+  counted: boolean;
 }
 
 export interface AppData {

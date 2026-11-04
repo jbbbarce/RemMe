@@ -1,7 +1,8 @@
-import { AppWindow, BellRing, Flag, Plus, Trash2, X } from "lucide-react";
+import { AppWindow, BellRing, Flag, Plus, Timer, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { newId } from "../model";
+import { startFocus } from "../pomodoro";
 import { REPEAT_LABELS, fromInputs, toDateInput, toTimeInput } from "../dates";
 import { REPEATS, type AppData, type Priority, type Repeat, type Subtask, type Task } from "../types";
 
@@ -179,6 +180,13 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
           </label>
         )}
       </div>
+
+      {!task.completed && (
+        <button className="focus-btn" onClick={() => startFocus(task.id)}>
+          <Timer size={15} /> Focus on this
+          {task.pomodoros > 0 && <span className="focus-count">{task.pomodoros} done</span>}
+        </button>
+      )}
 
       <button className="danger" onClick={onDelete}>
         <Trash2 size={15} /> Delete Reminder

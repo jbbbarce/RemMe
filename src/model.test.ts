@@ -26,6 +26,7 @@ function task(over: Partial<Task>): Task {
     streak: 0,
     appTrigger: null,
     nextId: null,
+    pomodoros: 0,
     ...over,
   };
 }
@@ -236,5 +237,21 @@ describe("themes", () => {
     expect(normalize({}).settings.theme).toBe("pro");
     expect(normalize({ settings: { theme: "paper" } }).settings.theme).toBe("paper");
     expect(normalize({ settings: { theme: "neon" as never } }).settings.theme).toBe("pro");
+  });
+});
+
+describe("pomodoro", () => {
+  it("fills in session lengths and keeps them within 1 to 180 minutes", () => {
+    const settings = normalize({ settings: { pomodoroFocus: 50, pomodoroShort: 0, pomodoroLong: 2.5 } }).settings;
+    expect([settings.pomodoroFocus, settings.pomodoroShort, settings.pomodoroLong]).toEqual([50, 5, 15]);
+    expect(settings.pomodoroChime).toBe(true);
+    expect(settings.pomodoroShortcut).toBe("Ctrl+Shift+P");
+  });
+
+  it("starts the next repeat with no tomatoes", () => {
+    const data = normalize({ tasks: [task({ id: "r", repeat: "daily", dueAt: at(9), pomodoros: 3 })] });
+    expect(data.tasks[0].pomodoros).toBe(3);
+    const next = setCompleted(data, "r", true, now, "n").tasks.find((t) => t.id === "n")!;
+    expect(next.pomodoros).toBe(0);
   });
 });

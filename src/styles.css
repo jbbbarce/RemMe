@@ -518,7 +518,6 @@ html.mica[data-theme="fluent"] .content {
 }
 
 .add-list {
-  margin-top: auto;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1500,4 +1499,179 @@ kbd {
   border-radius: 2px;
   background: var(--text-2);
   opacity: 0.6;
+}
+
+/* ---------- Pomodoro ---------- */
+
+.timer-panel {
+  margin: auto 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.timer-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timer-ring circle {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 4;
+}
+
+.timer-ring .timer-ring-fill {
+  stroke: var(--ui);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.25s linear;
+}
+
+.timer-panel.shortBreak .timer-ring-fill,
+.timer-panel.longBreak .timer-ring-fill,
+.timer-pill.shortBreak .timer-ring-fill,
+.timer-pill.longBreak .timer-ring-fill {
+  stroke: var(--c-green);
+}
+
+.timer-read {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.timer-phase {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ui);
+}
+
+.timer-panel.shortBreak .timer-phase,
+.timer-panel.longBreak .timer-phase {
+  color: var(--c-green);
+}
+
+.timer-clock {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.timer-task {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.timer-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.timer-main {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  border-radius: var(--radius);
+  background: var(--ui);
+  color: var(--ui-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.timer-today {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  margin-right: 2px;
+  padding: 0 8px 0 5px;
+  border-radius: 999px;
+  background: var(--field);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-pill.running {
+  background: color-mix(in srgb, var(--ui) 16%, transparent);
+  color: var(--ui);
+}
+
+.timer-pill.running.shortBreak,
+.timer-pill.running.longBreak {
+  background: color-mix(in srgb, var(--c-green) 16%, transparent);
+  color: var(--c-green);
+}
+
+.timer-pill:disabled {
+  opacity: 1;
+}
+
+.timer-pill .timer-ring circle {
+  stroke-width: 2.5;
+}
+
+.meta-icon.pomodoros {
+  color: var(--ui);
+}
+
+.focus-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ui);
+  font-weight: 500;
+}
+
+.focus-btn:hover {
+  background: var(--hover);
+}
+
+.focus-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+.minutes {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+}
+
+.minutes .field {
+  width: 64px;
+  padding: 4px 8px;
+  text-align: right;
 }

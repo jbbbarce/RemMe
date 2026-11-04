@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { AppWindow, BellRing, Flag, Flame, Info, ListChecks, Repeat } from "lucide-react";
+import { AppWindow, BellRing, Flag, Flame, Info, ListChecks, Repeat, Timer } from "lucide-react";
 import { REPEAT_LABELS, currentStreak, formatDue, isOverdue } from "../dates";
 import type { ReminderList, Task } from "../types";
 
@@ -17,6 +17,8 @@ interface Props {
   onSelect?(): void;
   /** Opens the details panel. */
   onInfo?(): void;
+  /** Starts a focus session on this reminder. */
+  onFocus?(): void;
   /** Enter in the title: create the next reminder. */
   onEnter?(): void;
   /** The title was left empty: remove the reminder. */
@@ -86,7 +88,7 @@ export function TaskRow(props: Props) {
           />
         </div>
         {!compact && task.notes && <div className="task-notes">{task.notes}</div>}
-        {(due || task.subtasks.length > 0 || task.appTrigger || props.showList) && (
+        {(due || task.subtasks.length > 0 || task.pomodoros > 0 || task.appTrigger || props.showList) && (
           <div className="task-meta">
             {due && <span className={overdue ? "overdue" : undefined}>{due}</span>}
             {task.repeat && (
@@ -111,6 +113,12 @@ export function TaskRow(props: Props) {
                 {task.appTrigger}
               </span>
             )}
+            {task.pomodoros > 0 && (
+              <span className="meta-icon pomodoros" title={`${task.pomodoros} focus ${task.pomodoros === 1 ? "session" : "sessions"} done`}>
+                <Timer size={12} />
+                {task.pomodoros}
+              </span>
+            )}
             {task.subtasks.length > 0 && (
               <span className="meta-icon" title="Subtasks done">
                 <ListChecks size={12} />
@@ -122,6 +130,19 @@ export function TaskRow(props: Props) {
         )}
       </div>
       {task.flagged && <Flag className="flag-mark" size={14} fill="currentColor" />}
+      {props.onFocus && !task.completed && (
+        <button
+          className="icon-btn info-btn"
+          aria-label="Focus on this"
+          title="Focus on this"
+          onClick={(e) => {
+            e.stopPropagation();
+            props.onFocus?.();
+          }}
+        >
+          <Timer size={16} />
+        </button>
+      )}
       {props.onInfo && (
         <button
           className="icon-btn info-btn"

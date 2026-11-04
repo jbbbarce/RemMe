@@ -2,6 +2,7 @@ import { CirclePlus, Search, X } from "lucide-react";
 import { LIST_ICON_COMPONENTS, SMART_ICONS } from "../icons";
 import { SMART_LISTS, smartCount } from "../model";
 import type { AppData, ReminderList, View } from "../types";
+import { PomodoroPanel } from "./Pomodoro";
 
 interface Props {
   data: AppData;
@@ -80,6 +81,8 @@ export function Sidebar({ data, view, now, search, onSearch, onView, onAddList, 
           );
         })}
       </nav>
+
+      <PomodoroPanel data={data} />
 
       <button className="add-list" onClick={onAddList}>
         <CirclePlus size={15} />

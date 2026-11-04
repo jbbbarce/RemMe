@@ -19,6 +19,12 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
 - **Repeating reminders:** set **Repeat** (daily, weekly, monthly or yearly) in a reminder's details. Checking it off keeps the done one in Completed and adds the next one; uncheck it straight away to take that back. A reminder finished late comes back on its next future date.
 - **Subtasks:** add a checklist in a reminder's details. The row shows how many are done, and the next repeat starts with them all unchecked.
 - **Nag mode:** set **Nag** in a reminder's details and its notification repeats every 5, 10, 15, 30 or 60 minutes until you check it off.
+- **Pomodoro timer:** 25-minute focus sessions with 5-minute breaks, and a 15-minute long break after every fourth. The timer is at the bottom of the sidebar and in the floating list's header.
+  - Start a plain session there, or press the timer button on a reminder (or **Focus on this** in its details) to focus on that reminder.
+  - Breaks start by themselves; the next focus session waits for you. A notification and a quiet chime mark the end of each session.
+  - **Ctrl+Shift+P** starts or pauses the timer from any app, even while the floating list is locked.
+  - Each reminder counts its finished sessions, and the timer shows today's total.
+  - Change the lengths, the chime and the shortcut in **Settings**. The timer resets if you quit RemMe.
 - **Habit streaks:** a repeating reminder shows a flame and how many times in a row it was done by its due day. Finishing one late, or letting its day pass, starts the count over.
 - **App-triggered reminders:** set **When I open** in a reminder's details to an app, such as `chrome.exe` (the box suggests apps that are running now). Each time that app starts, you get a notification about the reminder until it's done. Apps already running when RemMe starts don't count.
 - **Notifications:** a Windows notification appears when a reminder is due. Due checks run every 15 seconds while the app is running, and overdue reminders notify at startup. A due reminder also brings up the floating list.

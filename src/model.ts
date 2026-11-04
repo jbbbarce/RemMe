@@ -17,7 +17,17 @@ export const DEFAULT_SETTINGS: Settings = {
   lockShortcut: "Ctrl+Shift+L",
   floatView: "today",
   theme: "pro",
+  pomodoroShortcut: "Ctrl+Shift+P",
+  pomodoroFocus: 25,
+  pomodoroShort: 5,
+  pomodoroLong: 15,
+  pomodoroChime: true,
 };
+
+/** Session lengths are whole minutes from 1 to 180. */
+export function validMinutes(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 180 ? value : fallback;
+}
 
 export const SMART_LISTS: { id: SmartId; name: string; color: string }[] = [
   { id: "today", name: "Today", color: "blue" },
@@ -71,9 +81,14 @@ export function normalize(raw: SavedData | null | undefined): AppData {
     streak: typeof t.streak === "number" && t.streak > 0 ? Math.floor(t.streak) : 0,
     appTrigger: typeof t.appTrigger === "string" && t.appTrigger.trim() ? t.appTrigger.trim() : null,
     nextId: typeof t.nextId === "string" ? t.nextId : null,
+    pomodoros: typeof t.pomodoros === "number" && t.pomodoros > 0 ? Math.floor(t.pomodoros) : 0,
   }));
   const settings = { ...DEFAULT_SETTINGS, ...raw?.settings };
   if (!THEMES.includes(settings.theme)) settings.theme = DEFAULT_SETTINGS.theme;
+  settings.pomodoroFocus = validMinutes(settings.pomodoroFocus, DEFAULT_SETTINGS.pomodoroFocus);
+  settings.pomodoroShort = validMinutes(settings.pomodoroShort, DEFAULT_SETTINGS.pomodoroShort);
+  settings.pomodoroLong = validMinutes(settings.pomodoroLong, DEFAULT_SETTINGS.pomodoroLong);
+  settings.pomodoroChime = settings.pomodoroChime !== false;
   return { version: 1, lists, tasks, settings };
 }
 
@@ -159,6 +174,7 @@ export function newTaskFor(data: AppData, view: View, now: Date, section: string
     streak: 0,
     appTrigger: null,
     nextId: null,
+    pomodoros: 0,
   };
 }
 
@@ -190,6 +206,7 @@ export function setCompleted(data: AppData, id: string, completed: boolean, now:
     ...task,
     id: nextId ?? newId(),
     nextId: null,
+    pomodoros: 0,
     streak,
     dueAt: nextDue(task, task.repeat, now),
     completed: false,

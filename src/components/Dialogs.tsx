@@ -4,7 +4,8 @@ import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { ListBadge, LIST_ICON_COMPONENTS } from "../icons";
 import { shortcutFromEvent, shortcutParts } from "../shortcut";
 import { THEME_NAMES } from "../theme";
-import { LIST_COLORS, LIST_ICONS, THEMES, type AppData, type ReminderList, type ThemeId } from "../types";
+import { DEFAULT_SETTINGS, validMinutes } from "../model";
+import { LIST_COLORS, LIST_ICONS, THEMES, type AppData, type ReminderList, type Settings, type ThemeId } from "../types";
 import { Switch } from "./Inspector";
 
 function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose(): void }) {
@@ -98,24 +99,25 @@ export function ListDialog({ list, isNew, canDelete, taskCount, onSave, onDelete
 
 interface SettingsProps {
   data: AppData;
-  onShortcuts(toggle: string, lock: string): void;
+  onShortcuts(toggle: string, lock: string, pomodoro: string): void;
   onTheme(theme: ThemeId): void;
+  onSettings(patch: Partial<Settings>): void;
   onClose(): void;
 }
 
-export function SettingsDialog({ data, onShortcuts, onTheme, onClose }: SettingsProps) {
+export function SettingsDialog({ data, onShortcuts, onTheme, onSettings, onClose }: SettingsProps) {
   const [startup, setStartup] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { toggleShortcut, lockShortcut } = data.settings;
+  const { toggleShortcut, lockShortcut, pomodoroShortcut } = data.settings;
 
   useEffect(() => {
     isEnabled().then(setStartup, () => setStartup(false));
   }, []);
 
-  const apply = async (toggle: string, lock: string) => {
+  const apply = async (toggle: string, lock: string, pomodoro: string) => {
     try {
-      await invoke("set_shortcuts", { toggle, lock });
-      onShortcuts(toggle, lock);
+      await invoke("set_shortcuts", { toggle, lock, pomodoro });
+      onShortcuts(toggle, lock, pomodoro);
       setError(null);
     } catch (e) {
       setError(String(e));
@@ -169,11 +171,11 @@ export function SettingsDialog({ data, onShortcuts, onTheme, onClose }: Settings
       <div className="group">
         <div className="row">
           <span>Show or hide</span>
-          <ShortcutRecorder value={toggleShortcut} onRecord={(s) => apply(s, lockShortcut)} />
+          <ShortcutRecorder value={toggleShortcut} onRecord={(s) => apply(s, lockShortcut, pomodoroShortcut)} />
         </div>
         <div className="row">
           <span>Lock or unlock</span>
-          <ShortcutRecorder value={lockShortcut} onRecord={(s) => apply(toggleShortcut, s)} />
+          <ShortcutRecorder value={lockShortcut} onRecord={(s) => apply(toggleShortcut, s, pomodoroShortcut)} />
         </div>
       </div>
       <p className="hint">
@@ -183,12 +185,34 @@ export function SettingsDialog({ data, onShortcuts, onTheme, onClose }: Settings
       {error && <p className="error">{error}</p>}
       <div className="row-actions">
         <button
-          disabled={toggleShortcut === "Ctrl+Shift+O" && lockShortcut === "Ctrl+Shift+L"}
-          onClick={() => apply("Ctrl+Shift+O", "Ctrl+Shift+L")}
+          disabled={
+            toggleShortcut === DEFAULT_SETTINGS.toggleShortcut &&
+            lockShortcut === DEFAULT_SETTINGS.lockShortcut &&
+            pomodoroShortcut === DEFAULT_SETTINGS.pomodoroShortcut
+          }
+          onClick={() =>
+            apply(DEFAULT_SETTINGS.toggleShortcut, DEFAULT_SETTINGS.lockShortcut, DEFAULT_SETTINGS.pomodoroShortcut)
+          }
         >
-          Restore defaults
+          Restore default shortcuts
         </button>
       </div>
+
+      <h3 className="settings-head">Pomodoro</h3>
+      <div className="group">
+        <MinutesField label="Focus" value={data.settings.pomodoroFocus} onChange={(pomodoroFocus) => onSettings({ pomodoroFocus })} />
+        <MinutesField label="Short break" value={data.settings.pomodoroShort} onChange={(pomodoroShort) => onSettings({ pomodoroShort })} />
+        <MinutesField label="Long break" value={data.settings.pomodoroLong} onChange={(pomodoroLong) => onSettings({ pomodoroLong })} />
+        <label className="row">
+          <span>Chime when a session ends</span>
+          <Switch checked={data.settings.pomodoroChime} onChange={(pomodoroChime) => onSettings({ pomodoroChime })} />
+        </label>
+        <div className="row">
+          <span>Start or pause</span>
+          <ShortcutRecorder value={pomodoroShortcut} onRecord={(s) => apply(toggleShortcut, lockShortcut, s)} />
+        </div>
+      </div>
+      <p className="hint">The long break comes after every fourth focus session. New lengths apply from the next session.</p>
 
       <h3 className="settings-head">General</h3>
       <div className="group">
@@ -205,6 +229,34 @@ export function SettingsDialog({ data, onShortcuts, onTheme, onClose }: Settings
         </button>
       </div>
     </Modal>
+  );
+}
+
+function MinutesField({ label, value, onChange }: { label: string; value: number; onChange(minutes: number): void }) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const commit = () => {
+    const minutes = validMinutes(Number(draft), value);
+    setDraft(String(minutes));
+    if (minutes !== value) onChange(minutes);
+  };
+  return (
+    <label className="row">
+      <span>{label}</span>
+      <span className="minutes">
+        <input
+          className="field"
+          type="number"
+          min={1}
+          max={180}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === "Enter" && commit()}
+        />
+        min
+      </span>
+    </label>
   );
 }
 
