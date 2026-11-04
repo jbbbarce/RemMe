@@ -65,7 +65,7 @@ export function FloatApp({ data, update }: Props) {
           </span>
         ) : (
           <>
-            <button className="icon-btn" title="Open Reminders" onClick={() => invoke("show_main")}>
+            <button className="icon-btn" title="Open RemMe" onClick={() => invoke("show_main")}>
               <AppWindow size={14} />
             </button>
             <button

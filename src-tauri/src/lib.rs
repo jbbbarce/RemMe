@@ -22,6 +22,8 @@ use tauri_plugin_notification::NotificationExt;
 
 const DATA_FILE: &str = "reminders.json";
 const UI_FILE: &str = "ui-state.json";
+/// The data folder name before the app was renamed to RemMe.
+const OLD_DATA_DIR: &str = "com.reminders.app";
 const DEFAULT_TOGGLE: &str = "Ctrl+Shift+O";
 const DEFAULT_LOCK: &str = "Ctrl+Shift+L";
 const MAIN: &str = "main";
@@ -98,6 +100,21 @@ fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
     let temp = path.with_extension("json.tmp");
     fs::write(&temp, text).map_err(|e| format!("Could not save {}: {e}", path.display()))?;
     fs::rename(&temp, path).map_err(|e| format!("Could not save {}: {e}", path.display()))
+}
+
+/// Copies the data files from the folder used before the rename, the first time
+/// RemMe starts. Existing RemMe data is never overwritten, and the old folder is left as it was.
+fn copy_old_data(old_dir: &Path, dir: &Path) -> std::io::Result<bool> {
+    if dir.join(DATA_FILE).exists() || !old_dir.join(DATA_FILE).exists() {
+        return Ok(false);
+    }
+    fs::create_dir_all(dir)?;
+    for file in [DATA_FILE, UI_FILE] {
+        if old_dir.join(file).exists() {
+            fs::copy(old_dir.join(file), dir.join(file))?;
+        }
+    }
+    Ok(true)
 }
 
 fn save_ui(state: &AppState, ui: &UiState) {
@@ -474,7 +491,7 @@ async fn running_apps() -> Vec<String> {
 }
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", "Open Reminders", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "Open RemMe", true, None::<&str>)?;
     let float = MenuItem::with_id(app, "float", "Show or hide floating list", true, None::<&str>)?;
     let lock = MenuItem::with_id(app, "lock", "Lock or unlock floating list", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -485,7 +502,7 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
 
     TrayIconBuilder::with_id("tray")
         .icon(app.default_window_icon().cloned().expect("app icon is bundled"))
-        .tooltip("Reminders")
+        .tooltip("RemMe")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -563,6 +580,11 @@ pub fn run() {
         })
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
+            if let Some(old_dir) = dir.parent().map(|parent| parent.join(OLD_DATA_DIR)) {
+                if let Err(error) = copy_old_data(&old_dir, &dir) {
+                    eprintln!("Could not copy data from {}: {error}", old_dir.display());
+                }
+            }
             fs::create_dir_all(&dir)?;
             let data = read_json::<Value>(&dir.join(DATA_FILE))
                 .filter(|value| value["lists"].is_array() && value["tasks"].is_array())
@@ -603,7 +625,7 @@ pub fn run() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running Reminders");
+        .expect("error while running RemMe");
 }
 
 #[cfg(test)]
@@ -693,6 +715,35 @@ mod tests {
             { "id": "c", "completed": false }
         ]})));
         assert!(has_app_triggers(&json!({ "tasks": [ { "id": "a", "appTrigger": "teams", "completed": false } ] })));
+    }
+
+    #[test]
+    fn old_data_is_copied_once_and_never_over_new_data() {
+        let root = std::env::temp_dir().join(format!("remme-copy-test-{}", std::process::id()));
+        let (old_dir, dir) = (root.join("old"), root.join("new"));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&old_dir).unwrap();
+        fs::write(old_dir.join(DATA_FILE), "old").unwrap();
+        fs::write(old_dir.join(UI_FILE), "ui").unwrap();
+
+        assert!(copy_old_data(&old_dir, &dir).unwrap());
+        assert_eq!(fs::read_to_string(dir.join(DATA_FILE)).unwrap(), "old");
+        assert_eq!(fs::read_to_string(dir.join(UI_FILE)).unwrap(), "ui");
+
+        fs::write(dir.join(DATA_FILE), "new").unwrap();
+        assert!(!copy_old_data(&old_dir, &dir).unwrap());
+        assert_eq!(fs::read_to_string(dir.join(DATA_FILE)).unwrap(), "new");
+        assert!(old_dir.join(DATA_FILE).exists());
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn nothing_is_copied_without_old_data() {
+        let root = std::env::temp_dir().join(format!("remme-empty-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        assert!(!copy_old_data(&root.join("old"), &root.join("new")).unwrap());
+        assert!(!root.join("new").exists());
     }
 
     #[test]

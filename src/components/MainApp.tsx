@@ -17,8 +17,8 @@ import { Sidebar } from "./Sidebar";
 import { BoardView, ListView } from "./TaskViews";
 import { useTaskActions } from "./useTaskActions";
 
-const VIEW_KEY = "reminders.view";
-const LAYOUT_KEY = "reminders.layout";
+const VIEW_KEY = "remme.view";
+const LAYOUT_KEY = "remme.layout";
 
 function readLocal<T>(key: string, fallback: T): T {
   try {
