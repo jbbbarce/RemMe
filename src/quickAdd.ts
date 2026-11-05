@@ -18,8 +18,9 @@ export type QuickAdd = Pick<Task, "title"> & Partial<Pick<Task, "dueAt" | "dueHa
  * times like 5pm, 5:30 pm, 17:00, "at 6" and noon, `!`, `!!` or `!!!` for priority, and repeats
  * like daily, weekly, "every month" or "every friday". A repeat with no date starts today.
  * If nothing would be left for a title, the text is kept as typed.
+ * With `defaultDay` (a day clicked on the calendar), a time with no date lands on that day.
  */
-export function parseQuickAdd(text: string, now: Date): QuickAdd {
+export function parseQuickAdd(text: string, now: Date, defaultDay?: Date): QuickAdd {
   let rest = ` ${text} `;
   const found: {
     day?: Date;
@@ -139,10 +140,10 @@ export function parseQuickAdd(text: string, now: Date): QuickAdd {
     result.dueAt = found.exact.toISOString();
     result.dueHasTime = true;
   } else if (found.time) {
-    const base = found.day ?? startOfDay(now);
+    const base = found.day ?? defaultDay ?? startOfDay(now);
     let due = new Date(base.getFullYear(), base.getMonth(), base.getDate(), found.time.h, found.time.m);
-    // A bare time that already passed today means tomorrow.
-    if (!found.day && due <= now) due = addDays(due, 1);
+    // A bare time that already passed today means tomorrow, unless the day was chosen already.
+    if (!found.day && !defaultDay && due <= now) due = addDays(due, 1);
     result.dueAt = due.toISOString();
     result.dueHasTime = true;
   } else if (found.day) {

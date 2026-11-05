@@ -68,7 +68,8 @@ export function nextDue(task: Task, repeat: Repeat, now: Date): string {
   }
 }
 
-function stepDate(base: Date, repeat: Repeat, k: number): Date {
+/** The `k`th date after `base` for a repeat. */
+export function stepDate(base: Date, repeat: Repeat, k: number): Date {
   const [y, m, d, h, min] = [base.getFullYear(), base.getMonth(), base.getDate(), base.getHours(), base.getMinutes()];
   if (repeat === "daily") return new Date(y, m, d + k, h, min);
   if (repeat === "weekly") return new Date(y, m, d + 7 * k, h, min);

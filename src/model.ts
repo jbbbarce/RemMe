@@ -35,6 +35,7 @@ export const SMART_LISTS: { id: SmartId; name: string; color: string }[] = [
   { id: "all", name: "All", color: "graphite" },
   { id: "flagged", name: "Flagged", color: "orange" },
   { id: "completed", name: "Done", color: "gray" },
+  { id: "calendar", name: "Calendar", color: "blue" },
 ];
 
 export function newId(): string {
@@ -104,6 +105,8 @@ export function matchesSmart(id: SmartId, task: Task, now: Date): boolean {
       return !task.completed && task.flagged;
     case "completed":
       return task.completed;
+    case "calendar":
+      return !task.completed && !!task.dueAt;
   }
 }
 

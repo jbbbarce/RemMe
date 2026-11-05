@@ -17,6 +17,7 @@ import { ListDialog, SettingsDialog } from "./Dialogs";
 import { UpdateBar } from "./UpdateBar";
 import { Inspector } from "./Inspector";
 import { Sidebar } from "./Sidebar";
+import { CalendarView } from "./CalendarView";
 import { BoardView, ListView } from "./TaskViews";
 import { useTaskActions } from "./useTaskActions";
 
@@ -70,7 +71,8 @@ export function MainApp({ data, update, saveError }: Props) {
   const openCount = tasks.filter((t) => !t.completed).length;
   const completedCount = tasksFor(data, view, now, true).filter((t) => t.completed).length;
   const isCompletedView = view.kind === "smart" && view.id === "completed";
-  const canAdd = view.kind !== "search" && !isCompletedView;
+  const isCalendar = view.kind === "smart" && view.id === "calendar";
+  const canAdd = view.kind !== "search" && !isCompletedView && !isCalendar;
 
   // Only the main window records finished sessions and chimes, so nothing happens twice.
   const updates = useUpdates();
@@ -146,6 +148,7 @@ export function MainApp({ data, update, saveError }: Props) {
 
       <main className="content">
         <div className="toolbar">
+          {!isCalendar && (
           <div className="segmented" role="tablist" aria-label="Layout">
             <button
               className={layout === "list" ? "on" : ""}
@@ -164,6 +167,7 @@ export function MainApp({ data, update, saveError }: Props) {
               <Columns3 size={16} />
             </button>
           </div>
+          )}
           <span className="spacer" />
           <button
             className={`tool${float.visible ? " on" : ""}`}
@@ -191,6 +195,10 @@ export function MainApp({ data, update, saveError }: Props) {
           </button>
         </div>
 
+        {isCalendar ? (
+          <CalendarView data={data} now={now} actions={actions} update={update} onInfo={viewProps.onInfo} />
+        ) : (
+          <>
         <header className="view-head">
           <h1>{viewTitle(data, view)}</h1>
           <div className="view-sub">
@@ -225,6 +233,8 @@ export function MainApp({ data, update, saveError }: Props) {
         <div className={`view-body ${layout}`} onClick={(e) => e.target === e.currentTarget && setSelectedId(null)}>
           {layout === "list" ? <ListView {...viewProps} /> : <BoardView {...viewProps} />}
         </div>
+          </>
+        )}
         <UpdateBar updates={updates} />
         {saveError && <div className="toast error">{saveError}</div>}
       </main>

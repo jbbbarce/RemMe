@@ -13,6 +13,11 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
   - **Windows Fluent:** Segoe UI and Windows colours. Follows Windows light or dark mode, with the see-through Mica background on Windows 11.
   - The window's title bar takes the theme's colour too (on Windows 10, only light or dark).
 - **Smart lists:** Today, Upcoming, All, Flagged and Done, with live counts.
+- **Calendar** (in the sidebar): dated reminders from every list on a **Month** or **Week** grid, in their list's colour. The week starts on the day your Windows region uses.
+  - Click an empty part of a day to type a reminder there (`Call mom 5pm` sets the time on that day; a typed date such as `tomorrow` wins). Click a reminder to open its details, or tick it done in place.
+  - Drag a reminder to another day to move it; its time stays. Drag one onto the **No date** column to remove its date, or from there onto a day to give it one.
+  - A repeating reminder's later dates show faded. Overdue reminders stay on their day, in red. **Show done** shows finished ones.
+  - In the floating list, pick **Calendar** from its list picker for a small month view with the chosen day's reminders.
 - **Your own lists,** each with a color and an icon. Double-click or right-click a list to edit or delete it.
 - **List and board layouts.** In a list's board view, sections are columns (for example one per person). Drag cards between columns, add sections at the right, and rename or delete them from the column header.
 - **Reminders** have a title, notes, a date with optional time, a flag, a priority (`!`, `!!`, `!!!`), a list and a section. Click **ⓘ** on a reminder to open its details.

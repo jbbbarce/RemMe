@@ -15,4 +15,4 @@ The first version (steps 1–9 in git history before the `tauri-rewrite` branch)
 - [x] 11. Pomodoro timer: standalone or on a reminder, runs in the backend, floating-list pill, sidebar panel, Ctrl+Shift+P, tomato counts
 - [x] 12. Updates: in-app updater (asks, then installs and restarts) and a GitHub Actions release on version tags
 - [x] 13. Title bar follows the theme (Windows title bar recoloured; light/dark only on Windows 10)
-- [ ] 14. Calendar: month and week views of dated reminders, add/drag/tick in place, faded repeats, No date column, mini calendar in the floating list
+- [x] 14. Calendar: month and week views of dated reminders, add/drag/tick in place, faded repeats, No date column, mini calendar in the floating list

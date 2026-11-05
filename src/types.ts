@@ -107,7 +107,7 @@ export interface AppData {
   settings: Settings;
 }
 
-export type SmartId = "today" | "scheduled" | "all" | "flagged" | "completed";
+export type SmartId = "today" | "scheduled" | "all" | "flagged" | "completed" | "calendar";
 
 export type View =
   | { kind: "smart"; id: SmartId }

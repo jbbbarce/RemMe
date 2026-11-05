@@ -6,6 +6,7 @@ import { parseQuickAdd } from "../quickAdd";
 import { shortcutParts } from "../shortcut";
 import { setFloat, useFloatState, useNow } from "../store";
 import type { AppData } from "../types";
+import { MiniCalendar } from "./MiniCalendar";
 import { PomodoroPill } from "./Pomodoro";
 import { TaskRow } from "./TaskRow";
 import { useTaskActions } from "./useTaskActions";
@@ -24,7 +25,8 @@ export function FloatApp({ data, update }: Props) {
   const tasks = tasksFor(data, view, now, false, actions.lingering);
   const color = viewColor(data, view);
   const [draft, setDraft] = useState("");
-  const canAdd = !(view.kind === "smart" && view.id === "completed");
+  const isCalendar = view.kind === "smart" && view.id === "calendar";
+  const canAdd = !(view.kind === "smart" && view.id === "completed") && !isCalendar;
 
   const addFromDraft = () => {
     if (!draft.trim()) return;
@@ -56,7 +58,7 @@ export function FloatApp({ data, update }: Props) {
           </optgroup>
         </select>
         <span className="float-count" data-tauri-drag-region>
-          {tasks.filter((t) => !t.completed).length}
+          {isCalendar ? "" : tasks.filter((t) => !t.completed).length}
         </span>
         <span className="spacer" data-tauri-drag-region />
         <PomodoroPill data={data} disabled={locked} />
@@ -88,6 +90,9 @@ export function FloatApp({ data, update }: Props) {
         )}
       </header>
 
+      {isCalendar ? (
+        <MiniCalendar data={data} now={now} actions={actions} />
+      ) : (
       <div className="float-body">
         {tasks.length === 0 && <p className="empty">All done 🎉</p>}
         {tasks.map((task) => (
@@ -106,6 +111,7 @@ export function FloatApp({ data, update }: Props) {
           />
         ))}
       </div>
+      )}
 
       {canAdd && !locked && (
         <footer className="float-add">

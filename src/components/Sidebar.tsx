@@ -49,7 +49,9 @@ export function Sidebar({ data, view, now, search, onSearch, onView, onAddList, 
                 <Icon size={15} />
               </span>
               <span className="nav-name">{smart.name}</span>
-              {smart.id !== "completed" && <span className="nav-count">{smartCount(data, smart.id, now)}</span>}
+              {smart.id !== "completed" && smart.id !== "calendar" && (
+                <span className="nav-count">{smartCount(data, smart.id, now)}</span>
+              )}
             </button>
           );
         })}

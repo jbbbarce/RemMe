@@ -3,6 +3,7 @@ import {
   Briefcase,
   Calendar,
   CalendarClock,
+  CalendarDays,
   Check,
   Dumbbell,
   Flag,
@@ -41,6 +42,7 @@ export const SMART_ICONS: Record<SmartId, LucideIcon> = {
   all: Inbox,
   flagged: Flag,
   completed: Check,
+  calendar: CalendarDays,
 };
 
 export function ListBadge({ icon, color, size = 28 }: { icon: ListIcon; color: string; size?: number }) {
