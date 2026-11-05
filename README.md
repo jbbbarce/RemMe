@@ -33,6 +33,7 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
   - **Ctrl+Shift+L** locks or unlocks it. When locked, the window is slightly transparent, can't be moved or edited, and mouse clicks go through it to the window behind.
   - Change either shortcut in **Settings** (gear icon). Click the shortcut, then press the new keys.
 - **Tray icon:** closing a window keeps RemMe running in the tray. Left-click the icon to open the app; right-click it for the floating list controls and **Quit**.
+- **Updates:** RemMe checks GitHub for a new version when it starts and every 6 hours. When one is out, a bar at the bottom of the window offers **Update and restart**; your reminders and settings stay. **Settings** shows the version you have and a **Check for updates** button.
 - **Start with Windows** (in Settings) launches the app at sign-in, hidden in the tray.
 
 Keyboard: **Ctrl+N** adds a reminder, **Enter** in a title adds the next one, **Esc** leaves a title. A reminder whose title is left empty is removed.
@@ -71,6 +72,24 @@ pnpm tauri build
 ```
 
 This writes an installer to `src-tauri\target\release\bundle\nsis\RemMe_<version>_x64-setup.exe`. The installed app needs nothing else on the target PC except WebView2.
+
+Updates must be signed, so a local build needs the signing key in `TAURI_SIGNING_PRIVATE_KEY` (the key's text or its file path). Without it, use `pnpm tauri build --no-sign` for a build you only run yourself.
+
+## Release a new version
+
+GitHub Actions builds and publishes releases (`.github/workflows/release.yml`). Installed copies of RemMe then offer the update.
+
+1. Set the new version in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`, and merge it to `main`.
+2. Tag that commit and push the tag:
+
+   ```powershell
+   git tag v0.5.0
+   git push origin v0.5.0
+   ```
+
+3. The workflow checks the tag matches the version, runs the tests, builds and signs the installer, and publishes a release with it and `latest.json`.
+
+One-time setup: the signing key lives at `%USERPROFILE%\.tauri\remme.key` and in the repository secret `TAURI_SIGNING_PRIVATE_KEY`. Its public half is `plugins.updater.pubkey` in `tauri.conf.json`. Keep a backup of the private key: without it, installed copies can't accept new updates.
 
 ## Project layout
 

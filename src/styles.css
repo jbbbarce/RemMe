@@ -1686,3 +1686,36 @@ kbd {
   padding: 4px 8px;
   text-align: right;
 }
+
+/* ---------- Updates ---------- */
+
+.update-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.update-bar > svg {
+  color: var(--ui);
+}
+
+.update-go {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  background: var(--ui);
+  color: var(--ui-text);
+  font-weight: 600;
+}

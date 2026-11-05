@@ -11,8 +11,10 @@ import {
 } from "../model";
 import { playChime } from "../pomodoro";
 import { setFloat, useFloatState, useNow } from "../store";
+import { useUpdates } from "../updates";
 import type { AppData, ReminderList, TimerFinished, View } from "../types";
 import { ListDialog, SettingsDialog } from "./Dialogs";
+import { UpdateBar } from "./UpdateBar";
 import { Inspector } from "./Inspector";
 import { Sidebar } from "./Sidebar";
 import { BoardView, ListView } from "./TaskViews";
@@ -71,6 +73,7 @@ export function MainApp({ data, update, saveError }: Props) {
   const canAdd = view.kind !== "search" && !isCompletedView;
 
   // Only the main window records finished sessions and chimes, so nothing happens twice.
+  const updates = useUpdates();
   const chime = data.settings.pomodoroChime;
   useEffect(() => {
     const unlisten = listen<TimerFinished>("pomodoro-done", ({ payload }) => {
@@ -222,6 +225,7 @@ export function MainApp({ data, update, saveError }: Props) {
         <div className={`view-body ${layout}`} onClick={(e) => e.target === e.currentTarget && setSelectedId(null)}>
           {layout === "list" ? <ListView {...viewProps} /> : <BoardView {...viewProps} />}
         </div>
+        <UpdateBar updates={updates} />
         {saveError && <div className="toast error">{saveError}</div>}
       </main>
 
@@ -266,6 +270,7 @@ export function MainApp({ data, update, saveError }: Props) {
           }
           onSettings={(patch) => update((d) => ({ ...d, settings: { ...d.settings, ...patch } }))}
           onTheme={(theme) => update((d) => ({ ...d, settings: { ...d.settings, theme } }))}
+          updates={updates}
           onClose={() => setSettingsOpen(false)}
         />
       )}

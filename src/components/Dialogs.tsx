@@ -4,6 +4,7 @@ import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { ListBadge, LIST_ICON_COMPONENTS } from "../icons";
 import { shortcutFromEvent, shortcutParts } from "../shortcut";
 import { THEME_NAMES } from "../theme";
+import type { useUpdates } from "../updates";
 import { DEFAULT_SETTINGS, validMinutes } from "../model";
 import { LIST_COLORS, LIST_ICONS, THEMES, type AppData, type ReminderList, type Settings, type ThemeId } from "../types";
 import { Switch } from "./Inspector";
@@ -102,10 +103,11 @@ interface SettingsProps {
   onShortcuts(toggle: string, lock: string, pomodoro: string): void;
   onTheme(theme: ThemeId): void;
   onSettings(patch: Partial<Settings>): void;
+  updates: ReturnType<typeof useUpdates>;
   onClose(): void;
 }
 
-export function SettingsDialog({ data, onShortcuts, onTheme, onSettings, onClose }: SettingsProps) {
+export function SettingsDialog({ data, onShortcuts, onTheme, onSettings, updates, onClose }: SettingsProps) {
   const [startup, setStartup] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toggleShortcut, lockShortcut, pomodoroShortcut } = data.settings;
@@ -220,7 +222,21 @@ export function SettingsDialog({ data, onShortcuts, onTheme, onSettings, onClose
           <span>Start with Windows</span>
           {startup !== null && <Switch checked={startup} onChange={setStartupEnabled} />}
         </label>
+        <div className="row">
+          <span>RemMe {updates.version}</span>
+          <span className="row-actions">
+            <button disabled={updates.status.kind === "checking"} onClick={updates.check}>
+              Check for updates
+            </button>
+          </span>
+        </div>
       </div>
+      {updates.status.kind === "checking" && <p className="hint">Checking…</p>}
+      {updates.status.kind === "none" && <p className="hint">You have the latest version.</p>}
+      {updates.status.kind === "available" && (
+        <p className="hint">Version {updates.status.update.version} is ready. Use the bar at the bottom of the window to install it.</p>
+      )}
+      {updates.status.kind === "error" && <p className="error">Couldn't check for updates: {updates.status.message}</p>}
 
       <div className="modal-actions">
         <span className="spacer" />
