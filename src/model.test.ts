@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { currentStreak, formatDue, isOverdue } from "./dates";
 import { deleteList, deleteSection, floatViewOf, normalize, renameSection, setCompleted, smartCount, tasksFor } from "./model";
 import { shortcutFromEvent } from "./shortcut";
+import { isDarkColor } from "./theme";
 import type { Task } from "./types";
 
 const now = new Date(2026, 9, 27, 12, 0);
@@ -253,5 +254,14 @@ describe("pomodoro", () => {
     expect(data.tasks[0].pomodoros).toBe(3);
     const next = setCompleted(data, "r", true, now, "n").tasks.find((t) => t.id === "n")!;
     expect(next.pomodoros).toBe(0);
+  });
+});
+
+describe("title bar", () => {
+  it("tells dark theme colours from light ones", () => {
+    expect(isDarkColor("#0e1014")).toBe(true);
+    expect(isDarkColor("#232220")).toBe(true);
+    expect(isDarkColor("#f4f1ec")).toBe(false);
+    expect(isDarkColor("#f2ead8")).toBe(false);
   });
 });

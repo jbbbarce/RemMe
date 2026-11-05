@@ -11,6 +11,7 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
   - **Calm minimal:** warm and roomy, with a teal accent. Follows Windows light or dark mode.
   - **Paper and ink:** cream paper, serif headings, hand-drawn-style checkboxes.
   - **Windows Fluent:** Segoe UI and Windows colours. Follows Windows light or dark mode, with the see-through Mica background on Windows 11.
+  - The window's title bar takes the theme's colour too (on Windows 10, only light or dark).
 - **Smart lists:** Today, Upcoming, All, Flagged and Done, with live counts.
 - **Your own lists,** each with a color and an icon. Double-click or right-click a list to edit or delete it.
 - **List and board layouts.** In a list's board view, sections are columns (for example one per person). Drag cards between columns, add sections at the right, and rename or delete them from the column header.

@@ -357,6 +357,47 @@ fn restore_foreground(app: &AppHandle, previous: isize) {
 #[cfg(not(windows))]
 fn restore_foreground(_app: &AppHandle, _previous: isize) {}
 
+/// `#rrggbb` as a Windows COLORREF, which stores the channels as 0x00bbggrr.
+fn colorref(hex: &str) -> Option<u32> {
+    let hex = hex.trim().strip_prefix('#')?;
+    if hex.len() != 6 {
+        return None;
+    }
+    let rgb = u32::from_str_radix(hex, 16).ok()?;
+    Some(((rgb & 0xff) << 16) | (rgb & 0xff00) | (rgb >> 16))
+}
+
+/// Colours the window's title bar to match the theme. `caption` and `text` are `#rrggbb`;
+/// `None` gives Windows' own colour. `dark` gives the minimise, maximise and close buttons
+/// their light-on-dark look. Windows 10 ignores the colours and only takes `dark`.
+#[tauri::command]
+fn set_title_bar(window: WebviewWindow, caption: Option<String>, text: Option<String>, dark: bool) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use windows::Win32::{
+            Foundation::HWND,
+            Graphics::Dwm::{
+                DWMWA_CAPTION_COLOR, DWMWA_COLOR_DEFAULT, DWMWA_TEXT_COLOR, DWMWA_USE_IMMERSIVE_DARK_MODE,
+                DwmSetWindowAttribute,
+            },
+        };
+        let hwnd: HWND = window.hwnd().map_err(|e| e.to_string())?;
+        // Windows reads this flag as a 32-bit BOOL.
+        let dark = i32::from(dark);
+        let caption = caption.as_deref().and_then(colorref).unwrap_or(DWMWA_COLOR_DEFAULT);
+        let text = text.as_deref().and_then(colorref).unwrap_or(DWMWA_COLOR_DEFAULT);
+        unsafe {
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark as *const _ as _, 4).map_err(|e| e.to_string())?;
+            // Older Windows doesn't know these two; the light/dark switch above still applies.
+            let _ = DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, &caption as *const _ as _, 4);
+            let _ = DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, &text as *const _ as _, 4);
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = (window, caption, text, dark);
+    Ok(())
+}
+
 fn set_float_locked(app: &AppHandle, locked: bool) {
     let Some(window) = app.get_webview_window(FLOAT) else { return };
     let state = app.state::<AppState>();
@@ -701,7 +742,8 @@ pub fn run() {
             pomodoro_start,
             pomodoro_toggle,
             pomodoro_skip,
-            pomodoro_reset
+            pomodoro_reset,
+            set_title_bar
         ])
         .on_window_event(|window, event| {
             // Closing a window hides it; the app keeps running in the tray until Quit.
@@ -896,6 +938,14 @@ mod tests {
     fn timer_lengths_come_from_settings_within_limits() {
         let lengths = timer_lengths(&json!({ "settings": { "pomodoroFocus": 50, "pomodoroShort": 0, "pomodoroLong": "x" } }));
         assert_eq!(lengths, Lengths::from_minutes(50, 5, 15));
+    }
+
+    #[test]
+    fn colours_become_windows_colorrefs() {
+        assert_eq!(colorref("#0e1014"), Some(0x14100e));
+        assert_eq!(colorref(" #F2EAD8 "), Some(0xd8eaf2));
+        assert_eq!(colorref("#fff"), None);
+        assert_eq!(colorref("0e1014"), None);
     }
 
     #[test]

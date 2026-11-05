@@ -13,7 +13,13 @@ export default function App() {
   const theme = data?.settings.theme;
 
   useEffect(() => {
-    if (theme) applyTheme(theme, isFloat);
+    if (!theme) return;
+    applyTheme(theme, isFloat);
+    // Calm and Fluent follow Windows' light or dark mode, so apply again when it changes.
+    const scheme = window.matchMedia("(prefers-color-scheme: dark)");
+    const reapply = () => applyTheme(theme, isFloat);
+    scheme.addEventListener("change", reapply);
+    return () => scheme.removeEventListener("change", reapply);
   }, [theme]);
 
   if (!data) {

@@ -1,6 +1,6 @@
 [package]
 name = "remme"
-version = "0.5.0"
+version = "0.5.1"
 description = "RemMe: a Windows reminders app with a floating, lockable list"
 license = "MIT"
 authors = ["John Barce"]
@@ -29,7 +29,7 @@ tauri-plugin-updater = "2"
 
 [target.'cfg(windows)'.dependencies]
 # The same version Tauri uses, for handing focus back after showing the floating list.
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging"] }
 sysinfo = { version = "0.40.1", default-features = false, features = ["system"] }
 
 [profile.release]
