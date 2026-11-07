@@ -1,0 +1,11 @@
+# Opens a PR when a pinned GitHub Action has a new release, keeping the
+# commit-SHA pin and its version comment in release.yml up to date.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
