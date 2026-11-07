@@ -61,4 +61,4 @@ jobs:
           releaseBody: See the commits since the last release for what changed.
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
+          uploadUpdaterJson: true
