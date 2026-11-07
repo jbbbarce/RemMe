@@ -72,6 +72,8 @@ export interface Settings {
   pomodoroShort: number;
   pomodoroLong: number;
   pomodoroChime: boolean;
+  /** Shows the verse of the day in the sidebar and the floating list. */
+  verseOfDay: boolean;
 }
 
 export type TimerPhase = "idle" | "focus" | "shortBreak" | "longBreak";

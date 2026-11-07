@@ -216,6 +216,17 @@ export function SettingsDialog({ data, onShortcuts, onTheme, onSettings, updates
       </div>
       <p className="hint">The long break comes after every fourth focus session. New lengths apply from the next session.</p>
 
+      <h3 className="settings-head">Verse of the day</h3>
+      <div className="group">
+        <label className="row">
+          <span>Show the verse of the day</span>
+          <Switch checked={data.settings.verseOfDay} onChange={(verseOfDay) => onSettings({ verseOfDay })} />
+        </label>
+      </div>
+      <p className="hint">
+        A verse from the World English Bible each day, in the sidebar and at the bottom of the floating list.
+      </p>
+
       <h3 className="settings-head">General</h3>
       <div className="group">
         <label className="row">

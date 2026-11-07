@@ -10,6 +10,7 @@ import { MiniCalendar } from "./MiniCalendar";
 import { PomodoroPill } from "./Pomodoro";
 import { TaskRow } from "./TaskRow";
 import { useTaskActions } from "./useTaskActions";
+import { VersePanel } from "./Verse";
 
 interface Props {
   data: AppData;
@@ -124,6 +125,8 @@ export function FloatApp({ data, update }: Props) {
           />
         </footer>
       )}
+
+      {data.settings.verseOfDay && <VersePanel now={now} locked={locked} />}
     </div>
   );
 }

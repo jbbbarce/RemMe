@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pomodoroShort: 5,
   pomodoroLong: 15,
   pomodoroChime: true,
+  verseOfDay: true,
 };
 
 /** Session lengths are whole minutes from 1 to 180. */
@@ -90,6 +91,7 @@ export function normalize(raw: SavedData | null | undefined): AppData {
   settings.pomodoroShort = validMinutes(settings.pomodoroShort, DEFAULT_SETTINGS.pomodoroShort);
   settings.pomodoroLong = validMinutes(settings.pomodoroLong, DEFAULT_SETTINGS.pomodoroLong);
   settings.pomodoroChime = settings.pomodoroChime !== false;
+  settings.verseOfDay = settings.verseOfDay !== false;
   return { version: 1, lists, tasks, settings };
 }
 

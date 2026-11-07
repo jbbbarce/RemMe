@@ -3,6 +3,7 @@ import { LIST_ICON_COMPONENTS, SMART_ICONS } from "../icons";
 import { SMART_LISTS, smartCount } from "../model";
 import type { AppData, ReminderList, View } from "../types";
 import { PomodoroPanel } from "./Pomodoro";
+import { VerseCard } from "./Verse";
 
 interface Props {
   data: AppData;
@@ -84,6 +85,7 @@ export function Sidebar({ data, view, now, search, onSearch, onView, onAddList, 
         })}
       </nav>
 
+      {data.settings.verseOfDay && <VerseCard now={now} />}
       <PomodoroPanel data={data} />
 
       <button className="add-list" onClick={onAddList}>

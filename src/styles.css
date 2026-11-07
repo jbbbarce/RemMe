@@ -1392,6 +1392,165 @@ kbd {
   user-select: text;
 }
 
+/* ---------- Verse of the day ---------- */
+
+.verse-text {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: var(--font-head);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: normal;
+}
+
+.verse-text:hover {
+  color: var(--text);
+}
+
+.verse-text.clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.verse-ref {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui);
+}
+
+.verse-copied {
+  font-weight: 400;
+  color: var(--text-3);
+}
+
+.verse-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.verse-bar:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.verse-bar-ref {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-weight: 600;
+  color: var(--ui);
+}
+
+/* In the sidebar: a card above the Pomodoro timer, which it takes the bottom spot from. */
+.verse-card {
+  margin: auto 0 8px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.verse-card ~ .timer-panel {
+  margin-top: 0;
+}
+
+.verse-card.minimized {
+  padding: 0;
+  overflow: hidden;
+}
+
+.verse-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.verse-label {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* In the floating list: a panel joined to the bottom edge, resized from its top edge. */
+.verse-panel {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.verse-panel:not(.minimized) {
+  min-height: 56px;
+}
+
+.verse-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 34px 10px 12px;
+}
+
+.verse-handle {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  z-index: 1;
+  cursor: ns-resize;
+}
+
+.verse-handle::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  width: 28px;
+  height: 3px;
+  margin-left: -14px;
+  border-radius: 2px;
+  background: var(--line);
+  transition: background 0.15s ease;
+}
+
+.verse-handle:hover::after {
+  background: var(--text-3);
+}
+
+.verse-minimize {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
 @media (max-width: 860px) {
   .inspector {
     position: absolute;

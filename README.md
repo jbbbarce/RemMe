@@ -31,6 +31,11 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
   - **Ctrl+Shift+P** starts or pauses the timer from any app, even while the floating list is locked.
   - Each reminder counts its finished sessions, and the timer shows today's total.
   - Change the lengths, the chime and the shortcut in **Settings**. The timer resets if you quit RemMe.
+- **Verse of the day:** a Bible verse from the World English Bible (British Edition, with the deuterocanonical books) that changes at midnight. It's in the sidebar above the timer and at the bottom of the floating list. Turn it off in **Settings**.
+  - Click the verse to copy it with its reference.
+  - In the sidebar, the arrow switches between the whole verse and 2 lines.
+  - In the floating list, drag the line above the verse to make it taller or shorter (it scrolls if it doesn't fit); double-click that line to fit the verse again.
+  - The **–** button minimizes the verse to a bar with its reference; click the bar to bring it back. Each window minimizes on its own, and the next day's verse opens again by itself.
 - **Habit streaks:** a repeating reminder shows a flame and how many times in a row it was done by its due day. Finishing one late, or letting its day pass, starts the count over.
 - **App-triggered reminders:** set **When I open** in a reminder's details to an app, such as `chrome.exe` (the box suggests apps that are running now). Each time that app starts, you get a notification about the reminder until it's done. Apps already running when RemMe starts don't count.
 - **Notifications:** a Windows notification appears when a reminder is due. Due checks run every 15 seconds while the app is running, and overdue reminders notify at startup. A due reminder also brings up the floating list.
