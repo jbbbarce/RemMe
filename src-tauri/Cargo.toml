@@ -1,6 +1,6 @@
 [package]
 name = "remme"
-version = "0.7.0"
+version = "0.8.0"
 description = "RemMe: a Windows reminders app with a floating, lockable list"
 license = "MIT"
 authors = ["John Barce"]
