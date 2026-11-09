@@ -1866,6 +1866,75 @@ kbd {
   white-space: nowrap;
 }
 
+/* ---------- Backups ---------- */
+
+.row-actions .icon-btn {
+  padding: 6px 8px;
+}
+
+.hint.error-text {
+  color: var(--c-red);
+}
+
+.backup-list {
+  /* The Settings panel scrolls as a whole; without this it squeezes the list to a sliver. */
+  flex-shrink: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.backup-when,
+.backup-folder {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.backup-when small,
+.backup-folder small {
+  font-size: 12px;
+  color: var(--text-3);
+  overflow-wrap: anywhere;
+}
+
+.backup-confirm {
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.recovery-bar {
+  position: absolute;
+  left: 50%;
+  top: 16px;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 8px 8px 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--c-orange) 45%, var(--line));
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 13px;
+}
+
+.recovery-bar > svg {
+  flex: none;
+  color: var(--c-orange);
+}
+
+.recovery-bar > button:not(.icon-btn) {
+  flex: none;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+
 .update-bar > svg {
   color: var(--ui);
 }

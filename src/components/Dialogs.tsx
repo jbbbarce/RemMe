@@ -1,3 +1,4 @@
+import { BackupsSection } from "./Backups";
 import { useEffect, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
@@ -226,6 +227,8 @@ export function SettingsDialog({ data, onShortcuts, onTheme, onSettings, updates
       <p className="hint">
         A verse from the World English Bible each day, in the sidebar and at the bottom of the floating list.
       </p>
+
+      <BackupsSection />
 
       <h3 className="settings-head">General</h3>
       <div className="group">

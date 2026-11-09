@@ -8,9 +8,11 @@ use std::{
     time::Duration,
 };
 
+mod backup;
 mod pomodoro;
 
-use chrono::{DateTime, Local, Utc};
+use backup::Kind;
+use chrono::{DateTime, Local, NaiveDateTime, Utc};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
@@ -19,6 +21,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, State, WebviewWindow, WindowEvent,
 };
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use tauri_plugin_notification::NotificationExt;
 
@@ -47,6 +50,22 @@ struct UiState {
     /// Focus sessions finished on `pomodoro_day` (local `yyyy-mm-dd`), kept across restarts.
     pomodoro_day: String,
     pomodoro_today: u32,
+    /// A second folder that also gets every backup, such as a OneDrive folder. Kept per PC,
+    /// so restoring or importing data never changes it.
+    backup_folder: Option<String>,
+    /// Why the last copy to `backup_folder` failed, if it did.
+    backup_folder_error: Option<String>,
+    /// Set when a damaged data file was replaced at startup, until the banner is dismissed.
+    recovery: Option<Recovery>,
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+struct Recovery {
+    /// Local time of the backup that was loaded, or `None` if there was none to load.
+    restored_from: Option<String>,
+    /// Where the damaged file was kept.
+    corrupt_file: String,
 }
 
 #[derive(Default)]
@@ -138,6 +157,108 @@ fn save_ui(state: &AppState, ui: &UiState) {
     if let Err(error) = write_json(&state.dir.join(UI_FILE), ui) {
         eprintln!("{error}");
     }
+}
+
+fn local_now() -> NaiveDateTime {
+    Local::now().naive_local()
+}
+
+fn backup_dir(state: &AppState) -> PathBuf {
+    state.dir.join(backup::LOCAL_DIR)
+}
+
+/// The data file's text as it is on disk, or the data in memory if the file is missing.
+fn current_data_text(state: &AppState) -> String {
+    fs::read_to_string(state.dir.join(DATA_FILE)).unwrap_or_else(|_| {
+        serde_json::to_string_pretty(&*state.data.lock().unwrap()).unwrap_or_default()
+    })
+}
+
+/// Writes a backup to the local folder and, if one is set, the second folder.
+/// A failed second copy is recorded for Settings to show; it never fails the backup.
+fn make_backup(state: &AppState, text: &str, kind: Kind) -> Result<PathBuf, String> {
+    let now = local_now();
+    let local = backup_dir(state);
+    let path = backup::write(&local, text, kind, now)?;
+    backup::prune(&local, now.date());
+
+    let folder = state.ui.lock().unwrap().backup_folder.clone();
+    if let Some(folder) = folder {
+        let result = if Path::new(&folder).is_dir() {
+            let second = Path::new(&folder).join(backup::SECOND_DIR);
+            backup::write(&second, text, kind, now).map(|_| backup::prune(&second, now.date()))
+        } else {
+            Err("folder not found".to_string())
+        };
+        let mut ui = state.ui.lock().unwrap();
+        ui.backup_folder_error =
+            result.err().map(|e| format!("Last copy to {folder} failed on {}: {e}", now.format("%-d %b")));
+        save_ui(state, &ui);
+    }
+    Ok(path)
+}
+
+/// Before the first change of a new day, keeps the data file as it was at the end of the last day.
+fn ensure_daily_backup(state: &AppState) {
+    if !backup::needs_daily(&backup_dir(state), Local::now().date_naive()) {
+        return;
+    }
+    let Ok(text) = fs::read_to_string(state.dir.join(DATA_FILE)) else { return };
+    if let Err(error) = make_backup(state, &text, Kind::Daily) {
+        eprintln!("{error}");
+    }
+}
+
+/// Loads the data file. A damaged one is kept as `.corrupt` and replaced by the newest
+/// backup that reads; `ui.recovery` then says what happened, for the banner.
+fn load_or_recover(dir: &Path, ui: &mut UiState) -> Value {
+    let path = dir.join(DATA_FILE);
+    let existed = path.exists();
+    if let Some(data) = read_json::<Value>(&path).filter(backup::is_data) {
+        return data;
+    }
+    if !existed {
+        return default_data();
+    }
+    let corrupt = path.with_extension("json.corrupt");
+    // Valid JSON of the wrong shape is still in place; read_json only moves files it can't parse.
+    if path.exists() {
+        let _ = fs::rename(&path, &corrupt);
+    }
+    let corrupt_file = corrupt.display().to_string();
+    match backup::newest_readable(&dir.join(backup::LOCAL_DIR)) {
+        Some((found, data)) => {
+            if let Err(error) = write_json(&path, &data) {
+                eprintln!("{error}");
+            }
+            let restored_from = Some(found.taken.format("%Y-%m-%dT%H:%M:%S").to_string());
+            ui.recovery = Some(Recovery { restored_from, corrupt_file });
+            data
+        }
+        None => {
+            ui.recovery = Some(Recovery { restored_from: None, corrupt_file });
+            default_data()
+        }
+    }
+}
+
+/// Replaces all data after keeping a safety backup, and tells both windows.
+fn replace_data(app: &AppHandle, data: Value, kind: Kind) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    make_backup(&state, &current_data_text(&state), kind)?;
+    write_json(&state.dir.join(DATA_FILE), &data)?;
+    *state.data.lock().unwrap() = data.clone();
+    // The replaced settings may have other global shortcuts.
+    let (toggle, lock, pomodoro) = (
+        setting(&data, "toggleShortcut", DEFAULT_TOGGLE),
+        setting(&data, "lockShortcut", DEFAULT_LOCK),
+        setting(&data, "pomodoroShortcut", DEFAULT_POMODORO),
+    );
+    if let Err(error) = register_shortcuts(app, &toggle, &lock, &pomodoro) {
+        eprintln!("{error}");
+    }
+    app.emit("data-changed", DataChanged { source: "backup".to_string(), data })
+        .map_err(|e| e.to_string())
 }
 
 fn setting(data: &Value, key: &str, fallback: &str) -> String {
@@ -591,6 +712,7 @@ fn load_data(state: State<AppState>) -> Value {
 
 #[tauri::command]
 fn save_data(app: AppHandle, window: WebviewWindow, state: State<AppState>, data: Value) -> Result<(), String> {
+    ensure_daily_backup(&state);
     write_json(&state.dir.join(DATA_FILE), &data)?;
     *state.data.lock().unwrap() = data.clone();
     app.emit("data-changed", DataChanged { source: window.label().to_string(), data })
@@ -638,6 +760,202 @@ fn set_float(app: AppHandle, visible: Option<bool>, locked: Option<bool>) {
 #[tauri::command]
 fn show_main(app: AppHandle) {
     show_main_window(&app);
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BackupInfo {
+    name: String,
+    kind: Kind,
+    /// Local time, `yyyy-mm-ddThh:mm:ss`.
+    taken_at: String,
+    /// `None` when the file can't be read as RemMe data.
+    reminders: Option<usize>,
+    lists: Option<usize>,
+}
+
+fn counts(data: &Value) -> (usize, usize) {
+    let len = |key: &str| data[key].as_array().map_or(0, Vec::len);
+    (len("tasks"), len("lists"))
+}
+
+#[tauri::command]
+fn list_backups(state: State<AppState>) -> Vec<BackupInfo> {
+    backup::list(&backup_dir(&state))
+        .into_iter()
+        .map(|b| {
+            let found = backup::read_data(&b.path).map(|data| counts(&data));
+            BackupInfo {
+                name: b.name,
+                kind: b.kind,
+                taken_at: b.taken.format("%Y-%m-%dT%H:%M:%S").to_string(),
+                reminders: found.map(|c| c.0),
+                lists: found.map(|c| c.1),
+            }
+        })
+        .collect()
+}
+
+/// A backup in the local folder, found by its file name so no other path can be passed in.
+fn find_backup(state: &AppState, name: &str) -> Result<backup::Backup, String> {
+    backup::list(&backup_dir(state))
+        .into_iter()
+        .find(|b| b.name == name)
+        .ok_or_else(|| "That backup no longer exists.".to_string())
+}
+
+#[tauri::command]
+fn backup_now(state: State<AppState>) -> Result<(), String> {
+    make_backup(&state, &current_data_text(&state), Kind::Manual).map(|_| ())
+}
+
+#[tauri::command]
+fn restore_backup(app: AppHandle, name: String) -> Result<(), String> {
+    let found = find_backup(&app.state::<AppState>(), &name)?;
+    let data = backup::read_data(&found.path).ok_or("That backup can't be read.")?;
+    replace_data(&app, data, Kind::BeforeRestore)
+}
+
+#[tauri::command]
+fn delete_backup(state: State<AppState>, name: String) -> Result<(), String> {
+    let found = find_backup(&state, &name)?;
+    if found.kind != Kind::Manual {
+        return Err("Only backups you made yourself can be deleted.".to_string());
+    }
+    fs::remove_file(&found.path).map_err(|e| format!("Could not delete the backup: {e}"))
+}
+
+#[tauri::command]
+fn open_backup_folder(state: State<AppState>) -> Result<(), String> {
+    let dir = backup_dir(&state);
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    std::process::Command::new("explorer").arg(&dir).spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Asks where to save, then writes the current data there. `false` if the dialog was cancelled.
+#[tauri::command]
+async fn export_data(app: AppHandle, window: WebviewWindow) -> Result<bool, String> {
+    let name = format!("RemMe export {}.json", Local::now().format("%Y-%m-%d"));
+    let Some(chosen) = app
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .set_title("Export reminders")
+        .set_file_name(&name)
+        .add_filter("RemMe backup", &["json"])
+        .blocking_save_file()
+    else {
+        return Ok(false);
+    };
+    let path = chosen.into_path().map_err(|e| e.to_string())?;
+    let state = app.state::<AppState>();
+    let text = current_data_text(&state);
+    fs::write(&path, text).map_err(|e| format!("Could not save {}: {e}", path.display()))?;
+    Ok(true)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ImportFile {
+    path: String,
+    reminders: usize,
+    lists: usize,
+}
+
+/// Asks for a file and checks it is RemMe data, without changing anything yet.
+#[tauri::command]
+async fn pick_import_file(app: AppHandle, window: WebviewWindow) -> Result<Option<ImportFile>, String> {
+    let Some(chosen) = app
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .set_title("Import reminders")
+        .add_filter("RemMe backup", &["json"])
+        .blocking_pick_file()
+    else {
+        return Ok(None);
+    };
+    let path = chosen.into_path().map_err(|e| e.to_string())?;
+    let data = backup::read_data(&path).ok_or("That file isn't a RemMe backup.")?;
+    let (reminders, lists) = counts(&data);
+    Ok(Some(ImportFile { path: path.display().to_string(), reminders, lists }))
+}
+
+#[tauri::command]
+fn import_data(app: AppHandle, path: String) -> Result<(), String> {
+    let data = backup::read_data(Path::new(&path)).ok_or("That file isn't a RemMe backup.")?;
+    replace_data(&app, data, Kind::BeforeImport)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BackupFolder {
+    folder: Option<String>,
+    error: Option<String>,
+}
+
+fn backup_folder_of(state: &AppState) -> BackupFolder {
+    let ui = state.ui.lock().unwrap();
+    BackupFolder { folder: ui.backup_folder.clone(), error: ui.backup_folder_error.clone() }
+}
+
+#[tauri::command]
+fn get_backup_folder(state: State<AppState>) -> BackupFolder {
+    backup_folder_of(&state)
+}
+
+/// Asks for a second backup folder and copies the existing backups into it.
+#[tauri::command]
+async fn choose_backup_folder(app: AppHandle, window: WebviewWindow) -> Result<BackupFolder, String> {
+    let state = app.state::<AppState>();
+    let Some(chosen) = app
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .set_title("Also back up to")
+        .blocking_pick_folder()
+    else {
+        return Ok(backup_folder_of(&state));
+    };
+    let folder = chosen.into_path().map_err(|e| e.to_string())?;
+    let second = folder.join(backup::SECOND_DIR);
+    fs::create_dir_all(&second).map_err(|e| format!("Could not use {}: {e}", folder.display()))?;
+    for found in backup::list(&backup_dir(&state)) {
+        let target = second.join(&found.name);
+        if !target.exists() {
+            fs::copy(&found.path, &target).map_err(|e| format!("Could not copy to {}: {e}", folder.display()))?;
+        }
+    }
+    {
+        let mut ui = state.ui.lock().unwrap();
+        ui.backup_folder = Some(folder.display().to_string());
+        ui.backup_folder_error = None;
+        save_ui(&state, &ui);
+    }
+    Ok(backup_folder_of(&state))
+}
+
+#[tauri::command]
+fn clear_backup_folder(state: State<AppState>) -> BackupFolder {
+    {
+        let mut ui = state.ui.lock().unwrap();
+        ui.backup_folder = None;
+        ui.backup_folder_error = None;
+        save_ui(&state, &ui);
+    }
+    backup_folder_of(&state)
+}
+
+#[tauri::command]
+fn get_recovery(state: State<AppState>) -> Option<Recovery> {
+    state.ui.lock().unwrap().recovery.clone()
+}
+
+#[tauri::command]
+fn dismiss_recovery(state: State<AppState>) {
+    let mut ui = state.ui.lock().unwrap();
+    ui.recovery = None;
+    save_ui(&state, &ui);
 }
 
 /// Names of running apps, for picking which one a reminder waits for.
@@ -728,6 +1046,7 @@ pub fn run() {
             Some(vec!["--minimized"]),
         ))
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(shortcut_plugin)
         .invoke_handler(tauri::generate_handler![
             load_data,
@@ -743,7 +1062,20 @@ pub fn run() {
             pomodoro_toggle,
             pomodoro_skip,
             pomodoro_reset,
-            set_title_bar
+            set_title_bar,
+            list_backups,
+            backup_now,
+            restore_backup,
+            delete_backup,
+            open_backup_folder,
+            export_data,
+            pick_import_file,
+            import_data,
+            get_backup_folder,
+            choose_backup_folder,
+            clear_backup_folder,
+            get_recovery,
+            dismiss_recovery
         ])
         .on_window_event(|window, event| {
             // Closing a window hides it; the app keeps running in the tray until Quit.
@@ -764,10 +1096,11 @@ pub fn run() {
                 }
             }
             fs::create_dir_all(&dir)?;
-            let data = read_json::<Value>(&dir.join(DATA_FILE))
-                .filter(|value| value["lists"].is_array() && value["tasks"].is_array())
-                .unwrap_or_else(default_data);
-            let ui = read_json::<UiState>(&dir.join(UI_FILE)).unwrap_or_default();
+            let mut ui = read_json::<UiState>(&dir.join(UI_FILE)).unwrap_or_default();
+            let data = load_or_recover(&dir, &mut ui);
+            if ui.recovery.is_some() {
+                let _ = write_json(&dir.join(UI_FILE), &ui);
+            }
             let toggle = setting(&data, "toggleShortcut", DEFAULT_TOGGLE);
             let lock = setting(&data, "lockShortcut", DEFAULT_LOCK);
             let pomodoro_key = setting(&data, "pomodoroShortcut", DEFAULT_POMODORO);
@@ -787,6 +1120,7 @@ pub fn run() {
             });
 
             let handle = app.handle().clone();
+            ensure_daily_backup(&handle.state::<AppState>());
             if let Err(error) = register_shortcuts(&handle, &toggle, &lock, &pomodoro_key) {
                 eprintln!("{error}");
             }
@@ -946,6 +1280,96 @@ mod tests {
         assert_eq!(colorref(" #F2EAD8 "), Some(0xd8eaf2));
         assert_eq!(colorref("#fff"), None);
         assert_eq!(colorref("0e1014"), None);
+    }
+
+    fn test_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("remme-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn test_state(dir: &Path, backup_folder: Option<String>) -> AppState {
+        AppState {
+            dir: dir.to_path_buf(),
+            data: Mutex::new(json!({})),
+            ui: Mutex::new(UiState { backup_folder, ..UiState::default() }),
+            shortcuts: Mutex::new(Shortcuts::default()),
+            timer: Mutex::new(Timer::default()),
+        }
+    }
+
+    #[test]
+    fn a_damaged_data_file_is_replaced_by_the_newest_readable_backup() {
+        let dir = test_dir("recover");
+        let at = |s: &str| NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M").unwrap();
+        let backups = dir.join(backup::LOCAL_DIR);
+        backup::write(&backups, r#"{"lists":[],"tasks":[{"id":"old"}]}"#, Kind::Daily, at("2026-11-07 08:00")).unwrap();
+        backup::write(&backups, r#"{"lists":[],"tasks":[{"id":"new"}]}"#, Kind::Daily, at("2026-11-08 08:00")).unwrap();
+        backup::write(&backups, "{ broken", Kind::Manual, at("2026-11-09 08:00")).unwrap();
+        fs::write(dir.join(DATA_FILE), "{ also broken").unwrap();
+
+        let mut ui = UiState::default();
+        let data = load_or_recover(&dir, &mut ui);
+        assert_eq!(data["tasks"][0]["id"], "new");
+        let recovery = ui.recovery.unwrap();
+        assert_eq!(recovery.restored_from.as_deref(), Some("2026-11-08T08:00:00"));
+        assert_eq!(fs::read_to_string(dir.join("reminders.json.corrupt")).unwrap(), "{ also broken");
+        assert_eq!(backup::read_data(&dir.join(DATA_FILE)).unwrap()["tasks"][0]["id"], "new");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn wrong_shaped_data_without_backups_starts_empty_and_says_so() {
+        let dir = test_dir("no-backups");
+        fs::write(dir.join(DATA_FILE), r#"{"hello":"world"}"#).unwrap();
+        let mut ui = UiState::default();
+        let data = load_or_recover(&dir, &mut ui);
+        assert!(backup::is_data(&data));
+        assert!(ui.recovery.unwrap().restored_from.is_none());
+        assert!(dir.join("reminders.json.corrupt").exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_missing_data_file_is_a_fresh_start_not_a_recovery() {
+        let dir = test_dir("fresh");
+        let mut ui = UiState::default();
+        load_or_recover(&dir, &mut ui);
+        assert!(ui.recovery.is_none());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_daily_backup_is_taken_once_from_the_file_on_disk() {
+        let dir = test_dir("daily-once");
+        fs::write(dir.join(DATA_FILE), r#"{"lists":[],"tasks":[]}"#).unwrap();
+        let state = test_state(&dir, None);
+        ensure_daily_backup(&state);
+        ensure_daily_backup(&state);
+        let backups = backup::list(&dir.join(backup::LOCAL_DIR));
+        assert_eq!(backups.len(), 1);
+        assert_eq!(backups[0].kind, Kind::Daily);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_unreachable_second_folder_is_reported_without_failing_the_backup() {
+        let dir = test_dir("second");
+        let missing = dir.join("unplugged-drive").display().to_string();
+        let state = test_state(&dir, Some(missing.clone()));
+        assert!(make_backup(&state, "{}", Kind::Manual).is_ok());
+        let error = state.ui.lock().unwrap().backup_folder_error.clone().unwrap();
+        assert!(error.starts_with(&format!("Last copy to {missing} failed on ")), "{error}");
+        assert!(error.ends_with("folder not found"));
+
+        let second = dir.join("onedrive");
+        fs::create_dir_all(&second).unwrap();
+        state.ui.lock().unwrap().backup_folder = Some(second.display().to_string());
+        make_backup(&state, "{}", Kind::Manual).unwrap();
+        assert!(state.ui.lock().unwrap().backup_folder_error.is_none());
+        assert_eq!(backup::list(&second.join(backup::SECOND_DIR)).len(), 1);
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

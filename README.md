@@ -45,11 +45,17 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
   - Change either shortcut in **Settings** (gear icon). Click the shortcut, then press the new keys.
 - **Tray icon:** closing a window keeps RemMe running in the tray. Left-click the icon to open the app; right-click it for the floating list controls and **Quit**.
 - **Updates:** RemMe checks GitHub for a new version when it starts and every 6 hours. When one is out, a bar at the bottom of the window offers **Update and restart**; your reminders and settings stay. **Settings** shows the version you have and a **Check for updates** button.
+- **Backups:** RemMe keeps a copy of your reminders from each of the last 7 days and one from each of the 4 weeks before, in `%APPDATA%\com.remme.app\backups\`. Manage them in **Settings → Backups**.
+  - **Back up now** makes one by hand; those stay until you delete them. **Restore** puts a backup back (click it twice to confirm).
+  - **Also back up to…** keeps a second copy of every backup in a folder you choose, such as OneDrive.
+  - **Export…** saves everything to a file, and **Import…** replaces everything with one, for moving to another PC.
+  - Restoring or importing backs up your current data first, so it can be undone.
+  - If your reminders file is ever damaged, RemMe loads the newest backup that works and tells you so.
 - **Start with Windows** (in Settings) launches the app at sign-in, hidden in the tray.
 
 Keyboard: **Ctrl+N** adds a reminder, **Enter** in a title adds the next one, **Esc** leaves a title. A reminder whose title is left empty is removed.
 
-Data is saved to `%APPDATA%\com.remme.app\reminders.json`. The first time RemMe starts, it copies your data from `%APPDATA%\com.reminders.app\`, where versions before the rename kept it. Floating window state and the list of reminders already notified are in `ui-state.json` next to it. A file that can't be read is renamed to `*.json.corrupt` and the app starts fresh.
+Data is saved to `%APPDATA%\com.remme.app\reminders.json`. The first time RemMe starts, it copies your data from `%APPDATA%\com.reminders.app\`, where versions before the rename kept it. Floating window state and the list of reminders already notified are in `ui-state.json` next to it. A file that can't be read is renamed to `*.json.corrupt`; for `reminders.json`, RemMe then loads the newest readable backup from `backups` (or starts fresh if there is none).
 
 ## Requirements
 

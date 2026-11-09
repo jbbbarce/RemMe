@@ -15,6 +15,7 @@ import { useUpdates } from "../updates";
 import type { AppData, ReminderList, TimerFinished, View } from "../types";
 import { ListDialog, SettingsDialog } from "./Dialogs";
 import { UpdateBar } from "./UpdateBar";
+import { RecoveryBanner } from "./Backups";
 import { Inspector } from "./Inspector";
 import { Sidebar } from "./Sidebar";
 import { CalendarView } from "./CalendarView";
@@ -235,6 +236,7 @@ export function MainApp({ data, update, saveError }: Props) {
         </div>
           </>
         )}
+        <RecoveryBanner />
         <UpdateBar updates={updates} />
         {saveError && <div className="toast error">{saveError}</div>}
       </main>
