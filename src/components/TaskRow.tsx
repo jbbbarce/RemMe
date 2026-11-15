@@ -22,8 +22,8 @@ interface Props {
   onFocus?(): void;
   /** Enter in the title: create the next reminder. */
   onEnter?(): void;
-  /** The title was left empty: remove the reminder. */
-  onEmpty?(): void;
+  /** The title was left empty: remove the reminder. Gets the title it had when it was focused. */
+  onEmpty?(titleBefore: string): void;
   /** The title lost focus with text in it. */
   onCommit?(): void;
 }
@@ -31,6 +31,7 @@ interface Props {
 export function TaskRow(props: Props) {
   const { task, list, now, selected, compact } = props;
   const title = useRef<HTMLTextAreaElement>(null);
+  const titleOnFocus = useRef(task.title);
   const color = list?.color ?? "blue";
 
   useEffect(() => {
@@ -82,9 +83,12 @@ export function TaskRow(props: Props) {
                 e.currentTarget.blur();
               }
             }}
-            onFocus={props.onSelect}
+            onFocus={() => {
+              titleOnFocus.current = task.title;
+              props.onSelect?.();
+            }}
             onBlur={() => {
-              if (!task.title.trim()) props.onEmpty?.();
+              if (!task.title.trim()) props.onEmpty?.(titleOnFocus.current);
               else props.onCommit?.();
             }}
           />

@@ -55,9 +55,12 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
   - **Export…** saves everything to a file, and **Import…** replaces everything with one, for moving to another PC.
   - Restoring or importing backs up your current data first, so it can be undone.
   - If your reminders file is ever damaged, RemMe loads the newest backup that works and tells you so.
+- **Undo and Recently deleted:** deleting a reminder, clearing completed ones or deleting a list shows an **Undo** toast for a few seconds, in the main window or the floating list. **Ctrl+Z** does the same while it shows (inside a text box, Ctrl+Z still undoes typing). Undo puts everything back where it was.
+  - Deleted reminders and lists stay in **Recently deleted** (in the sidebar, below Done) for 30 days. **Restore** puts one back at the end of its list (or your first list, if its list is gone); restoring a list brings its reminders too. The bin button deletes one for good, and **Empty Recently Deleted** clears them all; both ask first.
+  - A new reminder you never typed into is just dropped. Deleted reminders don't notify and don't show in counts, search or the calendar. They are in backups and exports.
 - **Start with Windows** (in Settings) launches the app at sign-in, hidden in the tray.
 
-Keyboard: **Ctrl+N** adds a reminder, **Enter** in a title adds the next one, **Esc** leaves a title. A reminder whose title is left empty is removed.
+Keyboard: **Ctrl+N** adds a reminder, **Enter** in a title adds the next one, **Esc** leaves a title. A reminder whose title is left empty goes to Recently deleted.
 
 Data is saved to `%APPDATA%\com.remme.app\reminders.json`. The first time RemMe starts, it copies your data from `%APPDATA%\com.reminders.app\`, where versions before the rename kept it. Floating window state and the list of reminders already notified are in `ui-state.json` next to it. A file that can't be read is renamed to `*.json.corrupt`; for `reminders.json`, RemMe then loads the newest readable backup from `backups` (or starts fresh if there is none).
 

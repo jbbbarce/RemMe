@@ -19,3 +19,4 @@ The first version (steps 1–9 in git history before the `tauri-rewrite` branch)
 - [x] 15. Verse of the day: built-in WEB British Edition verses (with deuterocanonical books), sidebar card and a resizable, minimizable panel at the bottom of the floating list. Spec: `.scratch/verse-of-the-day/spec.md`
 - [x] 16. Backups: daily and weekly automatic backups, an optional second folder, recovery from a damaged data file, restore in Settings, export and import. Spec: `.scratch/backups/spec.md`
 - [x] 17. Snooze and Done buttons on reminder popups, reminder-style popups that stay on screen, click to open the reminder. Spec: `.scratch/notification-actions/spec.md`
+- [x] 18. Undo and Recently deleted: an Undo toast and Ctrl+Z after any deletion, a Recently deleted view with Restore, kept 30 days. Spec: `.scratch/undo-recently-deleted/spec.md`

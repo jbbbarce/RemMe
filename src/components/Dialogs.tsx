@@ -86,7 +86,7 @@ export function ListDialog({ list, isNew, canDelete, taskCount, onSave, onDelete
             className="danger"
             onClick={() => (confirming || taskCount === 0 ? onDelete() : setConfirming(true))}
           >
-            {confirming ? `Delete list and ${taskCount} reminders?` : "Delete List"}
+            {confirming ? `Delete list and ${taskCount} ${taskCount === 1 ? "reminder" : "reminders"}?` : "Delete List"}
           </button>
         )}
         <span className="spacer" />

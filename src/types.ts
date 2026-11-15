@@ -113,11 +113,30 @@ export interface TimerFinished {
   counted: boolean;
 }
 
+/**
+ * Something in Recently deleted: one reminder, or a list with the reminders deleted with it.
+ * Entries deleted by one action share a `batch`, which Undo puts back together.
+ */
+export interface DeletedItem {
+  id: string;
+  batch: string;
+  deletedAt: string;
+  /** Set for a deleted list. */
+  list: ReminderList | null;
+  /** Where the list was in the sidebar. */
+  listIndex: number;
+  tasks: Task[];
+  /** Where each reminder was in `AppData.tasks`, for Undo. */
+  taskIndexes: number[];
+}
+
 export interface AppData {
   version: 1;
   lists: ReminderList[];
   tasks: Task[];
   settings: Settings;
+  /** Recently deleted, newest first. */
+  deleted: DeletedItem[];
 }
 
 export type SmartId = "today" | "scheduled" | "all" | "flagged" | "completed" | "calendar";
@@ -125,7 +144,8 @@ export type SmartId = "today" | "scheduled" | "all" | "flagged" | "completed" | 
 export type View =
   | { kind: "smart"; id: SmartId }
   | { kind: "list"; id: string }
-  | { kind: "search"; query: string };
+  | { kind: "search"; query: string }
+  | { kind: "deleted" };
 
 export interface FloatState {
   visible: boolean;

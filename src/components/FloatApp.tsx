@@ -9,6 +9,7 @@ import type { AppData } from "../types";
 import { MiniCalendar } from "./MiniCalendar";
 import { PomodoroPill } from "./Pomodoro";
 import { TaskRow } from "./TaskRow";
+import { UndoToast, useUndo } from "./Undo";
 import { useTaskActions } from "./useTaskActions";
 import { VersePanel } from "./Verse";
 
@@ -22,7 +23,8 @@ export function FloatApp({ data, update }: Props) {
   const now = useNow();
   const { locked } = useFloatState();
   const view = floatViewOf(data);
-  const actions = useTaskActions(update, view, now);
+  const undo = useUndo(update);
+  const actions = useTaskActions(update, view, now, undo.trash);
   const tasks = tasksFor(data, view, now, false, actions.lingering);
   const color = viewColor(data, view);
   const [draft, setDraft] = useState("");
@@ -107,7 +109,7 @@ export function FloatApp({ data, update }: Props) {
             onToggle={(done) => actions.toggle(task, done)}
             onChange={(patch) => actions.change(task.id, patch)}
             onEnter={() => (document.activeElement as HTMLElement | null)?.blur()}
-            onEmpty={() => actions.remove(task.id)}
+            onEmpty={(before) => actions.removeEmptied(task, before)}
             onCommit={() => actions.commit(task)}
           />
         ))}
@@ -127,6 +129,7 @@ export function FloatApp({ data, update }: Props) {
       )}
 
       {data.settings.verseOfDay && <VersePanel now={now} locked={locked} />}
+      {!locked && <UndoToast state={undo} />}
     </div>
   );
 }

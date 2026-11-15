@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { deleteTask, insertTask, newTaskFor, setCompleted, updateTask } from "../model";
+import { deleteTask, insertTask, newTaskFor, setCompleted, trashTasks, updateTask } from "../model";
 import { parseQuickAdd } from "../quickAdd";
 import type { AppData, Task, View } from "../types";
+import type { UndoState } from "./Undo";
 
 const LINGER_MS = 1200;
 
 /** Task editing shared by the list, board and floating views. */
-export function useTaskActions(update: (change: (d: AppData) => AppData) => void, view: View, now: Date) {
+export function useTaskActions(
+  update: (change: (d: AppData) => AppData) => void,
+  view: View,
+  now: Date,
+  trash?: UndoState["trash"],
+) {
   const [lingering, setLingering] = useState<ReadonlySet<string>>(new Set());
   const [focusId, setFocusId] = useState<string | null>(null);
   const timers = useRef(new Map<string, number>());
@@ -69,9 +75,33 @@ export function useTaskActions(update: (change: (d: AppData) => AppData) => void
     [update],
   );
 
-  const remove = useCallback((id: string) => update((d) => deleteTask(d, id)), [update]);
+  /** Moves a reminder to Recently deleted and offers Undo. */
+  const remove = useCallback(
+    (id: string, patch: Partial<Task> = {}) => {
+      const deletion = (d: AppData, batch: string) => trashTasks(d, [id], new Date(), batch, patch);
+      if (trash) trash(deletion);
+      else update((d) => deletion(d, crypto.randomUUID()));
+    },
+    [update, trash],
+  );
 
-  return { lingering, focusId, toggle, change, add, commit, remove };
+  /**
+   * A reminder's title was left empty. `titleBefore` is what it said before: one that never had a
+   * title, notes or subtasks is just dropped; otherwise it goes to Recently deleted with that title.
+   */
+  const removeEmptied = useCallback(
+    (task: Task, titleBefore: string) => {
+      fresh.current.delete(task.id);
+      if (!titleBefore.trim() && !task.notes.trim() && task.subtasks.length === 0) {
+        update((d) => deleteTask(d, task.id));
+      } else {
+        remove(task.id, { title: titleBefore });
+      }
+    },
+    [update, remove],
+  );
+
+  return { lingering, focusId, toggle, change, add, commit, remove, removeEmptied };
 }
 
 function without(set: ReadonlySet<string>, id: string): ReadonlySet<string> {

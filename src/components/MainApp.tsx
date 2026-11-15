@@ -5,6 +5,7 @@ import {
   clearCompleted,
   deleteList,
   newId,
+  purgeDeleted,
   setCompleted,
   tasksFor,
   updateTask,
@@ -22,6 +23,8 @@ import { Inspector } from "./Inspector";
 import { Sidebar } from "./Sidebar";
 import { CalendarView } from "./CalendarView";
 import { BoardView, ListView } from "./TaskViews";
+import { RecentlyDeleted } from "./RecentlyDeleted";
+import { UndoToast, useUndo } from "./Undo";
 import { useTaskActions } from "./useTaskActions";
 
 const VIEW_KEY = "remme.view";
@@ -68,14 +71,22 @@ export function MainApp({ data, update, saveError }: Props) {
       ? { kind: "smart", id: "today" }
       : baseView;
   const view: View = search.trim() ? { kind: "search", query: search } : validView;
-  const actions = useTaskActions(update, view, now);
+  const undo = useUndo(update);
+  const actions = useTaskActions(update, view, now, undo.trash);
   const tasks = tasksFor(data, view, now, showCompleted, actions.lingering);
   const inspected = data.tasks.find((t) => t.id === inspectId);
   const openCount = tasks.filter((t) => !t.completed).length;
   const completedCount = tasksFor(data, view, now, true).filter((t) => t.completed).length;
   const isCompletedView = view.kind === "smart" && view.id === "completed";
   const isCalendar = view.kind === "smart" && view.id === "calendar";
-  const canAdd = view.kind !== "search" && !isCompletedView && !isCalendar;
+  const isDeleted = view.kind === "deleted";
+  const canAdd = view.kind !== "search" && !isCompletedView && !isCalendar && !isDeleted;
+
+  // Recently deleted forgets things after 30 days. Only the main window does this, once a minute.
+  const expired = purgeDeleted(data, now) !== data;
+  useEffect(() => {
+    if (expired) update((d) => purgeDeleted(d, new Date()));
+  }, [expired, update]);
 
   // Only the main window records finished sessions and chimes, so nothing happens twice.
   const updates = useUpdates();
@@ -183,7 +194,7 @@ export function MainApp({ data, update, saveError }: Props) {
 
       <main className="content">
         <div className="toolbar">
-          {!isCalendar && (
+          {!isCalendar && !isDeleted && (
           <div className="segmented" role="tablist" aria-label="Layout">
             <button
               className={layout === "list" ? "on" : ""}
@@ -230,7 +241,9 @@ export function MainApp({ data, update, saveError }: Props) {
           </button>
         </div>
 
-        {isCalendar ? (
+        {isDeleted ? (
+          <RecentlyDeleted data={data} now={now} update={update} />
+        ) : isCalendar ? (
           <CalendarView data={data} now={now} actions={actions} update={update} onInfo={viewProps.onInfo} />
         ) : (
           <>
@@ -247,7 +260,7 @@ export function MainApp({ data, update, saveError }: Props) {
                 {completedCount > 0 && (
                   <>
                     <span className="dot">·</span>
-                    <button className="link" onClick={() => update((d) => clearCompleted(d, view, now))}>
+                    <button className="link" onClick={() => undo.trash((d, batch) => clearCompleted(d, view, new Date(), batch), true)}>
                       Clear
                     </button>
                   </>
@@ -271,6 +284,7 @@ export function MainApp({ data, update, saveError }: Props) {
           </>
         )}
         <RecoveryBanner />
+        <UndoToast state={undo} />
         <UpdateBar updates={updates} />
         {saveError && <div className="toast error">{saveError}</div>}
       </main>
@@ -301,7 +315,8 @@ export function MainApp({ data, update, saveError }: Props) {
             setEditingList(null);
           }}
           onDelete={() => {
-            update((d) => deleteList(d, editingList.list.id));
+            const id = editingList.list.id;
+            undo.trash((d, batch) => deleteList(d, id, new Date(), batch));
             setEditingList(null);
           }}
           onClose={() => setEditingList(null)}

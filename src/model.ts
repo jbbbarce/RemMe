@@ -5,6 +5,7 @@ import {
   REPEATS,
   THEMES,
   type AppData,
+  type DeletedItem,
   type ReminderList,
   type Settings,
   type SmartId,
@@ -49,24 +50,47 @@ export function newId(): string {
 export type SavedData = Partial<Omit<AppData, "settings">> & { settings?: Partial<Settings> };
 
 export function normalize(raw: SavedData | null | undefined): AppData {
-  const lists: ReminderList[] = (raw?.lists ?? []).map((l) => ({
-    id: l.id ?? newId(),
-    name: l.name ?? "Untitled",
-    color: LIST_COLORS.includes(l.color) ? l.color : "blue",
-    icon: LIST_ICONS.includes(l.icon) ? l.icon : "list",
-    sections: Array.isArray(l.sections) ? l.sections : [],
-  }));
+  const lists = (raw?.lists ?? []).map(listFrom);
   if (lists.length === 0) {
     lists.push({ id: "reminders", name: "Reminders", color: "blue", icon: "list", sections: [] });
   }
   const listIds = new Set(lists.map((l) => l.id));
-  const tasks: Task[] = (raw?.tasks ?? []).map((t) => ({
+  const tasks: Task[] = (raw?.tasks ?? []).map((t) => {
+    const task = taskFrom(t);
+    return listIds.has(task.listId) ? task : { ...task, listId: lists[0].id };
+  });
+  const settings = { ...DEFAULT_SETTINGS, ...raw?.settings };
+  if (!THEMES.includes(settings.theme)) settings.theme = DEFAULT_SETTINGS.theme;
+  settings.pomodoroFocus = validMinutes(settings.pomodoroFocus, DEFAULT_SETTINGS.pomodoroFocus);
+  settings.pomodoroShort = validMinutes(settings.pomodoroShort, DEFAULT_SETTINGS.pomodoroShort);
+  settings.pomodoroLong = validMinutes(settings.pomodoroLong, DEFAULT_SETTINGS.pomodoroLong);
+  settings.pomodoroChime = settings.pomodoroChime !== false;
+  settings.verseOfDay = settings.verseOfDay !== false;
+  settings.stickyReminders = settings.stickyReminders !== false;
+  const deleted = (Array.isArray(raw?.deleted) ? raw.deleted : []).flatMap(deletedFrom);
+  return { version: 1, lists, tasks, settings, deleted };
+}
+
+function listFrom(l: Partial<ReminderList>): ReminderList {
+  return {
+    id: l.id ?? newId(),
+    name: l.name ?? "Untitled",
+    color: LIST_COLORS.includes(l.color!) ? l.color! : "blue",
+    icon: LIST_ICONS.includes(l.icon!) ? l.icon! : "list",
+    sections: Array.isArray(l.sections) ? l.sections : [],
+  };
+}
+
+/** A saved reminder with defaults filled in. Its list isn't checked here. */
+function taskFrom(t: Partial<Task>): Task {
+  const validDue = !!t.dueAt && !Number.isNaN(Date.parse(t.dueAt));
+  return {
     id: t.id ?? newId(),
-    listId: listIds.has(t.listId) ? t.listId : lists[0].id,
+    listId: t.listId ?? "",
     title: t.title ?? "",
     notes: t.notes ?? "",
     // An unreadable date would break due checks and repeats, so it is dropped.
-    dueAt: t.dueAt && !Number.isNaN(Date.parse(t.dueAt)) ? t.dueAt : null,
+    dueAt: validDue ? t.dueAt! : null,
     dueHasTime: t.dueHasTime ?? false,
     flagged: t.flagged ?? false,
     priority: t.priority ?? 0,
@@ -74,7 +98,7 @@ export function normalize(raw: SavedData | null | undefined): AppData {
     completedAt: t.completedAt ?? null,
     createdAt: t.createdAt ?? new Date().toISOString(),
     section: t.section ?? null,
-    repeat: REPEATS.includes(t.repeat!) && t.dueAt && !Number.isNaN(Date.parse(t.dueAt)) ? t.repeat! : null,
+    repeat: REPEATS.includes(t.repeat!) && validDue ? t.repeat! : null,
     subtasks: (Array.isArray(t.subtasks) ? t.subtasks : []).map((s) => ({
       id: s.id ?? newId(),
       title: s.title ?? "",
@@ -89,16 +113,30 @@ export function normalize(raw: SavedData | null | undefined): AppData {
       typeof t.snoozedUntil === "string" && !Number.isNaN(Date.parse(t.snoozedUntil)) && !t.completed
         ? t.snoozedUntil
         : null,
-  }));
-  const settings = { ...DEFAULT_SETTINGS, ...raw?.settings };
-  if (!THEMES.includes(settings.theme)) settings.theme = DEFAULT_SETTINGS.theme;
-  settings.pomodoroFocus = validMinutes(settings.pomodoroFocus, DEFAULT_SETTINGS.pomodoroFocus);
-  settings.pomodoroShort = validMinutes(settings.pomodoroShort, DEFAULT_SETTINGS.pomodoroShort);
-  settings.pomodoroLong = validMinutes(settings.pomodoroLong, DEFAULT_SETTINGS.pomodoroLong);
-  settings.pomodoroChime = settings.pomodoroChime !== false;
-  settings.verseOfDay = settings.verseOfDay !== false;
-  settings.stickyReminders = settings.stickyReminders !== false;
-  return { version: 1, lists, tasks, settings };
+  };
+}
+
+/** A saved Recently deleted entry, or nothing if it is unreadable or empty. */
+function deletedFrom(e: Partial<DeletedItem> | null): DeletedItem[] {
+  if (!e || typeof e !== "object" || typeof e.deletedAt !== "string" || Number.isNaN(Date.parse(e.deletedAt))) {
+    return [];
+  }
+  const tasks = (Array.isArray(e.tasks) ? e.tasks : []).map(taskFrom);
+  const list = e.list && typeof e.list === "object" ? listFrom(e.list) : null;
+  if (!list && tasks.length === 0) return [];
+  const indexes = Array.isArray(e.taskIndexes) ? e.taskIndexes : [];
+  const index = (n: unknown) => (typeof n === "number" && n >= 0 ? Math.floor(n) : Number.MAX_SAFE_INTEGER);
+  return [
+    {
+      id: typeof e.id === "string" ? e.id : newId(),
+      batch: typeof e.batch === "string" ? e.batch : newId(),
+      deletedAt: e.deletedAt,
+      list,
+      listIndex: index(e.listIndex),
+      tasks,
+      taskIndexes: tasks.map((_, i) => index(indexes[i])),
+    },
+  ];
 }
 
 export function matchesSmart(id: SmartId, task: Task, now: Date): boolean {
@@ -139,6 +177,8 @@ export function tasksFor(
     include = (t) => matchesSmart(view.id, t, now);
   } else if (view.kind === "list") {
     include = (t) => t.listId === view.id && (showCompleted || !t.completed);
+  } else if (view.kind === "deleted") {
+    return [];
   } else {
     const q = view.query.trim().toLowerCase();
     include = (t) =>
@@ -265,13 +305,156 @@ export function insertTask(data: AppData, task: Task, afterId?: string): AppData
   return { ...data, tasks };
 }
 
+/** Removes a reminder for good, without going through Recently deleted. */
 export function deleteTask(data: AppData, id: string): AppData {
   return { ...data, tasks: data.tasks.filter((t) => t.id !== id) };
 }
 
-export function clearCompleted(data: AppData, view: View, now: Date): AppData {
-  const remove = new Set(tasksFor(data, view, now, true).filter((t) => t.completed).map((t) => t.id));
-  return { ...data, tasks: data.tasks.filter((t) => !remove.has(t.id)) };
+/** How long Recently deleted keeps things. */
+export const KEEP_DELETED_DAYS = 30;
+
+/** A reminder nobody filled in: losing it loses nothing. */
+export function isBlank(task: Task): boolean {
+  return !task.title.trim() && !task.notes.trim() && !task.dueAt && task.subtasks.length === 0;
+}
+
+/**
+ * Moves reminders to Recently deleted, each as its own entry in `batch`. Blank ones are dropped.
+ * `patch` changes a reminder as it is kept, such as putting back the title that was cleared to delete it.
+ */
+export function trashTasks(
+  data: AppData,
+  ids: readonly string[],
+  now: Date,
+  batch: string,
+  patch: Partial<Task> = {},
+): AppData {
+  const remove = new Set(ids);
+  const entries: DeletedItem[] = [];
+  data.tasks.forEach((t, index) => {
+    if (!remove.has(t.id)) return;
+    const kept = { ...t, ...patch };
+    if (isBlank(kept)) return;
+    entries.push({
+      id: newId(),
+      batch,
+      deletedAt: now.toISOString(),
+      list: null,
+      listIndex: 0,
+      tasks: [kept],
+      taskIndexes: [index],
+    });
+  });
+  return {
+    ...data,
+    tasks: data.tasks.filter((t) => !remove.has(t.id)),
+    deleted: [...entries.reverse(), ...data.deleted],
+  };
+}
+
+/** Moves the finished reminders shown in a view to Recently deleted. */
+export function clearCompleted(data: AppData, view: View, now: Date, batch: string = newId()): AppData {
+  const ids = tasksFor(data, view, now, true).filter((t) => t.completed).map((t) => t.id);
+  return trashTasks(data, ids, now, batch);
+}
+
+/** Moves a list and its reminders to Recently deleted. The last list cannot be deleted. */
+export function deleteList(data: AppData, id: string, now: Date = new Date(), batch: string = newId()): AppData {
+  const listIndex = data.lists.findIndex((l) => l.id === id);
+  if (data.lists.length <= 1 || listIndex < 0) return data;
+  const taskIndexes: number[] = [];
+  const tasks = data.tasks.filter((t, i) => t.listId === id && taskIndexes.push(i) > 0);
+  const entry: DeletedItem = {
+    id: newId(),
+    batch,
+    deletedAt: now.toISOString(),
+    list: data.lists[listIndex],
+    listIndex,
+    tasks,
+    taskIndexes,
+  };
+  return {
+    ...data,
+    lists: data.lists.filter((l) => l.id !== id),
+    tasks: data.tasks.filter((t) => t.listId !== id),
+    settings: data.settings.floatView === id ? { ...data.settings, floatView: "today" } : data.settings,
+    deleted: [entry, ...data.deleted],
+  };
+}
+
+/** What the Undo toast says about a batch, or null if nothing in it was kept. */
+export function deletedMessage(data: AppData, batch: string, cleared = false): string | null {
+  const entries = data.deleted.filter((e) => e.batch === batch);
+  if (entries.length === 0) return null;
+  const listEntry = entries.find((e) => e.list);
+  if (listEntry) {
+    const name = listEntry.list!.name;
+    const n = listEntry.tasks.length;
+    return n === 0 ? `Deleted list “${name}”` : `Deleted list “${name}” and ${plural(n, "reminder")}`;
+  }
+  if (cleared) return `Cleared ${plural(entries.length, "completed reminder")}`;
+  if (entries.length === 1) return `Deleted “${entries[0].tasks[0].title.trim() || "New Reminder"}”`;
+  return `Deleted ${plural(entries.length, "reminder")}`;
+}
+
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+
+/** Puts deleted reminders back, moving any whose list is gone to the first list. */
+function placeTasks(tasks: Task[], back: { task: Task; index: number }[], lists: ReminderList[]): Task[] {
+  const listIds = new Set(lists.map((l) => l.id));
+  const present = new Set(tasks.map((t) => t.id));
+  const out = [...tasks];
+  for (const { task, index } of back) {
+    if (present.has(task.id)) continue;
+    const placed = listIds.has(task.listId) ? task : { ...task, listId: lists[0].id, section: null };
+    out.splice(Math.min(index, out.length), 0, placed);
+  }
+  return out;
+}
+
+/** Undo: puts everything deleted in `batch` back exactly where it was. */
+export function undoDelete(data: AppData, batch: string): AppData {
+  const entries = data.deleted.filter((e) => e.batch === batch);
+  if (entries.length === 0) return data;
+  const lists = [...data.lists];
+  for (const e of entries.filter((x) => x.list).sort((a, b) => a.listIndex - b.listIndex)) {
+    if (lists.some((l) => l.id === e.list!.id)) continue;
+    lists.splice(Math.min(e.listIndex, lists.length), 0, e.list!);
+  }
+  // Inserting in order of the old positions rebuilds the old order.
+  const back = entries
+    .flatMap((e) => e.tasks.map((task, i) => ({ task, index: e.taskIndexes[i] ?? Number.MAX_SAFE_INTEGER })))
+    .sort((a, b) => a.index - b.index);
+  return { ...data, lists, tasks: placeTasks(data.tasks, back, lists), deleted: data.deleted.filter((e) => e.batch !== batch) };
+}
+
+/** Restore from Recently deleted: back in its list (or the first list if that is gone), at the end. */
+export function restoreDeleted(data: AppData, entryId: string): AppData {
+  const entry = data.deleted.find((e) => e.id === entryId);
+  if (!entry) return data;
+  const list = entry.list;
+  const lists = list && !data.lists.some((l) => l.id === list.id) ? [...data.lists, list] : data.lists;
+  const back = entry.tasks.map((task) => ({ task, index: Number.MAX_SAFE_INTEGER }));
+  return { ...data, lists, tasks: placeTasks(data.tasks, back, lists), deleted: data.deleted.filter((e) => e.id !== entryId) };
+}
+
+/** Deletes one entry of Recently deleted for good. */
+export function forgetDeleted(data: AppData, entryId: string): AppData {
+  return { ...data, deleted: data.deleted.filter((e) => e.id !== entryId) };
+}
+
+/** Empty Recently Deleted. */
+export function emptyDeleted(data: AppData): AppData {
+  return data.deleted.length === 0 ? data : { ...data, deleted: [] };
+}
+
+/** Drops entries older than `KEEP_DELETED_DAYS`. Returns the same object when nothing expired. */
+export function purgeDeleted(data: AppData, now: Date): AppData {
+  const cutoff = now.getTime() - KEEP_DELETED_DAYS * 24 * 60 * 60 * 1000;
+  const kept = data.deleted.filter((e) => Date.parse(e.deletedAt) > cutoff);
+  return kept.length === data.deleted.length ? data : { ...data, deleted: kept };
 }
 
 export function upsertList(data: AppData, list: ReminderList): AppData {
@@ -279,17 +462,6 @@ export function upsertList(data: AppData, list: ReminderList): AppData {
   return {
     ...data,
     lists: exists ? data.lists.map((l) => (l.id === list.id ? list : l)) : [...data.lists, list],
-  };
-}
-
-/** Deletes a list and its tasks. The last list cannot be deleted. */
-export function deleteList(data: AppData, id: string): AppData {
-  if (data.lists.length <= 1) return data;
-  return {
-    ...data,
-    lists: data.lists.filter((l) => l.id !== id),
-    tasks: data.tasks.filter((t) => t.listId !== id),
-    settings: data.settings.floatView === id ? { ...data.settings, floatView: "today" } : data.settings,
   };
 }
 
@@ -316,6 +488,7 @@ export function deleteSection(data: AppData, listId: string, name: string): AppD
 }
 
 export function viewTitle(data: AppData, view: View): string {
+  if (view.kind === "deleted") return "Recently deleted";
   if (view.kind === "smart") return SMART_LISTS.find((s) => s.id === view.id)!.name;
   if (view.kind === "list") return data.lists.find((l) => l.id === view.id)?.name ?? "";
   return `Results for “${view.query}”`;

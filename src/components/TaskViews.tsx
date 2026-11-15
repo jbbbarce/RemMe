@@ -85,7 +85,7 @@ export function ListView({ data, view, tasks, now, actions, selectedId, onSelect
               onInfo={() => onInfo(task.id)}
               onFocus={() => startFocus(task.id)}
               onEnter={() => actions.add(task.id, { listId: task.listId, section: task.section })}
-              onEmpty={() => actions.remove(task.id)}
+              onEmpty={(before) => actions.removeEmptied(task, before)}
               onCommit={() => actions.commit(task)}
             />
           ))}
@@ -208,7 +208,7 @@ export function BoardView({ data, view, tasks, now, actions, selectedId, onSelec
                 onInfo={() => onInfo(task.id)}
                 onFocus={() => startFocus(task.id)}
                 onEnter={() => actions.add(task.id, { ...col.patch })}
-                onEmpty={() => actions.remove(task.id)}
+                onEmpty={(before) => actions.removeEmptied(task, before)}
                 onCommit={() => actions.commit(task)}
               />
             </div>

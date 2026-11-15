@@ -1,4 +1,5 @@
-import { CirclePlus, Search, X } from "lucide-react";
+import { Fragment } from "react";
+import { CirclePlus, Search, Trash2, X } from "lucide-react";
 import { LIST_ICON_COMPONENTS, SMART_ICONS } from "../icons";
 import { SMART_LISTS, smartCount } from "../model";
 import type { AppData, ReminderList, View } from "../types";
@@ -41,8 +42,8 @@ export function Sidebar({ data, view, now, search, onSearch, onView, onAddList, 
           const Icon = SMART_ICONS[smart.id];
           const active = view.kind === "smart" && view.id === smart.id;
           return (
+            <Fragment key={smart.id}>
             <button
-              key={smart.id}
               className={`nav-item${active ? " active" : ""}`}
               onClick={() => onView({ kind: "smart", id: smart.id })}
             >
@@ -54,6 +55,19 @@ export function Sidebar({ data, view, now, search, onSearch, onView, onAddList, 
                 <span className="nav-count">{smartCount(data, smart.id, now)}</span>
               )}
             </button>
+            {smart.id === "completed" && (
+              <button
+                className={`nav-item${view.kind === "deleted" ? " active" : ""}`}
+                onClick={() => onView({ kind: "deleted" })}
+              >
+                <span className="nav-icon">
+                  <Trash2 size={15} />
+                </span>
+                <span className="nav-name">Recently deleted</span>
+                {data.deleted.length > 0 && <span className="nav-count">{data.deleted.length}</span>}
+              </button>
+            )}
+            </Fragment>
           );
         })}
       </nav>
