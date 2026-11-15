@@ -55,6 +55,8 @@ export interface Task {
   nextId: string | null;
   /** Focus sessions finished on this reminder. */
   pomodoros: number;
+  /** ISO time a snoozed popup comes back. The due time stays as it is. */
+  snoozedUntil: string | null;
 }
 
 export const THEMES = ["pro", "calm", "paper", "fluent"] as const;
@@ -74,6 +76,8 @@ export interface Settings {
   pomodoroChime: boolean;
   /** Shows the verse of the day in the sidebar and the floating list. */
   verseOfDay: boolean;
+  /** Due-reminder popups stay on screen until Snooze, Done or ✕ is pressed. */
+  stickyReminders: boolean;
 }
 
 export type TimerPhase = "idle" | "focus" | "shortBreak" | "longBreak";
@@ -92,6 +96,13 @@ export interface TimerState {
   /** Focus sessions finished today. */
   today: number;
   day: string;
+}
+
+/** A button or click on a reminder popup, sent by the backend to the main window. */
+export interface PopupAction {
+  action: "snooze" | "done" | "open" | "today";
+  taskId: string | null;
+  minutes: number | null;
 }
 
 /** A timer phase that just ended. */

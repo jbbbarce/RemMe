@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
-import { AppWindow, BellRing, Flag, Flame, Info, ListChecks, Repeat, Timer } from "lucide-react";
+import { AppWindow, BellOff, BellRing, Flag, Flame, Info, ListChecks, Repeat, Timer } from "lucide-react";
 import { REPEAT_LABELS, currentStreak, formatDue, isOverdue } from "../dates";
+import { activeSnooze, snoozeLabel } from "../model";
 import type { ReminderList, Task } from "../types";
 
 interface Props {
@@ -43,6 +44,7 @@ export function TaskRow(props: Props) {
   const marks = "!".repeat(task.priority);
   const subtasksDone = task.subtasks.filter((s) => s.done).length;
   const streak = currentStreak(task, now);
+  const snoozed = activeSnooze(task, now);
 
   return (
     <div
@@ -88,9 +90,15 @@ export function TaskRow(props: Props) {
           />
         </div>
         {!compact && task.notes && <div className="task-notes">{task.notes}</div>}
-        {(due || task.subtasks.length > 0 || task.pomodoros > 0 || task.appTrigger || props.showList) && (
+        {(due || task.subtasks.length > 0 || task.pomodoros > 0 || task.appTrigger || props.showList || snoozed) && (
           <div className="task-meta">
             {due && <span className={overdue ? "overdue" : undefined}>{due}</span>}
+            {snoozed && (
+              <span className="meta-icon snoozed" title="Its popup comes back then; the due time stays">
+                <BellOff size={11} />
+                {snoozeLabel(snoozed, now)}
+              </span>
+            )}
             {task.repeat && (
               <span className="meta-icon" title={`Repeats ${REPEAT_LABELS[task.repeat].toLowerCase()}`}>
                 <Repeat size={11} />

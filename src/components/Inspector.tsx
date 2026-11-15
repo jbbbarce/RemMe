@@ -1,7 +1,7 @@
-import { AppWindow, BellRing, Flag, Plus, Timer, Trash2, X } from "lucide-react";
+import { AppWindow, BellOff, BellRing, Flag, Plus, Timer, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { newId } from "../model";
+import { activeSnooze, newId, snoozeLabel } from "../model";
 import { startFocus } from "../pomodoro";
 import { REPEAT_LABELS, fromInputs, toDateInput, toTimeInput } from "../dates";
 import { REPEATS, type AppData, type Priority, type Repeat, type Subtask, type Task } from "../types";
@@ -28,6 +28,7 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
   const list = data.lists.find((l) => l.id === task.listId);
   const date = task.dueAt ? toDateInput(task.dueAt) : "";
   const time = task.dueAt && task.dueHasTime ? toTimeInput(task.dueAt) : "";
+  const snoozed = activeSnooze(task, now);
 
   const setDate = (on: boolean) => {
     if (!on) return onChange({ dueAt: null, dueHasTime: false, repeat: null, nagMinutes: null });
@@ -123,6 +124,16 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
               ))}
             </select>
           </label>
+        )}
+        {snoozed && (
+          <div className="row snooze-row">
+            <span className="with-icon">
+              <BellOff size={14} /> {snoozeLabel(snoozed, now)}
+            </span>
+            <button className="link-btn" onClick={() => onChange({ snoozedUntil: null })}>
+              Clear
+            </button>
+          </div>
         )}
       </div>
 

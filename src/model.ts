@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pomodoroLong: 15,
   pomodoroChime: true,
   verseOfDay: true,
+  stickyReminders: true,
 };
 
 /** Session lengths are whole minutes from 1 to 180. */
@@ -84,6 +85,10 @@ export function normalize(raw: SavedData | null | undefined): AppData {
     appTrigger: typeof t.appTrigger === "string" && t.appTrigger.trim() ? t.appTrigger.trim() : null,
     nextId: typeof t.nextId === "string" ? t.nextId : null,
     pomodoros: typeof t.pomodoros === "number" && t.pomodoros > 0 ? Math.floor(t.pomodoros) : 0,
+    snoozedUntil:
+      typeof t.snoozedUntil === "string" && !Number.isNaN(Date.parse(t.snoozedUntil)) && !t.completed
+        ? t.snoozedUntil
+        : null,
   }));
   const settings = { ...DEFAULT_SETTINGS, ...raw?.settings };
   if (!THEMES.includes(settings.theme)) settings.theme = DEFAULT_SETTINGS.theme;
@@ -92,6 +97,7 @@ export function normalize(raw: SavedData | null | undefined): AppData {
   settings.pomodoroLong = validMinutes(settings.pomodoroLong, DEFAULT_SETTINGS.pomodoroLong);
   settings.pomodoroChime = settings.pomodoroChime !== false;
   settings.verseOfDay = settings.verseOfDay !== false;
+  settings.stickyReminders = settings.stickyReminders !== false;
   return { version: 1, lists, tasks, settings };
 }
 
@@ -180,11 +186,40 @@ export function newTaskFor(data: AppData, view: View, now: Date, section: string
     appTrigger: null,
     nextId: null,
     pomodoros: 0,
+    snoozedUntil: null,
   };
 }
 
+/**
+ * Applies a change to one task. A new due date or time, or checking the task off,
+ * cancels its snooze: the popup then follows the new due time instead.
+ */
 export function updateTask(data: AppData, id: string, patch: Partial<Task>): AppData {
-  return { ...data, tasks: data.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) };
+  return {
+    ...data,
+    tasks: data.tasks.map((t) => {
+      if (t.id !== id) return t;
+      const rescheduled =
+        ("dueAt" in patch && patch.dueAt !== t.dueAt) || ("dueHasTime" in patch && patch.dueHasTime !== t.dueHasTime);
+      const cancelsSnooze = rescheduled || patch.completed === true;
+      return { ...t, ...patch, ...(cancelsSnooze && !("snoozedUntil" in patch) && { snoozedUntil: null }) };
+    }),
+  };
+}
+
+/** When a snoozed reminder's popup comes back, or null if it isn't snoozed now. */
+export function activeSnooze(task: Task, now: Date): Date | null {
+  if (!task.snoozedUntil || task.completed) return null;
+  const until = new Date(task.snoozedUntil);
+  return until > now ? until : null;
+}
+
+/** "Snoozed until 3:40 PM", with the day too when it isn't today. */
+export function snoozeLabel(until: Date, now: Date): string {
+  const time = until.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const sameDay = until.toDateString() === now.toDateString();
+  const day = until.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  return `Snoozed until ${sameDay ? time : `${day}, ${time}`}`;
 }
 
 /** How long after checking off a repeating reminder unchecking it takes back the next one. */
@@ -212,6 +247,7 @@ export function setCompleted(data: AppData, id: string, completed: boolean, now:
     id: nextId ?? newId(),
     nextId: null,
     pomodoros: 0,
+    snoozedUntil: null,
     streak,
     dueAt: nextDue(task, task.repeat, now),
     completed: false,

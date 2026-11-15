@@ -217,6 +217,18 @@ export function SettingsDialog({ data, onShortcuts, onTheme, onSettings, updates
       </div>
       <p className="hint">The long break comes after every fourth focus session. New lengths apply from the next session.</p>
 
+      <h3 className="settings-head">Notifications</h3>
+      <div className="group">
+        <label className="row">
+          <span>Keep reminder popups on screen until I respond</span>
+          <Switch checked={data.settings.stickyReminders} onChange={(stickyReminders) => onSettings({ stickyReminders })} />
+        </label>
+      </div>
+      <p className="hint">
+        Reminder popups have Snooze 10 min, Snooze 1 hour and Done buttons. Windows only passes on a button press while
+        the popup is on screen, so with this off, use them before the popup slides away.
+      </p>
+
       <h3 className="settings-head">Verse of the day</h3>
       <div className="group">
         <label className="row">

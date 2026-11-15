@@ -267,12 +267,18 @@ fn setting(data: &Value, key: &str, fallback: &str) -> String {
 
 #[derive(Debug, PartialEq)]
 struct DueTask {
+    id: String,
     /// `taskId|dueAt`, so moving the due time notifies again.
     key: String,
     title: String,
     /// Notify again this many minutes after the last one until the task is done.
     nag_minutes: Option<i64>,
+    /// `taskId|snooze|snoozedUntil` for a snooze that has ended, so it notifies once more.
+    snooze_key: Option<String>,
 }
+
+/// At most this many popups with buttons per check; the rest are summed up in one.
+const MAX_POPUPS: usize = 3;
 
 /// Returns every unfinished task whose due time has passed,
 /// plus the set of keys for all tasks that have a due time.
@@ -288,12 +294,26 @@ fn due_tasks(data: &Value, now: DateTime<Utc>) -> (Vec<DueTask>, HashSet<String>
         };
         let key = format!("{id}|{due_at}");
         all_keys.insert(key.clone());
+        // A snoozed task stays quiet until its snooze ends, then notifies once more.
+        let mut snooze_key = None;
+        if let Some(until) = task["snoozedUntil"].as_str() {
+            if let Ok(until_time) = DateTime::parse_from_rfc3339(until) {
+                let skey = format!("{id}|snooze|{until}");
+                all_keys.insert(skey.clone());
+                if until_time > now {
+                    continue;
+                }
+                snooze_key = Some(skey);
+            }
+        }
         if !task["completed"].as_bool().unwrap_or(false) && when <= now {
             let title = task["title"].as_str().unwrap_or("").trim();
             due.push(DueTask {
+                id: id.to_string(),
                 key,
                 title: if title.is_empty() { "Reminder".into() } else { title.into() },
                 nag_minutes: task["nagMinutes"].as_i64().filter(|m| *m > 0),
+                snooze_key,
             });
         }
     }
@@ -304,6 +324,9 @@ fn due_tasks(data: &Value, now: DateTime<Utc>) -> (Vec<DueTask>, HashSet<String>
 /// every `nag_minutes` for as long as it stays unfinished.
 fn should_notify(task: &DueTask, ui: &UiState, now: i64) -> bool {
     if !ui.notified.contains(&task.key) {
+        return true;
+    }
+    if task.snooze_key.as_ref().is_some_and(|key| !ui.notified.contains(key)) {
         return true;
     }
     let Some(minutes) = task.nag_minutes else { return false };
@@ -320,30 +343,139 @@ fn check_reminders(app: &AppHandle) {
     let before = (ui.notified.len(), ui.last_nag.len());
     ui.notified.retain(|key| all_keys.contains(key));
     ui.last_nag.retain(|key, _| all_keys.contains(key));
-    let mut fired = false;
+    let sticky = data["settings"]["stickyReminders"].as_bool() != Some(false);
+    let mut popups = Vec::new();
     for task in due {
         if !should_notify(&task, &ui, now.timestamp()) {
             continue;
         }
-        let again = ui.notified.contains(&task.key);
+        let snooze_ended = task.snooze_key.as_ref().is_some_and(|key| !ui.notified.contains(key));
+        let again = ui.notified.contains(&task.key) && !snooze_ended;
         let heading = if again { "Still to do" } else { "Reminder" };
-        let _ = app.notification().builder().title(heading).body(&task.title).show();
-        if !again {
+        popups.push((heading, task.id.clone(), task.title.clone()));
+        if !ui.notified.contains(&task.key) {
             ui.notified.push(task.key.clone());
+        }
+        if let Some(key) = task.snooze_key.filter(|_| snooze_ended) {
+            ui.notified.push(key);
         }
         if task.nag_minutes.is_some() {
             ui.last_nag.insert(task.key, now.timestamp());
         }
-        fired = true;
     }
+    let fired = !popups.is_empty();
     if fired || (ui.notified.len(), ui.last_nag.len()) != before {
         save_ui(&state, &ui);
     }
     drop(ui);
 
+    let more = popups.len().saturating_sub(MAX_POPUPS);
+    for (heading, id, title) in popups.into_iter().take(MAX_POPUPS) {
+        show_popup(app, Popup::Due { task_id: id, sticky }, heading, &title);
+    }
+    if more > 0 {
+        let body = if more == 1 {
+            "And 1 more reminder is due".to_string()
+        } else {
+            format!("And {more} more reminders are due")
+        };
+        show_popup(app, Popup::Summary, "Reminders", &body);
+    }
     if fired {
         show_float_for_notification(app);
     }
+}
+
+/// The kinds of reminder popup, which differ in their buttons and in what a click does.
+enum Popup {
+    /// A due reminder: Snooze 10 min, Snooze 1 hour and Done. `sticky` keeps it on screen until answered.
+    Due { task_id: String, sticky: bool },
+    /// "You opened <app>": Done only.
+    App { task_id: String },
+    /// Reminders beyond the first few: no buttons; a click opens Today.
+    Summary,
+}
+
+/// What a popup's button or click asks the main window to do with a reminder.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PopupAction {
+    /// "snooze", "done", "open" or "today".
+    action: &'static str,
+    task_id: Option<String>,
+    minutes: Option<u32>,
+}
+
+/// Turns a popup click into an action: `button` is the pressed button, `None` for the popup itself.
+fn popup_action(task_id: Option<String>, button: Option<&str>) -> PopupAction {
+    let (action, minutes) = match button {
+        Some("snooze10") => ("snooze", Some(10)),
+        Some("snooze60") => ("snooze", Some(60)),
+        Some("done") => ("done", None),
+        _ if task_id.is_some() => ("open", None),
+        _ => ("today", None),
+    };
+    PopupAction { action, task_id, minutes }
+}
+
+/// The main window applies a popup's action, so Done works exactly like ticking off in RemMe.
+fn popup_activated(app: &AppHandle, task_id: Option<String>, button: Option<&str>) {
+    let action = popup_action(task_id, button);
+    if matches!(action.action, "open" | "today") {
+        show_main_window(app);
+    }
+    let _ = app.emit_to(MAIN, "popup-action", action);
+}
+
+/// Toasts of an installed app carry its id; a development build borrows PowerShell's,
+/// since Windows only shows toasts for registered app ids. Same rule as the notification plugin.
+#[cfg(windows)]
+fn toast_app_id(app: &AppHandle) -> String {
+    let dev = tauri::utils::platform::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.ends_with("target\\debug") || dir.ends_with("target\\release")))
+        .unwrap_or(true);
+    if dev {
+        tauri_winrt_notification::Toast::POWERSHELL_APP_ID.to_string()
+    } else {
+        app.config().identifier.clone()
+    }
+}
+
+#[cfg(windows)]
+fn show_popup(app: &AppHandle, popup: Popup, heading: &str, body: &str) {
+    use tauri_winrt_notification::{Scenario, Toast};
+    let mut toast = Toast::new(&toast_app_id(app)).title(heading).text1(body);
+    let task_id = match &popup {
+        Popup::Due { task_id, sticky } => {
+            toast = toast
+                .add_button("Snooze 10 min", "snooze10")
+                .add_button("Snooze 1 hour", "snooze60")
+                .add_button("Done", "done");
+            if *sticky {
+                toast = toast.scenario(Scenario::Reminder);
+            }
+            Some(task_id.clone())
+        }
+        Popup::App { task_id } => {
+            toast = toast.add_button("Done", "done");
+            Some(task_id.clone())
+        }
+        Popup::Summary => None,
+    };
+    let handle = app.clone();
+    let toast = toast.on_activated(move |button| {
+        popup_activated(&handle, task_id.clone(), button.as_deref());
+        Ok(())
+    });
+    if let Err(error) = toast.show() {
+        eprintln!("Could not show a notification: {error}");
+    }
+}
+
+#[cfg(not(windows))]
+fn show_popup(app: &AppHandle, _popup: Popup, heading: &str, body: &str) {
+    let _ = app.notification().builder().title(heading).body(body).show();
 }
 
 /// How an app is matched: "Chrome.exe", "chrome" and " chrome.EXE " are the same app.
@@ -358,16 +490,17 @@ fn running_apps_now(system: &mut System) -> HashSet<String> {
     system.processes().values().map(|p| app_key(&p.name().to_string_lossy())).collect()
 }
 
-/// Returns `(app, title)` for every unfinished task set to remind when one of the `started` apps opens.
-fn app_triggered(data: &Value, started: &HashSet<String>) -> Vec<(String, String)> {
+/// Returns `(app, task id, title)` for every unfinished task set to remind when one of the `started` apps opens.
+fn app_triggered(data: &Value, started: &HashSet<String>) -> Vec<(String, String, String)> {
     let mut hits = Vec::new();
     for task in data["tasks"].as_array().into_iter().flatten() {
         let Some(app) = task["appTrigger"].as_str().filter(|a| !a.trim().is_empty()) else { continue };
         if task["completed"].as_bool().unwrap_or(false) || !started.contains(&app_key(app)) {
             continue;
         }
+        let id = task["id"].as_str().unwrap_or("").to_string();
         let title = task["title"].as_str().unwrap_or("").trim();
-        hits.push((app.trim().to_string(), if title.is_empty() { "Reminder".into() } else { title.into() }));
+        hits.push((app.trim().to_string(), id, if title.is_empty() { "Reminder".into() } else { title.into() }));
     }
     hits
 }
@@ -399,8 +532,8 @@ fn watch_apps(app: AppHandle) {
         }
         let data = app.state::<AppState>().data.lock().unwrap().clone();
         let hits = app_triggered(&data, &started);
-        for (name, title) in &hits {
-            let _ = app.notification().builder().title(format!("You opened {name}")).body(title).show();
+        for (name, id, title) in &hits {
+            show_popup(&app, Popup::App { task_id: id.clone() }, &format!("You opened {name}"), title);
         }
         if !hits.is_empty() {
             show_float_for_notification(&app);
@@ -1169,7 +1302,13 @@ mod tests {
         let (due, keys) = due_tasks(&data, now());
         assert_eq!(
             due,
-            vec![DueTask { key: "a|2026-10-27T11:59:00Z".into(), title: "Pay bills".into(), nag_minutes: None }]
+            vec![DueTask {
+                id: "a".into(),
+                key: "a|2026-10-27T11:59:00Z".into(),
+                title: "Pay bills".into(),
+                nag_minutes: None,
+                snooze_key: None,
+            }]
         );
         assert_eq!(keys.len(), 3);
     }
@@ -1212,6 +1351,36 @@ mod tests {
     }
 
     #[test]
+    fn a_snoozed_task_waits_then_notifies_once_more() {
+        let data = json!({ "tasks": [
+            { "id": "a", "title": "x", "dueAt": "2026-10-27T11:00:00Z", "completed": false,
+              "snoozedUntil": "2026-10-27T12:10:00Z" }
+        ]});
+        let (due, keys) = due_tasks(&data, now());
+        assert!(due.is_empty(), "still snoozed");
+        assert!(keys.contains("a|snooze|2026-10-27T12:10:00Z"), "the snooze key isn't pruned while snoozed");
+
+        let later = now() + chrono::Duration::minutes(15);
+        let (due, _) = due_tasks(&data, later);
+        let task = &due[0];
+        let mut ui = UiState { notified: vec![task.key.clone()], ..UiState::default() };
+        assert!(should_notify(task, &ui, later.timestamp()), "the ended snooze notifies again");
+        ui.notified.push(task.snooze_key.clone().unwrap());
+        assert!(!should_notify(task, &ui, later.timestamp()), "but only once");
+    }
+
+    #[test]
+    fn popup_clicks_become_actions() {
+        let id = || Some("a".to_string());
+        let check = |a: PopupAction| (a.action, a.task_id, a.minutes);
+        assert_eq!(check(popup_action(id(), Some("snooze10"))), ("snooze", id(), Some(10)));
+        assert_eq!(check(popup_action(id(), Some("snooze60"))), ("snooze", id(), Some(60)));
+        assert_eq!(check(popup_action(id(), Some("done"))), ("done", id(), None));
+        assert_eq!(check(popup_action(id(), None)), ("open", id(), None));
+        assert_eq!(check(popup_action(None, None)), ("today", None, None));
+    }
+
+    #[test]
     fn app_names_match_loosely() {
         assert_eq!(app_key(" Chrome.EXE "), "chrome");
         assert_eq!(app_key("chrome"), "chrome");
@@ -1226,7 +1395,10 @@ mod tests {
             { "id": "d", "title": "None", "appTrigger": null, "completed": false }
         ]});
         let started = HashSet::from(["teams".to_string()]);
-        assert_eq!(app_triggered(&data, &started), vec![("Teams.exe".to_string(), "Log hours".to_string())]);
+        assert_eq!(
+            app_triggered(&data, &started),
+            vec![("Teams.exe".to_string(), "a".to_string(), "Log hours".to_string())]
+        );
     }
 
     #[test]

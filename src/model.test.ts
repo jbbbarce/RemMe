@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { currentStreak, formatDue, isOverdue } from "./dates";
-import { deleteList, deleteSection, floatViewOf, normalize, renameSection, setCompleted, smartCount, tasksFor } from "./model";
+import {
+  activeSnooze,
+  deleteList,
+  deleteSection,
+  floatViewOf,
+  normalize,
+  renameSection,
+  setCompleted,
+  smartCount,
+  tasksFor,
+  updateTask,
+} from "./model";
 import { shortcutFromEvent } from "./shortcut";
 import { isDarkColor } from "./theme";
 import type { Task } from "./types";
@@ -28,6 +39,7 @@ function task(over: Partial<Task>): Task {
     appTrigger: null,
     nextId: null,
     pomodoros: 0,
+    snoozedUntil: null,
     ...over,
   };
 }
@@ -263,5 +275,41 @@ describe("title bar", () => {
     expect(isDarkColor("#232220")).toBe(true);
     expect(isDarkColor("#f4f1ec")).toBe(false);
     expect(isDarkColor("#f2ead8")).toBe(false);
+  });
+});
+
+describe("snoozing", () => {
+  const data = (over: Partial<Task>) => normalize({ lists: [], tasks: [task({ id: "a", ...over })] } as never);
+  const due = new Date(2026, 9, 27, 11, 0).toISOString();
+  const until = new Date(2026, 9, 27, 12, 30).toISOString();
+
+  it("is active until the snooze time, and not on a done reminder", () => {
+    expect(activeSnooze(task({ snoozedUntil: until }), now)).toEqual(new Date(until));
+    expect(activeSnooze(task({ snoozedUntil: until }), new Date(2026, 9, 27, 12, 31))).toBeNull();
+    expect(activeSnooze(task({ snoozedUntil: until, completed: true }), now)).toBeNull();
+  });
+
+  it("is cancelled by a new due date or time, or by ticking off", () => {
+    const snoozed = data({ dueAt: due, snoozedUntil: until });
+    const later = new Date(2026, 9, 28, 9, 0).toISOString();
+    expect(updateTask(snoozed, "a", { dueAt: later }).tasks[0].snoozedUntil).toBeNull();
+    expect(updateTask(snoozed, "a", { dueHasTime: true }).tasks[0].snoozedUntil).toBeNull();
+    expect(setCompleted(snoozed, "a", true, now).tasks[0].snoozedUntil).toBeNull();
+  });
+
+  it("survives edits that don't reschedule", () => {
+    const snoozed = data({ dueAt: due, snoozedUntil: until });
+    expect(updateTask(snoozed, "a", { title: "renamed", dueAt: due }).tasks[0].snoozedUntil).toBe(until);
+  });
+
+  it("starts fresh on the next repeat", () => {
+    const repeating = data({ dueAt: due, repeat: "daily", snoozedUntil: until });
+    const next = setCompleted(repeating, "a", true, now, "b").tasks.find((t) => t.id === "b")!;
+    expect(next.snoozedUntil).toBeNull();
+  });
+
+  it("drops an unreadable snooze time when loading", () => {
+    expect(data({ snoozedUntil: "soon" }).tasks[0].snoozedUntil).toBeNull();
+    expect(data({ snoozedUntil: until }).tasks[0].snoozedUntil).toBe(until);
   });
 });

@@ -5,14 +5,16 @@ import {
   clearCompleted,
   deleteList,
   newId,
+  setCompleted,
   tasksFor,
+  updateTask,
   upsertList,
   viewTitle,
 } from "../model";
 import { playChime } from "../pomodoro";
 import { setFloat, useFloatState, useNow } from "../store";
 import { useUpdates } from "../updates";
-import type { AppData, ReminderList, TimerFinished, View } from "../types";
+import type { AppData, PopupAction, ReminderList, TimerFinished, View } from "../types";
 import { ListDialog, SettingsDialog } from "./Dialogs";
 import { UpdateBar } from "./UpdateBar";
 import { RecoveryBanner } from "./Backups";
@@ -93,6 +95,38 @@ export function MainApp({ data, update, saveError }: Props) {
       unlisten.then((stop) => stop(), () => {});
     };
   }, [chime, update]);
+
+  // Buttons and clicks on reminder popups arrive here, so Done works exactly like ticking off.
+  useEffect(() => {
+    const unlisten = listen<PopupAction>("popup-action", ({ payload }) => {
+      const { action, taskId, minutes } = payload;
+      if (action === "today") {
+        setSearch("");
+        setBaseView({ kind: "smart", id: "today" });
+        return;
+      }
+      if (!taskId) return;
+      if (action === "snooze" && minutes) {
+        const until = new Date(Date.now() + minutes * 60_000).toISOString();
+        update((d) => updateTask(d, taskId, { snoozedUntil: until }));
+      } else if (action === "done") {
+        update((d) => {
+          const task = d.tasks.find((t) => t.id === taskId);
+          return task && !task.completed ? setCompleted(d, taskId, true, new Date()) : d;
+        });
+      } else if (action === "open") {
+        const task = data.tasks.find((t) => t.id === taskId);
+        if (!task) return;
+        setSearch("");
+        setBaseView({ kind: "list", id: task.listId });
+        setSelectedId(taskId);
+        setInspectId(taskId);
+      }
+    });
+    return () => {
+      unlisten.then((stop) => stop(), () => {});
+    };
+  }, [data.tasks, update]);
 
   useEffect(() => writeLocal(VIEW_KEY, baseView), [baseView]);
   useEffect(() => writeLocal(LAYOUT_KEY, layout), [layout]);

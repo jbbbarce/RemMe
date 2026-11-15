@@ -32,6 +32,8 @@ tauri-plugin-dialog = "2"
 # The same version Tauri uses, for handing focus back after showing the floating list.
 windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging"] }
 sysinfo = { version = "0.40.1", default-features = false, features = ["system"] }
+# The toast library the notification plugin uses; called directly for buttons and reminder-style popups.
+tauri-winrt-notification = "0.8.1"
 
 [profile.release]
 codegen-units = 1

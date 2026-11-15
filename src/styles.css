@@ -1866,6 +1866,29 @@ kbd {
   white-space: nowrap;
 }
 
+/* ---------- Snoozed reminders ---------- */
+
+.meta-icon.snoozed {
+  color: var(--ui);
+}
+
+.snooze-row {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.link-btn {
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  color: var(--ui);
+  font-weight: 600;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
 /* ---------- Backups ---------- */
 
 .row-actions .icon-btn {

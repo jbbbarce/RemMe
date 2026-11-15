@@ -39,6 +39,10 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
 - **Habit streaks:** a repeating reminder shows a flame and how many times in a row it was done by its due day. Finishing one late, or letting its day pass, starts the count over.
 - **App-triggered reminders:** set **When I open** in a reminder's details to an app, such as `chrome.exe` (the box suggests apps that are running now). Each time that app starts, you get a notification about the reminder until it's done. Apps already running when RemMe starts don't count.
 - **Notifications:** a Windows notification appears when a reminder is due. Due checks run every 15 seconds while the app is running, and overdue reminders notify at startup. A due reminder also brings up the floating list.
+  - The popup has **Snooze 10 min**, **Snooze 1 hour** and **Done**. Snoozing keeps the due time and only brings the popup back later; the reminder shows *Snoozed until …* (clear it in its details). Done is the same as ticking it off.
+  - Click the popup to open the reminder's details. When more than 3 are due at once, the rest are summed up in one popup.
+  - By default reminder popups stay on screen until you respond, because Windows only passes on a button press while the popup is showing. Turn that off in **Settings → Notifications**.
+  - "You opened <app>" popups have a **Done** button.
 - **Floating list:** a small always-on-top window showing any smart list or list. Pick which one from its header.
   - **Ctrl+Shift+O** shows or hides it from any app.
   - **Ctrl+Shift+L** locks or unlocks it. When locked, the window is slightly transparent, can't be moved or edited, and mouse clicks go through it to the window behind.
