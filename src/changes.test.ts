@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeMessage, completedMessage, moveTask, normalize, restoreSnapshot, setCompleted, snapshot, updateTask } from "./model";
+import { changeManyMessage, changeMessage, completedMessage, dayGroups, moveTask, normalize, restoreSnapshot, setCompleted, snapshot, updateTask, updateTasks } from "./model";
 import type { SavedData } from "./model";
 import type { AppData } from "./types";
 
@@ -74,5 +74,57 @@ describe("undo toast wording", () => {
   it("says nothing when nothing worth undoing changed", () => {
     expect(changeMessage(data(), "a", { listId: "home", section: null }, now)).toBeNull();
     expect(changeMessage(data(), "zzz", { priority: 2 }, now)).toBeNull();
+  });
+});
+
+describe("changing several reminders at once", () => {
+  it("moves each to the chosen day, keeping its own time", () => {
+    const d = updateTask(data(), "a", { dueAt: new Date(2026, 10, 16, 17, 30).toISOString(), dueHasTime: true });
+    const next = updateTasks(d, ["a", "b"], { dueAt: new Date(2026, 10, 17, 9).toISOString(), dueHasTime: false });
+    const [a, b] = ["a", "b"].map((id) => next.tasks.find((t) => t.id === id)!);
+    expect(new Date(a.dueAt!)).toEqual(new Date(2026, 10, 17, 17, 30));
+    expect(a.dueHasTime).toBe(true);
+    expect(new Date(b.dueAt!)).toEqual(new Date(2026, 10, 17, 9));
+    expect(b.dueHasTime).toBe(false);
+  });
+
+  it("can be undone in one go", () => {
+    const d = data();
+    const snap = snapshot(d, ["a", "c"]);
+    const moved = updateTasks(d, ["a", "c"], { listId: "school", section: null });
+    expect(moved.tasks.filter((t) => t.listId === "school").length).toBe(2);
+    expect(restoreSnapshot(moved, snap)).toEqual(d);
+  });
+
+  it("says what changed", () => {
+    const d = data();
+    expect(changeManyMessage(d, ["a", "b"], { listId: "school", section: null }, now)).toBe("Moved 2 reminders to School");
+    expect(changeManyMessage(d, ["a", "b"], { flagged: true }, now)).toBe("Flagged 2 reminders");
+    expect(changeManyMessage(d, ["a", "b"], { dueAt: null }, now)).toBe("Removed the date from 2 reminders");
+    expect(changeManyMessage(d, ["a"], { flagged: true }, now)).toBe("Flagged “Pay rent”");
+  });
+});
+
+describe("day groups in Today and Upcoming", () => {
+  const at = (day: number, hour: number, hasTime = true) => ({ dueAt: new Date(2026, 10, day, hour).toISOString(), dueHasTime: hasTime });
+  const task = (id: string, due: ReturnType<typeof at>) => ({ ...data().tasks[0], id, ...due });
+
+  it("puts overdue first, then each day", () => {
+    const groups = dayGroups(
+      [task("today9", at(16, 9, false)), task("late", at(16, 10)), task("tomorrow", at(17, 8)), task("fri", at(20, 8)), task("dec", at(40, 8))],
+      now,
+    );
+    expect(groups.map((g) => [g.title, g.tasks.map((t) => t.id)])).toEqual([
+      ["Overdue", ["late"]],
+      ["Today", ["today9"]],
+      ["Tomorrow", ["tomorrow"]],
+      ["Friday", ["fri"]],
+      ["December", ["dec"]],
+    ]);
+  });
+
+  it("keeps a reminder just ticked off in its group", () => {
+    const done = { ...task("late", at(16, 10)), completed: true };
+    expect(dayGroups([done], now)[0].title).toBe("Overdue");
   });
 });

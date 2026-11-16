@@ -1,4 +1,4 @@
-import { doneOnTime, endOfDay, formatDue, nextDue, startOfDay } from "./dates";
+import { doneOnTime, dueOnDay, endOfDay, formatDue, isOverdue, nextDue, startOfDay } from "./dates";
 import {
   DENSITIES,
   LIST_COLORS,
@@ -526,6 +526,78 @@ export function changeMessage(data: AppData, id: string, patch: Partial<Task>, n
     return `${patch.flagged ? "Flagged" : "Unflagged"} ${name}`;
   }
   return null;
+}
+
+/**
+ * Changes several reminders at once, as from a multi-selection. A date in `patch` moves each
+ * reminder to that day and keeps its own time (or lack of one).
+ */
+export function updateTasks(data: AppData, ids: readonly string[], patch: Partial<Task>): AppData {
+  let next = data;
+  for (const id of ids) {
+    const task = next.tasks.find((t) => t.id === id);
+    if (!task) continue;
+    const own = typeof patch.dueAt === "string" ? { ...patch, ...dueOnDay(task, new Date(patch.dueAt)) } : patch;
+    next = updateTask(next, id, own);
+  }
+  return next;
+}
+
+/** The Undo toast after a change to several reminders; one reminder gets `changeMessage`. */
+export function changeManyMessage(data: AppData, ids: readonly string[], patch: Partial<Task>, now: Date): string | null {
+  if (ids.length === 1) return changeMessage(data, ids[0], patch, now);
+  const n = plural(ids.length, "reminder");
+  if (patch.listId !== undefined) return `Moved ${n} to ${data.lists.find((l) => l.id === patch.listId)?.name ?? "another list"}`;
+  if (patch.dueAt !== undefined) {
+    return patch.dueAt ? `Moved ${n} to ${formatDue({ dueAt: patch.dueAt, dueHasTime: false }, now)}` : `Removed the date from ${n}`;
+  }
+  if (patch.priority !== undefined) {
+    return patch.priority ? `Set ${n} to ${["", "Low", "Medium", "High"][patch.priority]} priority` : `Removed the priority from ${n}`;
+  }
+  if (patch.flagged !== undefined) return `${patch.flagged ? "Flagged" : "Unflagged"} ${n}`;
+  return `Changed ${n}`;
+}
+
+/** The Undo toast after ticking several reminders off at once. */
+export function completedManyMessage(count: number): string {
+  return `Completed ${plural(count, "reminder")}`;
+}
+
+export interface DayGroup {
+  key: string;
+  title: string;
+  overdue: boolean;
+  tasks: Task[];
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The heading a dated reminder sits under in Today and Upcoming: Overdue, Today, Tomorrow, a
+ * weekday for the rest of the coming week, then "Later this month" and month names.
+ */
+export function dayGroupTitle(task: Task, now: Date): string {
+  if (!task.dueAt) return "No date";
+  // A reminder just ticked off stays where it was for a moment.
+  if (isOverdue({ ...task, completed: false }, now)) return "Overdue";
+  const due = new Date(task.dueAt);
+  const days = Math.round((startOfDay(due).getTime() - startOfDay(now).getTime()) / DAY_MS);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Tomorrow";
+  if (days < 7) return due.toLocaleDateString(undefined, { weekday: "long" });
+  if (due.getFullYear() === now.getFullYear() && due.getMonth() === now.getMonth()) return "Later this month";
+  return due.toLocaleDateString(undefined, { month: "long", year: due.getFullYear() === now.getFullYear() ? undefined : "numeric" });
+}
+
+/** Groups reminders (already sorted by date) under their day headings, Overdue first. */
+export function dayGroups(tasks: Task[], now: Date): DayGroup[] {
+  const groups = new Map<string, DayGroup>();
+  for (const task of tasks) {
+    const title = dayGroupTitle(task, now);
+    if (!groups.has(title)) groups.set(title, { key: title, title, overdue: title === "Overdue", tasks: [] });
+    groups.get(title)!.tasks.push(task);
+  }
+  return [...groups.values()].sort((a, b) => Number(b.overdue) - Number(a.overdue));
 }
 
 /** The Undo toast after ticking a reminder off. */

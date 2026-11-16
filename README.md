@@ -13,6 +13,7 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
   - **Paper and ink:** cream paper, serif headings, hand-drawn-style checkboxes.
   - The window's title bar takes the theme's colour too (on Windows 10, only light or dark).
 - **Smart lists:** Today, Upcoming, All, Flagged and Done, with live counts.
+  - **Today** puts overdue reminders under **Overdue** at the top. **Upcoming** groups them by day: Overdue, Today, Tomorrow, the weekdays of the coming week, then *Later this month* and each month. Rows there show their list's name.
 - **Calendar** (in the sidebar): dated reminders from every list on a **Month** or **Week** grid, in their list's colour. The week starts on the day your Windows region uses.
   - Click an empty part of a day to type a reminder there (`Call mom 5pm` sets the time on that day; a typed date such as `tomorrow` wins). Click a reminder to open its details, or tick it done in place.
   - Drag a reminder to another day to move it; its time stays. Drag one onto the **No date** column to remove its date, or from there onto a day to give it one.
@@ -27,6 +28,8 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
   - **Click a reminder's priority** (Low, Medium, High) to change it.
 - **Drag and drop:** in a list, drag a reminder up or down to change its order (a grip shows in the margin). Drag a reminder onto a list in the sidebar to move it there, or onto another card or column on a board.
 - **Undo:** after ticking a reminder off, deleting, a quick change from its menu or date or priority button, dragging it to another list or column, or dragging it to another day on the calendar, a toast offers **Undo** for 8 seconds; **Ctrl+Z** does the same while it shows. Ticking off a repeating reminder and undoing it also takes back the next one.
+- **Select several reminders:** **Ctrl+click** adds or removes one, **Shift+click** selects everything between. A bar above the list then offers **Complete**, **Date**, **Priority**, **Move to**, **Flag** and **Delete** for all of them, each with one Undo. Right-clicking one of the selected reminders makes its menu act on all of them. **Esc** or **×** clears the selection.
+- **Search highlighting:** search results mark where the words you searched for appear in each title and its notes.
 - **Natural-language add:** type a date, time or priority into a new reminder's title and it is set for you when you finish typing. For example, `Call mom tomorrow 5pm !!` becomes "Call mom", due tomorrow at 5:00 PM with medium priority. It understands today, tonight, tomorrow, weekdays (`friday`, `next mon`), dates (`oct 30`, `30 oct`), `in 3 days`, `in 20 minutes`, times (`5pm`, `5:30 pm`, `17:00`, `at 6`, `noon`) and repeats (`daily`, `every week`, `every thursday`). While you type a new reminder, small labels under it show what it will set (for example *Tomorrow, 5:00 pm* and *Medium priority*). This also works in the floating list's add box.
 - **Repeating reminders:** set **Repeat** (daily, weekly, monthly or yearly) in a reminder's details. Checking it off keeps the done one in Completed and adds the next one; uncheck it straight away to take that back. A reminder finished late comes back on its next future date.
 - **Subtasks:** add a checklist in a reminder's details. The row shows how many are done, and the next repeat starts with them all unchecked.
@@ -71,6 +74,8 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
 - **Start with Windows** (in Settings) launches the app at sign-in, hidden in the tray.
 
 Keyboard: **Ctrl+N** adds a reminder, **Enter** in a title adds the next one, **Esc** leaves a title. A reminder whose title is left empty goes to Recently deleted.
+
+Moving through a list (outside a text box): **↑** and **↓** select the next or previous reminder (**Home** and **End** go to the first and last), and **Shift** with them selects a range. **Enter** or **F2** edits the selected title; **Esc** goes back to the row. **Space** ticks the selected reminders off (or back on), **Delete** deletes them, **Ctrl+A** selects all, **Ctrl+I** opens details and **Esc** clears the selection.
 
 Data is saved to `%APPDATA%\com.remme.app\reminders.json`. The first time RemMe starts, it copies your data from `%APPDATA%\com.reminders.app\`, where versions before the rename kept it. Floating window state and the list of reminders already notified are in `ui-state.json` next to it. A file that can't be read is renamed to `*.json.corrupt`; for `reminders.json`, RemMe then loads the newest readable backup from `backups` (or starts fresh if there is none).
 

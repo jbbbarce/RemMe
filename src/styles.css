@@ -3486,3 +3486,74 @@ html.acrylic .float {
   font-variant-numeric: tabular-nums;
   color: var(--text-2);
 }
+
+/* ---------- Day groups, keyboard focus, multi-select, search marks ---------- */
+
+.group-title.overdue {
+  color: var(--c-red);
+}
+
+/* The row the arrow keys are on. */
+.task-row:focus {
+  outline: none;
+}
+
+.task-row:focus-visible {
+  outline: 2px solid var(--focus, var(--ui));
+  outline-offset: -2px;
+}
+
+/* Search marks sit behind the title's own text, lined up with it. */
+.task-title-line {
+  position: relative;
+}
+
+.task-title {
+  position: relative;
+}
+
+.title-marks {
+  position: absolute;
+  inset: 0;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: transparent;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.task-row mark {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--c-yellow) 45%, transparent);
+  color: inherit;
+}
+
+.title-marks mark {
+  color: transparent;
+}
+
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+}
+
+.bulk-count {
+  margin-right: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.bulk-bar .tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.menu-count {
+  color: var(--text);
+  font-weight: 600;
+}

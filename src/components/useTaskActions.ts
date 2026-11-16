@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  changeManyMessage,
   changeMessage,
+  completedManyMessage,
   completedMessage,
   deleteTask,
   insertTask,
@@ -9,6 +11,7 @@ import {
   setCompleted,
   trashTasks,
   updateTask,
+  updateTasks,
 } from "../model";
 import { parseQuickAdd } from "../quickAdd";
 import type { AppData, Task, View } from "../types";
@@ -34,32 +37,37 @@ export function useTaskActions(
     return () => pending.forEach((id) => window.clearTimeout(id));
   }, []);
 
-  const toggle = useCallback(
-    (task: Task, completed: boolean) => {
+  /** Ticks reminders off (or back on). Ticking off offers Undo, which also takes back the next one a repeat added. */
+  const toggleMany = useCallback(
+    (tasks: readonly Task[], completed: boolean) => {
+      const ids = tasks.map((t) => t.id);
       let message = null as string | null;
       update((d) => {
-        if (completed) message = completedMessage(d, task.id);
-        return setCompleted(d, task.id, completed, new Date());
+        if (completed) message = ids.length === 1 ? completedMessage(d, ids[0]) : completedManyMessage(ids.length);
+        return ids.reduce((acc, id) => setCompleted(acc, id, completed, new Date()), d);
       });
-      window.clearTimeout(timers.current.get(task.id));
+      for (const id of ids) window.clearTimeout(timers.current.get(id));
       if (!completed) {
-        setLingering((s) => without(s, task.id));
+        setLingering((s) => without(s, ...ids));
         return;
       }
-      // Unchecking soon after also takes back the next one a repeating reminder added.
-      if (message && undo) undo.show(message, (d) => setCompleted(d, task.id, false, new Date()));
-      // Keep a just-finished reminder on screen for a moment, like Apple Reminders.
-      setLingering((s) => new Set(s).add(task.id));
-      timers.current.set(
-        task.id,
-        window.setTimeout(() => {
-          timers.current.delete(task.id);
-          setLingering((s) => without(s, task.id));
-        }, LINGER_MS),
-      );
+      if (message && undo) undo.show(message, (d) => ids.reduce((acc, id) => setCompleted(acc, id, false, new Date()), d));
+      // Keep just-finished reminders on screen for a moment, like Apple Reminders.
+      setLingering((s) => new Set([...s, ...ids]));
+      for (const id of ids) {
+        timers.current.set(
+          id,
+          window.setTimeout(() => {
+            timers.current.delete(id);
+            setLingering((s) => without(s, id));
+          }, LINGER_MS),
+        );
+      }
     },
     [update, undo],
   );
+
+  const toggle = useCallback((task: Task, completed: boolean) => toggleMany([task], completed), [toggleMany]);
 
   const change = useCallback(
     (id: string, patch: Partial<Task>) => update((d) => updateTask(d, id, patch)),
@@ -74,6 +82,16 @@ export function useTaskActions(
     (id: string, patch: Partial<Task>) => {
       const apply = (d: AppData) => updateTask(d, id, patch);
       if (undo) undo.track(apply, [id], (d) => changeMessage(d, id, patch, new Date()));
+      else update(apply);
+    },
+    [update, undo],
+  );
+
+  /** A quick change to several selected reminders at once, with one Undo. */
+  const quickMany = useCallback(
+    (ids: readonly string[], patch: Partial<Task>) => {
+      const apply = (d: AppData) => updateTasks(d, ids, patch);
+      if (undo) undo.track(apply, ids, (d) => changeManyMessage(d, ids, patch, new Date()));
       else update(apply);
     },
     [update, undo],
@@ -127,6 +145,16 @@ export function useTaskActions(
     [update, undo],
   );
 
+  /** Moves several reminders to Recently deleted, with one Undo. */
+  const removeMany = useCallback(
+    (ids: readonly string[]) => {
+      const deletion = (d: AppData, batch: string) => trashTasks(d, ids, new Date(), batch);
+      if (undo) undo.trash(deletion);
+      else update((d) => deletion(d, crypto.randomUUID()));
+    },
+    [update, undo],
+  );
+
   /**
    * A reminder's title was left empty. `titleBefore` is what it said before: one that never had a
    * title, notes or subtasks is just dropped; otherwise it goes to Recently deleted with that title.
@@ -146,11 +174,26 @@ export function useTaskActions(
   /** Whether a reminder was added empty and its title hasn't been read for a date yet. */
   const isFresh = useCallback((id: string) => fresh.current.has(id), []);
 
-  return { lingering, focusId, toggle, change, quick, move, add, commit, remove, removeEmptied, isFresh };
+  return {
+    lingering,
+    focusId,
+    toggle,
+    toggleMany,
+    change,
+    quick,
+    quickMany,
+    move,
+    add,
+    commit,
+    remove,
+    removeMany,
+    removeEmptied,
+    isFresh,
+  };
 }
 
-function without(set: ReadonlySet<string>, id: string): ReadonlySet<string> {
+function without(set: ReadonlySet<string>, ...ids: string[]): ReadonlySet<string> {
   const next = new Set(set);
-  next.delete(id);
+  for (const id of ids) next.delete(id);
   return next;
 }

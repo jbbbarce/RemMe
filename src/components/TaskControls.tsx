@@ -33,18 +33,27 @@ interface MenuProps {
   onDelete(): void;
   onInfo?(): void;
   onFocus?(): void;
+  /** Several reminders are selected and the menu changes all of them. */
+  count?: number;
   children: ReactElement;
 }
 
 const PRIORITIES: Priority[] = [0, 1, 2, 3];
 
 /** The right-click menu on a reminder row. Right-clicking inside a title being edited keeps the text menu. */
-export function TaskContextMenu({ task, lists, now, onChange, onDelete, onInfo, onFocus, children }: MenuProps) {
+export function TaskContextMenu({ task, lists, now, onChange, onDelete, onInfo, onFocus, count, children }: MenuProps) {
+  const many = !!count && count > 1;
   return (
     <ContextMenu.Root modal={false}>
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
         <ContextMenu.Content className="menu" collisionPadding={6}>
+          {many && (
+            <>
+              <ContextMenu.Label className="menu-label menu-count">{count} reminders selected</ContextMenu.Label>
+              <ContextMenu.Separator className="menu-sep" />
+            </>
+          )}
           <ContextMenu.Label className="menu-label">Date</ContextMenu.Label>
           {DAY_PRESETS.map((p) => (
             <ContextMenu.Item key={p} className="menu-item" onSelect={() => onChange(dueOnDay(task, presetDay(p, now)))}>
@@ -52,7 +61,7 @@ export function TaskContextMenu({ task, lists, now, onChange, onDelete, onInfo, 
               <span className="menu-hint">{shortDay(presetDay(p, now))}</span>
             </ContextMenu.Item>
           ))}
-          {task.dueAt && (
+          {(task.dueAt || many) && (
             <ContextMenu.Item className="menu-item" onSelect={() => onChange(NO_DUE)}>
               No date
             </ContextMenu.Item>
@@ -108,13 +117,13 @@ export function TaskContextMenu({ task, lists, now, onChange, onDelete, onInfo, 
             <Flag size={16} />
             {task.flagged ? "Remove flag" : "Flag"}
           </ContextMenu.Item>
-          {onFocus && !task.completed && (
+          {onFocus && !task.completed && !many && (
             <ContextMenu.Item className="menu-item" onSelect={onFocus}>
               <Timer size={16} />
               Focus on this
             </ContextMenu.Item>
           )}
-          {onInfo && (
+          {onInfo && !many && (
             <ContextMenu.Item className="menu-item" onSelect={onInfo}>
               <Info size={16} />
               Details
@@ -123,7 +132,7 @@ export function TaskContextMenu({ task, lists, now, onChange, onDelete, onInfo, 
           <ContextMenu.Separator className="menu-sep" />
           <ContextMenu.Item className="menu-item danger-item" onSelect={onDelete}>
             <Delete size={16} />
-            Delete
+            {many ? `Delete ${count} reminders` : "Delete"}
           </ContextMenu.Item>
         </ContextMenu.Content>
       </ContextMenu.Portal>

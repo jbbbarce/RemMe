@@ -1,7 +1,6 @@
 import { Add, Delete, Grip } from "../icons";
 import { useState } from "react";
-import { formatDue, isOverdue } from "../dates";
-import { deleteSection, renameSection, upsertList } from "../model";
+import { dayGroups, deleteSection, renameSection, upsertList } from "../model";
 import { startFocus } from "../pomodoro";
 import type { AppData, ReminderList, Task, View } from "../types";
 import { TaskRow } from "./TaskRow";
@@ -16,8 +15,9 @@ interface ViewProps {
   tasks: Task[];
   now: Date;
   actions: Actions;
-  selectedId: string | null;
-  onSelect(id: string): void;
+  /** The selected reminders; more than one is a multi-selection. */
+  selectedIds: readonly string[];
+  onSelect(id: string, mode?: "toggle" | "range"): void;
   onInfo(id: string): void;
   update(change: (d: AppData) => AppData): void;
 }
@@ -26,7 +26,30 @@ interface Group {
   key: string;
   title: string | null;
   color?: string;
+  overdue?: boolean;
   tasks: Task[];
+}
+
+/** Today and Upcoming group reminders by day rather than by list. */
+function byDay(view: View): boolean {
+  return view.kind === "smart" && (view.id === "today" || view.id === "scheduled");
+}
+
+/** Row props shared by the list and the board: selection, search marks, and the menu acting on a multi-selection. */
+function rowSelection({ view, actions, selectedIds, onSelect }: ViewProps, task: Task) {
+  const many = selectedIds.length > 1 && selectedIds.includes(task.id);
+  return {
+    selected: selectedIds.includes(task.id),
+    onSelect: (mode?: "toggle" | "range") => onSelect(task.id, mode),
+    highlight: view.kind === "search" ? view.query : undefined,
+    group: many
+      ? {
+          count: selectedIds.length,
+          onChange: (patch: Partial<Task>) => actions.quickMany(selectedIds, patch),
+          onDelete: () => actions.removeMany(selectedIds),
+        }
+      : undefined,
+  };
 }
 
 function groupTasks(data: AppData, view: View, tasks: Task[], now: Date): Group[] {
@@ -42,25 +65,24 @@ function groupTasks(data: AppData, view: View, tasks: Task[], now: Date): Group[
   if (view.kind === "smart" && view.id === "completed") {
     return [{ key: "all", title: null, tasks }];
   }
-  if (view.kind === "smart" && view.id === "scheduled") {
-    const groups = new Map<string, Group>();
-    for (const task of tasks) {
-      const title = isOverdue(task, now) ? "Overdue" : formatDue({ ...task, dueHasTime: false }, now);
-      if (!groups.has(title)) groups.set(title, { key: title, title, tasks: [] });
-      groups.get(title)!.tasks.push(task);
-    }
-    return [...groups.values()];
+  if (byDay(view)) {
+    const groups = dayGroups(tasks, now);
+    // Today with nothing overdue needs no heading under its title.
+    if (view.kind === "smart" && view.id === "today" && groups.length === 1) return [{ ...groups[0], title: null }];
+    return groups;
   }
   return data.lists
     .map((l) => ({ key: l.id, title: l.name, color: l.color, tasks: tasks.filter((t) => t.listId === l.id) }))
     .filter((g) => g.tasks.length > 0);
 }
 
-export function ListView({ data, view, tasks, now, actions, selectedId, onSelect, onInfo }: ViewProps) {
+export function ListView(props: ViewProps) {
+  const { data, view, tasks, now, actions, onInfo } = props;
   const groups = groupTasks(data, view, tasks, now);
   const canAdd = view.kind !== "search" && !(view.kind === "smart" && view.id === "completed");
   const listOf = (t: Task) => data.lists.find((l) => l.id === t.listId);
-  const multiList = view.kind !== "list";
+  // Search groups by list already; Today and Upcoming group by day, so their rows name the list.
+  const showList = byDay(view);
   // Only a list keeps the order you give it; smart lists sort by date.
   const drag = useRowDrag(actions.move, view.kind === "list");
 
@@ -69,7 +91,7 @@ export function ListView({ data, view, tasks, now, actions, selectedId, onSelect
       {groups.map((group) => (
         <section key={group.key} className="group-block">
           {group.title && (
-            <h3 className="group-title" style={group.color ? { color: `var(--c-${group.color})` } : undefined}>
+            <h3 className={`group-title${group.overdue ? " overdue" : ""}`} style={group.color ? { color: `var(--c-${group.color})` } : undefined}>
               {group.title}
             </h3>
           )}
@@ -84,12 +106,11 @@ export function ListView({ data, view, tasks, now, actions, selectedId, onSelect
               task={task}
               list={listOf(task)}
               now={now}
-              selected={task.id === selectedId}
+              {...rowSelection(props, task)}
               autoFocus={task.id === actions.focusId}
-              showList={multiList && view.kind !== "smart"}
+              showList={showList}
               onToggle={(done) => actions.toggle(task, done)}
               onChange={(patch) => actions.change(task.id, patch)}
-              onSelect={() => onSelect(task.id)}
               onInfo={() => onInfo(task.id)}
               onFocus={() => startFocus(task.id)}
               onEnter={() => actions.add(task.id, { listId: task.listId, section: task.section })}
@@ -132,7 +153,8 @@ interface Column {
   section?: string;
 }
 
-export function BoardView({ data, view, tasks, now, actions, selectedId, onSelect, onInfo, update }: ViewProps) {
+export function BoardView(props: ViewProps) {
+  const { data, view, tasks, now, actions, onInfo, update } = props;
   const [dragOver, setDragOver] = useState<string | null>(null);
   // Dropping a card on another card puts it there, in that card's column.
   const cardDrag = useRowDrag(actions.move);
@@ -210,11 +232,10 @@ export function BoardView({ data, view, tasks, now, actions, selectedId, onSelec
                 list={listOf(task)}
                 now={now}
                 compact
-                selected={task.id === selectedId}
+                {...rowSelection(props, task)}
                 autoFocus={task.id === actions.focusId}
                 onToggle={(done) => actions.toggle(task, done)}
                 onChange={(patch) => actions.change(task.id, patch)}
-                onSelect={() => onSelect(task.id)}
                 onInfo={() => onInfo(task.id)}
                 onFocus={() => startFocus(task.id)}
                 onEnter={() => actions.add(task.id, { ...col.patch })}

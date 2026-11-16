@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { REPEAT_LABELS, currentStreak, formatDue, isOverdue } from "../dates";
 import { activeSnooze, snoozeLabel } from "../model";
 import { parseQuickAdd, quickAddSummary } from "../quickAdd";
+import { highlightParts } from "../selection";
 import type { ReminderList, Task } from "../types";
 import { DuePicker, PriorityPicker, TaskContextMenu } from "./TaskControls";
 
@@ -17,7 +18,8 @@ interface Props {
   compact?: boolean;
   onToggle(completed: boolean): void;
   onChange(patch: Partial<Task>): void;
-  onSelect?(): void;
+  /** A click or focus selects the row; Ctrl+click toggles it in a multi-selection, Shift+click selects a range. */
+  onSelect?(mode?: "toggle" | "range"): void;
   /** Opens the details panel. */
   onInfo?(): void;
   /** Starts a focus session on this reminder. */
@@ -36,6 +38,10 @@ interface Props {
   preview?: boolean;
   /** Changes from the row's menu and its date and priority buttons; they offer Undo. Defaults to `onChange`. */
   onQuickChange?(patch: Partial<Task>): void;
+  /** Marks where this text appears in the title and notes (search). */
+  highlight?: string;
+  /** The row is one of several selected: its right-click menu changes or deletes all of them. */
+  group?: { count: number; onChange(patch: Partial<Task>): void; onDelete(): void };
 }
 
 export function TaskRow(props: Props) {
@@ -59,10 +65,29 @@ export function TaskRow(props: Props) {
   const quick = props.onQuickChange ?? props.onChange;
   const summary = props.preview && editing ? quickAddSummary(parseQuickAdd(task.title, now), now) : [];
 
+  const marked = props.highlight && !editing ? highlightParts(task.title, props.highlight) : [];
+
   const row = (
     <div
       className={`task-row${task.completed ? " done" : ""}${selected ? " selected" : ""}${compact ? " compact" : ""}`}
-      onClick={props.onSelect}
+      data-task-id={task.id}
+      tabIndex={-1}
+      aria-selected={!!selected}
+      onMouseDown={(e) => {
+        // Right-clicking one of several selected rows keeps them all selected for its menu.
+        if (e.button === 2 && props.group) {
+          e.preventDefault();
+          return;
+        }
+        const toggle = e.ctrlKey || e.metaKey;
+        if (e.button !== 0 || !(toggle || e.shiftKey) || (e.target as HTMLElement).closest("button")) return;
+        // Don't start editing the title or selecting text.
+        e.preventDefault();
+        props.onSelect?.(e.shiftKey ? "range" : "toggle");
+      }}
+      onClick={(e) => {
+        if (!(e.ctrlKey || e.metaKey || e.shiftKey)) props.onSelect?.();
+      }}
     >
       <button
         className="check"
@@ -77,6 +102,11 @@ export function TaskRow(props: Props) {
       </button>
       <div className="task-body">
         <div className="task-title-line">
+          {marked.some((part) => part.match) && (
+            <div className="title-marks" aria-hidden>
+              {marked.map((part, i) => (part.match ? <mark key={i}>{part.text}</mark> : part.text))}
+            </div>
+          )}
           <textarea
             ref={title}
             className="task-title"
@@ -91,7 +121,8 @@ export function TaskRow(props: Props) {
                 if (task.title.trim()) props.onEnter?.();
                 else e.currentTarget.blur();
               } else if (e.key === "Escape") {
-                e.currentTarget.blur();
+                // Back to the row, where the arrow keys move between reminders.
+                e.currentTarget.closest<HTMLElement>(".task-row")?.focus();
               }
             }}
             onFocus={() => {
@@ -117,7 +148,13 @@ export function TaskRow(props: Props) {
             ))}
           </div>
         )}
-        {!compact && task.notes && <div className="task-notes">{task.notes}</div>}
+        {!compact && task.notes && (
+          <div className="task-notes">
+            {props.highlight
+              ? highlightParts(task.notes, props.highlight).map((part, i) => (part.match ? <mark key={i}>{part.text}</mark> : part.text))
+              : task.notes}
+          </div>
+        )}
         {(task.priority > 0 || due || task.subtasks.length > 0 || task.pomodoros > 0 || task.appTrigger || props.showList || snoozed) && (
           <div className="task-meta">
             {task.priority > 0 && <PriorityPicker task={task} onChange={quick} />}
@@ -201,8 +238,9 @@ export function TaskRow(props: Props) {
       task={task}
       lists={props.lists}
       now={now}
-      onChange={quick}
-      onDelete={props.onDelete}
+      onChange={props.group?.onChange ?? quick}
+      onDelete={props.group?.onDelete ?? props.onDelete}
+      count={props.group?.count}
       onInfo={props.onInfo}
       onFocus={props.onFocus}
     >
