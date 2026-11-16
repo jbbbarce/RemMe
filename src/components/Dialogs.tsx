@@ -165,6 +165,21 @@ export function SettingsDialog({ data, onShortcuts, onTheme, onSettings, updates
           <span>Lock or unlock</span>
           <ShortcutRecorder value={lockShortcut} onRecord={(s) => apply(toggleShortcut, s, pomodoroShortcut)} />
         </div>
+        <label className="row">
+          <span>Opacity</span>
+          <span className="range-row">
+            <input
+              type="range"
+              min={40}
+              max={100}
+              step={5}
+              value={data.settings.floatOpacity}
+              aria-valuetext={`${data.settings.floatOpacity}%`}
+              onChange={(e) => onSettings({ floatOpacity: Number(e.target.value) })}
+            />
+            <output>{data.settings.floatOpacity}%</output>
+          </span>
+        </label>
       </div>
       <p className="hint">
         These work from any app. Locked, the floating list ignores the mouse so you can click what's behind it;

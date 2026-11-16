@@ -34,6 +34,8 @@ interface Props {
   onDelete?(): void;
   /** The title is new: while it is typed, show what a date or priority in it will set. */
   preview?: boolean;
+  /** Changes from the row's menu and its date and priority buttons; they offer Undo. Defaults to `onChange`. */
+  onQuickChange?(patch: Partial<Task>): void;
 }
 
 export function TaskRow(props: Props) {
@@ -54,6 +56,7 @@ export function TaskRow(props: Props) {
   const subtasksDone = task.subtasks.filter((s) => s.done).length;
   const streak = currentStreak(task, now);
   const snoozed = activeSnooze(task, now);
+  const quick = props.onQuickChange ?? props.onChange;
   const summary = props.preview && editing ? quickAddSummary(parseQuickAdd(task.title, now), now) : [];
 
   const row = (
@@ -117,8 +120,8 @@ export function TaskRow(props: Props) {
         {!compact && task.notes && <div className="task-notes">{task.notes}</div>}
         {(task.priority > 0 || due || task.subtasks.length > 0 || task.pomodoros > 0 || task.appTrigger || props.showList || snoozed) && (
           <div className="task-meta">
-            {task.priority > 0 && <PriorityPicker task={task} onChange={props.onChange} />}
-            {due && <DuePicker task={task} now={now} label={due} overdue={overdue} onChange={props.onChange} />}
+            {task.priority > 0 && <PriorityPicker task={task} onChange={quick} />}
+            {due && <DuePicker task={task} now={now} label={due} overdue={overdue} onChange={quick} />}
             {snoozed && (
               <span className="meta-icon snoozed" title="Its popup comes back then; the due time stays">
                 <AlertOff size={11} />
@@ -198,7 +201,7 @@ export function TaskRow(props: Props) {
       task={task}
       lists={props.lists}
       now={now}
-      onChange={props.onChange}
+      onChange={quick}
       onDelete={props.onDelete}
       onInfo={props.onInfo}
       onFocus={props.onFocus}

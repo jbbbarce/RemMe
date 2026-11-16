@@ -40,11 +40,14 @@ import {
   MailInboxRegular,
   MoreHorizontalRegular,
   NextRegular,
+  PanelLeftContractRegular,
+  PanelLeftExpandRegular,
   PanelRightContractRegular,
   PanelRightExpandRegular,
   PauseRegular,
   PictureInPictureRegular,
   PlayRegular,
+  ReOrderDotsVerticalRegular,
   SearchRegular,
   SettingsRegular,
   StarRegular,
@@ -90,6 +93,7 @@ export const Flag = sized(FlagRegular);
 export const FlagOn = sized(FlagFilled);
 export const FloatingList = sized(PictureInPictureRegular);
 export const FolderOpen = sized(FolderOpenRegular);
+export const Grip = sized(ReOrderDotsVerticalRegular);
 export const Info = sized(InfoRegular);
 export const ListLayout = sized(TextBulletListLtrRegular);
 export const LockClosed = sized(LockClosedRegular);
@@ -97,6 +101,8 @@ export const LockOpen = sized(LockOpenRegular);
 export const More = sized(MoreHorizontalRegular);
 export const PanelClose = sized(PanelRightContractRegular);
 export const PanelOpen = sized(PanelRightExpandRegular);
+export const SidebarCollapse = sized(PanelLeftContractRegular);
+export const SidebarExpand = sized(PanelLeftExpandRegular);
 export const Pause = sized(PauseRegular);
 export const Play = sized(PlayRegular);
 export const Repeat = sized(ArrowRepeatAllRegular);

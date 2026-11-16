@@ -1,3 +1,4 @@
+import { TASK_DRAG } from "./useRowDrag";
 import { ChevronLeft, ChevronRight, PanelClose, PanelOpen } from "../icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -14,7 +15,7 @@ import {
   weekStartDay,
 } from "../calendar";
 import { isOverdue } from "../dates";
-import { insertTask, newTaskFor, updateTask } from "../model";
+import { insertTask, newTaskFor } from "../model";
 import { parseQuickAdd } from "../quickAdd";
 import type { AppData, ReminderList, Task } from "../types";
 import type { useTaskActions } from "./useTaskActions";
@@ -22,7 +23,7 @@ import type { useTaskActions } from "./useTaskActions";
 const MODE_KEY = "remme.calendar";
 const NO_DATE_KEY = "remme.calendar.nodate";
 const MONTH_LIMIT = 3;
-const DRAG_TYPE = "text/task-id";
+const DRAG_TYPE = TASK_DRAG;
 
 function readLocal<T>(key: string, fallback: T): T {
   try {
@@ -79,7 +80,8 @@ export function CalendarView({ data, now, actions, update, onInfo }: Props) {
     if (!task) return;
     // Taking the date away also ends a repeat or nag, which need a date.
     const patch = day ? moveToDay(task, day) : { dueAt: null, dueHasTime: false, repeat: null, nagMinutes: null };
-    update((d) => updateTask(d, id, patch));
+    // A drag to another day offers Undo.
+    actions.quick(id, patch);
   };
 
   const addOn = (day: Date, text: string) => {

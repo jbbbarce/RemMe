@@ -1,12 +1,15 @@
-import { Add, Board, Delete, FloatingList, ListLayout, LockClosed, LockOpen, More, Settings as SettingsIcon } from "../icons";
-import { useEffect, useState } from "react";
+import { Add, Board, Delete, FloatingList, ListLayout, LockClosed, LockOpen, More, Settings as SettingsIcon, SidebarCollapse, SidebarExpand } from "../icons";
+import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { isOverdue } from "../dates";
 import {
   clearCompleted,
   deleteList,
   newId,
   purgeDeleted,
   setCompleted,
+  smartCount,
   tasksFor,
   updateTask,
   upsertList,
@@ -30,6 +33,21 @@ import { useTaskActions } from "./useTaskActions";
 
 const VIEW_KEY = "remme.view";
 const LAYOUT_KEY = "remme.layout";
+const SIDEBAR_KEY = "remme.sidebar";
+/** Below this window width the sidebar becomes an icon rail by itself. */
+const NARROW = "(max-width: 899px)";
+
+/** Whether a media query matches, kept up to date. */
+function useMedia(query: string): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const list = window.matchMedia(query);
+    const onChange = () => setMatches(list.matches);
+    list.addEventListener("change", onChange);
+    return () => list.removeEventListener("change", onChange);
+  }, [query]);
+  return matches;
+}
 
 function readLocal<T>(key: string, fallback: T): T {
   try {
@@ -65,6 +83,19 @@ export function MainApp({ data, update, saveError }: Props) {
   const [inspectId, setInspectId] = useState<string | null>(null);
   const [editingList, setEditingList] = useState<{ list: ReminderList; isNew: boolean } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // The sidebar follows the window's width until it is toggled; crossing the width starts over.
+  const narrow = useMedia(NARROW);
+  const [railChoice, setRailChoice] = useState<boolean | null>(() => readLocal<boolean | null>(SIDEBAR_KEY, null));
+  const rail = railChoice ?? narrow;
+  const firstWidth = useRef(true);
+  useEffect(() => {
+    if (firstWidth.current) {
+      firstWidth.current = false;
+      return;
+    }
+    setRailChoice(null);
+  }, [narrow]);
+  useEffect(() => writeLocal(SIDEBAR_KEY, railChoice), [railChoice]);
 
   // A list that was deleted (here or in the floating window) falls back to Today.
   const validView: View =
@@ -73,7 +104,7 @@ export function MainApp({ data, update, saveError }: Props) {
       : baseView;
   const view: View = search.trim() ? { kind: "search", query: search } : validView;
   const undo = useUndo(update);
-  const actions = useTaskActions(update, view, now, undo.trash);
+  const actions = useTaskActions(update, view, now, undo);
   const tasks = tasksFor(data, view, now, showCompleted, actions.lingering);
   const inspected = data.tasks.find((t) => t.id === inspectId);
   const openCount = tasks.filter((t) => !t.completed).length;
@@ -140,6 +171,34 @@ export function MainApp({ data, update, saveError }: Props) {
     };
   }, [data.tasks, update]);
 
+  // The tray icon's tooltip says what is due today.
+  const dueToday = smartCount(data, "today", now);
+  const overdue = data.tasks.filter((t) => isOverdue(t, now)).length;
+  useEffect(() => {
+    invoke("set_tray_status", { dueToday, overdue }).catch(() => {});
+  }, [dueToday, overdue]);
+
+  // "Add reminder…" in the tray menu: a new reminder in this list, or in Today if this view can't take one.
+  const [pendingAdd, setPendingAdd] = useState(false);
+  useEffect(() => {
+    const unlisten = listen("new-reminder", () => {
+      setSearch("");
+      setPendingAdd(true);
+    });
+    return () => {
+      unlisten.then((stop) => stop(), () => {});
+    };
+  }, []);
+  useEffect(() => {
+    if (!pendingAdd) return;
+    if (!canAdd) {
+      setBaseView({ kind: "smart", id: "today" });
+      return;
+    }
+    setPendingAdd(false);
+    actions.add();
+  }, [pendingAdd, canAdd, actions]);
+
   useEffect(() => writeLocal(VIEW_KEY, baseView), [baseView]);
   useEffect(() => writeLocal(LAYOUT_KEY, layout), [layout]);
 
@@ -191,10 +250,26 @@ export function MainApp({ data, update, saveError }: Props) {
           })
         }
         onEditList={(list) => setEditingList({ list, isNew: false })}
+        onDropTask={(listId, id) => actions.quick(id, { listId, section: null })}
+        rail={rail}
+        onOpenSearch={() => {
+          setRailChoice(false);
+          window.setTimeout(() => document.querySelector<HTMLInputElement>(".sidebar .search input")?.focus(), 0);
+        }}
       />
 
       <main className="content">
         <div className="toolbar">
+          <Tip text={rail ? "Show sidebar" : "Hide sidebar"}>
+            <button
+              className="icon-btn big"
+              aria-label={rail ? "Show sidebar" : "Hide sidebar"}
+              aria-expanded={!rail}
+              onClick={() => setRailChoice(!rail)}
+            >
+              {rail ? <SidebarExpand size={20} /> : <SidebarCollapse size={20} />}
+            </button>
+          </Tip>
           {!isCalendar && !isDeleted && (
           <div className="segmented" role="tablist" aria-label="Layout">
             <button

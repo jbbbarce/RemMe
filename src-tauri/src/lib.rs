@@ -695,6 +695,20 @@ fn set_round_corners(window: WebviewWindow, round: bool) {
     let _ = (window, round);
 }
 
+/// Puts what is due today in the tray icon's tooltip. The main window sends the counts whenever
+/// they change, since it already works them out for the sidebar.
+#[tauri::command]
+fn set_tray_status(app: AppHandle, due_today: u32, overdue: u32) {
+    let detail = match (due_today, overdue) {
+        (0, _) => "Nothing due today".to_string(),
+        (n, 0) => format!("{n} due today"),
+        (n, late) => format!("{n} due today, {late} overdue"),
+    };
+    if let Some(tray) = app.tray_by_id("tray") {
+        let _ = tray.set_tooltip(Some(format!("RemMe: {detail}")));
+    }
+}
+
 fn set_float_locked(app: &AppHandle, locked: bool) {
     let Some(window) = app.get_webview_window(FLOAT) else { return };
     let state = app.state::<AppState>();
@@ -1153,12 +1167,13 @@ async fn running_apps() -> Vec<String> {
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Open RemMe", true, None::<&str>)?;
+    let add = MenuItem::with_id(app, "add", "Add reminder…", true, None::<&str>)?;
     let float = MenuItem::with_id(app, "float", "Show or hide floating list", true, None::<&str>)?;
     let lock = MenuItem::with_id(app, "lock", "Lock or unlock floating list", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
-        &[&open, &PredefinedMenuItem::separator(app)?, &float, &lock, &PredefinedMenuItem::separator(app)?, &quit],
+        &[&open, &add, &PredefinedMenuItem::separator(app)?, &float, &lock, &PredefinedMenuItem::separator(app)?, &quit],
     )?;
 
     TrayIconBuilder::with_id("tray")
@@ -1168,6 +1183,10 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => show_main_window(app),
+            "add" => {
+                show_main_window(app);
+                let _ = app.emit_to(MAIN, "new-reminder", ());
+            }
             "float" => toggle_float_visible(app),
             "lock" => toggle_float_locked(app),
             "quit" => app.exit(0),
@@ -1241,6 +1260,7 @@ pub fn run() {
             set_title_bar,
             get_accent,
             set_round_corners,
+            set_tray_status,
             list_backups,
             backup_now,
             restore_backup,

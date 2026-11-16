@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { deleteTask, insertTask, newTaskFor, setCompleted, trashTasks, updateTask } from "../model";
+import {
+  changeMessage,
+  completedMessage,
+  deleteTask,
+  insertTask,
+  moveTask,
+  newTaskFor,
+  setCompleted,
+  trashTasks,
+  updateTask,
+} from "../model";
 import { parseQuickAdd } from "../quickAdd";
 import type { AppData, Task, View } from "../types";
 import type { UndoState } from "./Undo";
@@ -11,7 +21,7 @@ export function useTaskActions(
   update: (change: (d: AppData) => AppData) => void,
   view: View,
   now: Date,
-  trash?: UndoState["trash"],
+  undo?: UndoState,
 ) {
   const [lingering, setLingering] = useState<ReadonlySet<string>>(new Set());
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -26,12 +36,18 @@ export function useTaskActions(
 
   const toggle = useCallback(
     (task: Task, completed: boolean) => {
-      update((d) => setCompleted(d, task.id, completed, new Date()));
+      let message = null as string | null;
+      update((d) => {
+        if (completed) message = completedMessage(d, task.id);
+        return setCompleted(d, task.id, completed, new Date());
+      });
       window.clearTimeout(timers.current.get(task.id));
       if (!completed) {
         setLingering((s) => without(s, task.id));
         return;
       }
+      // Unchecking soon after also takes back the next one a repeating reminder added.
+      if (message && undo) undo.show(message, (d) => setCompleted(d, task.id, false, new Date()));
       // Keep a just-finished reminder on screen for a moment, like Apple Reminders.
       setLingering((s) => new Set(s).add(task.id));
       timers.current.set(
@@ -42,12 +58,38 @@ export function useTaskActions(
         }, LINGER_MS),
       );
     },
-    [update],
+    [update, undo],
   );
 
   const change = useCallback(
     (id: string, patch: Partial<Task>) => update((d) => updateTask(d, id, patch)),
     [update],
+  );
+
+  /**
+   * A change made from a reminder's menu, its date or priority button, or a drag to another list
+   * or column. Unlike typing in the details panel, it offers Undo.
+   */
+  const quick = useCallback(
+    (id: string, patch: Partial<Task>) => {
+      const apply = (d: AppData) => updateTask(d, id, patch);
+      if (undo) undo.track(apply, [id], (d) => changeMessage(d, id, patch, new Date()));
+      else update(apply);
+    },
+    [update, undo],
+  );
+
+  /** A drag that drops a reminder before or after another. Moving it to another list or section offers Undo. */
+  const move = useCallback(
+    (id: string, targetId: string, after: boolean) => {
+      const apply = (d: AppData) => moveTask(d, id, targetId, after);
+      if (!undo) return update(apply);
+      undo.track(apply, [id], (d) => {
+        const target = d.tasks.find((t) => t.id === targetId);
+        return target ? changeMessage(d, id, { listId: target.listId, section: target.section }, new Date()) : null;
+      });
+    },
+    [update, undo],
   );
 
   /** Adds an empty reminder (after `afterId` if given) and focuses its title. */
@@ -79,10 +121,10 @@ export function useTaskActions(
   const remove = useCallback(
     (id: string, patch: Partial<Task> = {}) => {
       const deletion = (d: AppData, batch: string) => trashTasks(d, [id], new Date(), batch, patch);
-      if (trash) trash(deletion);
+      if (undo) undo.trash(deletion);
       else update((d) => deletion(d, crypto.randomUUID()));
     },
-    [update, trash],
+    [update, undo],
   );
 
   /**
@@ -104,7 +146,7 @@ export function useTaskActions(
   /** Whether a reminder was added empty and its title hasn't been read for a date yet. */
   const isFresh = useCallback((id: string) => fresh.current.has(id), []);
 
-  return { lingering, focusId, toggle, change, add, commit, remove, removeEmptied, isFresh };
+  return { lingering, focusId, toggle, change, quick, move, add, commit, remove, removeEmptied, isFresh };
 }
 
 function without(set: ReadonlySet<string>, id: string): ReadonlySet<string> {

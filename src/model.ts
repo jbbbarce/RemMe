@@ -1,4 +1,4 @@
-import { doneOnTime, endOfDay, nextDue, startOfDay } from "./dates";
+import { doneOnTime, endOfDay, formatDue, nextDue, startOfDay } from "./dates";
 import {
   DENSITIES,
   LIST_COLORS,
@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
   verseOfDay: true,
   stickyReminders: true,
   density: "comfortable",
+  floatOpacity: 100,
 };
 
 /** Session lengths are whole minutes from 1 to 180. */
@@ -70,6 +71,10 @@ export function normalize(raw: SavedData | null | undefined): AppData {
   settings.verseOfDay = settings.verseOfDay !== false;
   settings.stickyReminders = settings.stickyReminders !== false;
   if (!DENSITIES.includes(settings.density)) settings.density = DEFAULT_SETTINGS.density;
+  settings.floatOpacity =
+    typeof settings.floatOpacity === "number" && settings.floatOpacity >= 40 && settings.floatOpacity <= 100
+      ? Math.round(settings.floatOpacity)
+      : DEFAULT_SETTINGS.floatOpacity;
   const deleted = (Array.isArray(raw?.deleted) ? raw.deleted : []).flatMap(deletedFrom);
   return { version: 1, lists, tasks, settings, deleted };
 }
@@ -458,6 +463,75 @@ export function purgeDeleted(data: AppData, now: Date): AppData {
   const cutoff = now.getTime() - KEEP_DELETED_DAYS * 24 * 60 * 60 * 1000;
   const kept = data.deleted.filter((e) => Date.parse(e.deletedAt) > cutoff);
   return kept.length === data.deleted.length ? data : { ...data, deleted: kept };
+}
+
+/**
+ * Moves a reminder next to another one, before it or (with `after`) after it, as a drag does.
+ * It joins that reminder's list and section.
+ */
+export function moveTask(data: AppData, id: string, targetId: string, after: boolean): AppData {
+  const task = data.tasks.find((t) => t.id === id);
+  const target = data.tasks.find((t) => t.id === targetId);
+  if (!task || !target || id === targetId) return data;
+  const rest = data.tasks.filter((t) => t.id !== id);
+  const index = rest.findIndex((t) => t.id === targetId) + (after ? 1 : 0);
+  rest.splice(index, 0, { ...task, listId: target.listId, section: target.section });
+  return { ...data, tasks: rest };
+}
+
+/** Copies of some reminders and where they were, so a change to them can be undone. */
+export type Snapshot = { task: Task; index: number }[];
+
+export function snapshot(data: AppData, ids: readonly string[]): Snapshot {
+  return data.tasks.flatMap((task, index) => (ids.includes(task.id) ? [{ task, index }] : []));
+}
+
+/** Undo: puts the reminders in a snapshot back as they were, in the same places. Others are left alone. */
+export function restoreSnapshot(data: AppData, snap: Snapshot): AppData {
+  const ids = new Set(snap.map((s) => s.task.id));
+  const tasks = data.tasks.filter((t) => !ids.has(t.id));
+  for (const { task, index } of [...snap].sort((a, b) => a.index - b.index)) {
+    tasks.splice(Math.min(index, tasks.length), 0, task);
+  }
+  return { ...data, tasks };
+}
+
+function quoted(task: Task): string {
+  const title = task.title.trim() || "New Reminder";
+  return `“${title.length > 40 ? `${title.slice(0, 39)}…` : title}”`;
+}
+
+/**
+ * What the Undo toast says after a quick change to a reminder, or null if the change doesn't
+ * need one (such as only reordering it).
+ */
+export function changeMessage(data: AppData, id: string, patch: Partial<Task>, now: Date): string | null {
+  const task = data.tasks.find((t) => t.id === id);
+  if (!task) return null;
+  const name = quoted(task);
+  if (patch.listId !== undefined && patch.listId !== task.listId) {
+    return `Moved ${name} to ${data.lists.find((l) => l.id === patch.listId)?.name ?? "another list"}`;
+  }
+  if (patch.section !== undefined && patch.section !== task.section) {
+    return `Moved ${name} to ${patch.section ?? "Others"}`;
+  }
+  if (patch.dueAt !== undefined && (patch.dueAt !== task.dueAt || patch.dueHasTime !== task.dueHasTime)) {
+    if (!patch.dueAt) return `Removed the date from ${name}`;
+    return `${name} is due ${formatDue({ dueAt: patch.dueAt, dueHasTime: patch.dueHasTime ?? task.dueHasTime }, now)}`;
+  }
+  if (patch.priority !== undefined && patch.priority !== task.priority) {
+    return patch.priority ? `Set ${name} to ${["", "Low", "Medium", "High"][patch.priority]} priority` : `Removed the priority from ${name}`;
+  }
+  if (patch.flagged !== undefined && patch.flagged !== task.flagged) {
+    return `${patch.flagged ? "Flagged" : "Unflagged"} ${name}`;
+  }
+  return null;
+}
+
+/** The Undo toast after ticking a reminder off. */
+export function completedMessage(data: AppData, id: string): string | null {
+  const task = data.tasks.find((t) => t.id === id);
+  return task ? `Completed ${quoted(task)}` : null;
 }
 
 export function upsertList(data: AppData, list: ReminderList): AppData {

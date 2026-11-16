@@ -79,6 +79,8 @@ export interface Settings {
   pomodoroChime: boolean;
   /** Shows the verse of the day in the sidebar and the floating list. */
   verseOfDay: boolean;
+  /** How opaque the floating list is, in percent (40 to 100). Locked, it is a little fainter still. */
+  floatOpacity: number;
   /** How tightly rows are packed in the main window. The floating list is always compact. */
   density: Density;
   /** Due-reminder popups stay on screen until Snooze, Done or ✕ is pressed. */

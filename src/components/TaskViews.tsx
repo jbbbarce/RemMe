@@ -1,10 +1,11 @@
-import { Add, Delete } from "../icons";
+import { Add, Delete, Grip } from "../icons";
 import { useState } from "react";
 import { formatDue, isOverdue } from "../dates";
 import { deleteSection, renameSection, upsertList } from "../model";
 import { startFocus } from "../pomodoro";
 import type { AppData, ReminderList, Task, View } from "../types";
 import { TaskRow } from "./TaskRow";
+import { TASK_DRAG, useRowDrag } from "./useRowDrag";
 import type { useTaskActions } from "./useTaskActions";
 
 type Actions = ReturnType<typeof useTaskActions>;
@@ -60,6 +61,8 @@ export function ListView({ data, view, tasks, now, actions, selectedId, onSelect
   const canAdd = view.kind !== "search" && !(view.kind === "smart" && view.id === "completed");
   const listOf = (t: Task) => data.lists.find((l) => l.id === t.listId);
   const multiList = view.kind !== "list";
+  // Only a list keeps the order you give it; smart lists sort by date.
+  const drag = useRowDrag(actions.move, view.kind === "list");
 
   return (
     <div className="list-view">
@@ -71,8 +74,13 @@ export function ListView({ data, view, tasks, now, actions, selectedId, onSelect
             </h3>
           )}
           {group.tasks.map((task) => (
+            <div key={task.id} className="drag-row" {...drag(task.id)}>
+            {view.kind === "list" && (
+              <span className="grip" aria-hidden>
+                <Grip size={14} />
+              </span>
+            )}
             <TaskRow
-              key={task.id}
               task={task}
               list={listOf(task)}
               now={now}
@@ -89,8 +97,10 @@ export function ListView({ data, view, tasks, now, actions, selectedId, onSelect
               onCommit={() => actions.commit(task)}
               lists={data.lists}
               onDelete={() => actions.remove(task.id)}
+              onQuickChange={(patch) => actions.quick(task.id, patch)}
               preview={actions.isFresh(task.id)}
             />
+            </div>
           ))}
           {canAdd && view.kind === "list" && group.key !== "" && (
             <AddRow onAdd={() => actions.add(group.tasks.at(-1)?.id, { section: group.key })} />
@@ -124,6 +134,8 @@ interface Column {
 
 export function BoardView({ data, view, tasks, now, actions, selectedId, onSelect, onInfo, update }: ViewProps) {
   const [dragOver, setDragOver] = useState<string | null>(null);
+  // Dropping a card on another card puts it there, in that card's column.
+  const cardDrag = useRowDrag(actions.move);
   const [newSection, setNewSection] = useState("");
   const list = view.kind === "list" ? data.lists.find((l) => l.id === view.id) : undefined;
   const listOf = (t: Task) => data.lists.find((l) => l.id === t.listId);
@@ -179,8 +191,8 @@ export function BoardView({ data, view, tasks, now, actions, selectedId, onSelec
           onDrop={(e) => {
             e.preventDefault();
             setDragOver(null);
-            const id = e.dataTransfer.getData("text/task-id");
-            if (id) actions.change(id, col.patch);
+            const id = e.dataTransfer.getData(TASK_DRAG);
+            if (id) actions.quick(id, col.patch);
           }}
         >
           <header className="column-head">
@@ -192,12 +204,7 @@ export function BoardView({ data, view, tasks, now, actions, selectedId, onSelec
             <span className="column-count">{col.tasks.filter((t) => !t.completed).length}</span>
           </header>
           {col.tasks.map((task) => (
-            <div
-              key={task.id}
-              className="card"
-              draggable
-              onDragStart={(e) => e.dataTransfer.setData("text/task-id", task.id)}
-            >
+            <div key={task.id} className="card" {...cardDrag(task.id)}>
               <TaskRow
                 task={task}
                 list={listOf(task)}
@@ -215,6 +222,7 @@ export function BoardView({ data, view, tasks, now, actions, selectedId, onSelec
                 onCommit={() => actions.commit(task)}
                 lists={data.lists}
                 onDelete={() => actions.remove(task.id)}
+                onQuickChange={(patch) => actions.quick(task.id, patch)}
                 preview={actions.isFresh(task.id)}
               />
             </div>

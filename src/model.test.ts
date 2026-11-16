@@ -259,6 +259,13 @@ describe("themes", () => {
     expect(normalize({ settings: { density: "tiny" as never } }).settings.density).toBe("comfortable");
   });
 
+  it("keeps the floating list's opacity between 40 and 100 percent", () => {
+    expect(normalize({}).settings.floatOpacity).toBe(100);
+    expect(normalize({ settings: { floatOpacity: 65 } }).settings.floatOpacity).toBe(65);
+    expect(normalize({ settings: { floatOpacity: 10 } }).settings.floatOpacity).toBe(100);
+    expect(normalize({ settings: { floatOpacity: "x" as never } }).settings.floatOpacity).toBe(100);
+  });
+
   it("only takes an accent colour that stays readable", () => {
     expect(readableAccent("#0067c0", "#f9f9f9")).toEqual({ ui: "#0067c0", text: "#ffffff" });
     expect(readableAccent("#99ebff", "#272727")).toEqual({ ui: "#99ebff", text: "#000000" });

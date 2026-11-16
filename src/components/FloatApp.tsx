@@ -12,6 +12,7 @@ import { TaskRow } from "./TaskRow";
 import { Dropdown, Tip } from "./ui";
 import { UndoToast, useUndo } from "./Undo";
 import { useTaskActions } from "./useTaskActions";
+import { useRowDrag } from "./useRowDrag";
 import { VersePanel } from "./Verse";
 
 interface Props {
@@ -26,8 +27,9 @@ export function FloatApp({ data, update }: Props) {
   const view = floatViewOf(data);
   const floatViewId = view.kind === "smart" || view.kind === "list" ? view.id : "today";
   const undo = useUndo(update);
-  const actions = useTaskActions(update, view, now, undo.trash);
+  const actions = useTaskActions(update, view, now, undo);
   const tasks = tasksFor(data, view, now, false, actions.lingering);
+  const drag = useRowDrag(actions.move, view.kind === "list" && !locked);
   const color = viewColor(data, view);
   const [draft, setDraft] = useState("");
   const isCalendar = view.kind === "smart" && view.id === "calendar";
@@ -42,7 +44,7 @@ export function FloatApp({ data, update }: Props) {
   };
 
   return (
-    <div className={`float${locked ? " locked" : ""}`} style={{ "--accent": `var(--c-${color})` } as React.CSSProperties}>
+    <div className={`float${locked ? " locked" : ""}`} style={{ "--accent": `var(--c-${color})`, "--float-opacity": data.settings.floatOpacity / 100 } as React.CSSProperties}>
       <header className="float-head" data-tauri-drag-region>
         <Dropdown
           plain
@@ -92,8 +94,8 @@ export function FloatApp({ data, update }: Props) {
       <div className="float-body">
         {tasks.length === 0 && <p className="empty">All done 🎉</p>}
         {tasks.map((task) => (
+          <div key={task.id} className="drag-row" {...drag(task.id)}>
           <TaskRow
-            key={task.id}
             task={task}
             list={data.lists.find((l) => l.id === task.listId)}
             now={now}
@@ -106,8 +108,10 @@ export function FloatApp({ data, update }: Props) {
             onCommit={() => actions.commit(task)}
             lists={data.lists}
             onDelete={() => actions.remove(task.id)}
+            onQuickChange={(patch) => actions.quick(task.id, patch)}
             preview={actions.isFresh(task.id)}
           />
+          </div>
         ))}
       </div>
       )}
