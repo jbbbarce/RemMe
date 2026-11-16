@@ -2,7 +2,7 @@ import { Add, LockClosed, LockOpen, Subtract, Window } from "../icons";
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { SMART_LISTS, floatViewOf, tasksFor, viewColor } from "../model";
-import { parseQuickAdd } from "../quickAdd";
+import { parseQuickAdd, quickAddSummary } from "../quickAdd";
 import { shortcutParts } from "../shortcut";
 import { setFloat, useFloatState, useNow } from "../store";
 import type { AppData } from "../types";
@@ -32,6 +32,8 @@ export function FloatApp({ data, update }: Props) {
   const [draft, setDraft] = useState("");
   const isCalendar = view.kind === "smart" && view.id === "calendar";
   const canAdd = !(view.kind === "smart" && view.id === "completed") && !isCalendar;
+
+  const draftSummary = draft.trim() ? quickAddSummary(parseQuickAdd(draft, now), now) : [];
 
   const addFromDraft = () => {
     if (!draft.trim()) return;
@@ -102,11 +104,21 @@ export function FloatApp({ data, update }: Props) {
             onEnter={() => (document.activeElement as HTMLElement | null)?.blur()}
             onEmpty={(before) => actions.removeEmptied(task, before)}
             onCommit={() => actions.commit(task)}
+            lists={data.lists}
+            onDelete={() => actions.remove(task.id)}
+            preview={actions.isFresh(task.id)}
           />
         ))}
       </div>
       )}
 
+      {canAdd && !locked && draftSummary.length > 0 && (
+        <div className="qa-preview float-qa" aria-live="polite">
+          {draftSummary.map((label) => (
+            <span key={label}>{label}</span>
+          ))}
+        </div>
+      )}
       {canAdd && !locked && (
         <footer className="float-add">
           <Add size={14} />

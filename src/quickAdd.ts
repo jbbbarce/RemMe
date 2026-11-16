@@ -1,4 +1,4 @@
-import { startOfDay } from "./dates";
+import { REPEAT_LABELS, formatDue, startOfDay } from "./dates";
 import type { Priority, Repeat, Task } from "./types";
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
@@ -151,6 +151,20 @@ export function parseQuickAdd(text: string, now: Date, defaultDay?: Date): Quick
     result.dueHasTime = false;
   }
   return result;
+}
+
+export const PRIORITY_NAMES = ["", "Low", "Medium", "High"] as const;
+
+/**
+ * What a typed title will set, as short labels for a preview while typing:
+ * "Tomorrow, 5:00 pm", "Repeats weekly", "Medium priority". Empty when nothing was recognised.
+ */
+export function quickAddSummary(parsed: QuickAdd, now: Date): string[] {
+  const out: string[] = [];
+  if (parsed.dueAt) out.push(formatDue({ dueAt: parsed.dueAt, dueHasTime: !!parsed.dueHasTime }, now));
+  if (parsed.repeat) out.push(`Repeats ${REPEAT_LABELS[parsed.repeat].toLowerCase()}`);
+  if (parsed.priority) out.push(`${PRIORITY_NAMES[parsed.priority]} priority`);
+  return out;
 }
 
 function addDays(date: Date, days: number): Date {

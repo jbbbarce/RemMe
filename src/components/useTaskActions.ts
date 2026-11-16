@@ -101,7 +101,10 @@ export function useTaskActions(
     [update, remove],
   );
 
-  return { lingering, focusId, toggle, change, add, commit, remove, removeEmptied };
+  /** Whether a reminder was added empty and its title hasn't been read for a date yet. */
+  const isFresh = useCallback((id: string) => fresh.current.has(id), []);
+
+  return { lingering, focusId, toggle, change, add, commit, remove, removeEmptied, isFresh };
 }
 
 function without(set: ReadonlySet<string>, id: string): ReadonlySet<string> {

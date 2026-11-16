@@ -21,3 +21,4 @@ The first version (steps 1–9 in git history before the `tauri-rewrite` branch)
 - [x] 17. Snooze and Done buttons on reminder popups, reminder-style popups that stay on screen, click to open the reminder. Spec: `.scratch/notification-actions/spec.md`
 - [x] 18. Undo and Recently deleted: an Undo toast and Ctrl+Z after any deletion, a Recently deleted view with Restore, kept 30 days. Spec: `.scratch/undo-recently-deleted/spec.md`
 - [x] 19. UI redesign, the base: Fluent 2 structure for all themes, Fluent icons, Radix menus and dialogs, accessibility, Compact / Comfortable switch. Spec: `.scratch/ui-redesign/spec.md`
+- [x] 20. Quick changes: a right-click menu on reminders, a clickable date and priority on each row, and a preview of what a typed date or priority will set. Spec: `.scratch/ui-redesign/spec.md`

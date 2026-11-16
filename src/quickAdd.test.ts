@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseQuickAdd } from "./quickAdd";
+import { parseQuickAdd, quickAddSummary } from "./quickAdd";
+import { dueAtTime, dueOnDay, presetDay } from "./dates";
 
 // Tuesday 27 October 2026, 12:00 local time.
 const now = new Date(2026, 9, 27, 12, 0);
@@ -74,5 +75,44 @@ describe("quick add repeats", () => {
     });
     expect(parseQuickAdd("Pay rent every month on nov 1", now)).toMatchObject({ title: "Pay rent", repeat: "monthly", dueAt: local(11, 1) });
     expect(parseQuickAdd("Bins every thursday 7pm", now)).toMatchObject({ title: "Bins", repeat: "weekly", dueAt: local(10, 29, 19) });
+  });
+});
+
+describe("quick add preview", () => {
+  it("names what the title will set", () => {
+    expect(quickAddSummary(parseQuickAdd("Call mom tomorrow 5pm !!", now), now)).toEqual([
+      `Tomorrow, ${new Date(2026, 9, 28, 17).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`,
+      "Medium priority",
+    ]);
+    expect(quickAddSummary(parseQuickAdd("Water the plants every week", now), now)).toEqual(["Today", "Repeats weekly"]);
+  });
+
+  it("is empty for a plain title", () => {
+    expect(quickAddSummary(parseQuickAdd("Buy milk", now), now)).toEqual([]);
+  });
+});
+
+describe("date shortcuts", () => {
+  it("finds today, tomorrow and the coming Monday", () => {
+    expect(presetDay("today", now)).toEqual(new Date(2026, 9, 27));
+    expect(presetDay("tomorrow", now)).toEqual(new Date(2026, 9, 28));
+    expect(presetDay("nextWeek", now)).toEqual(new Date(2026, 10, 2));
+    // On a Monday, next week is a week on, not today.
+    expect(presetDay("nextWeek", new Date(2026, 10, 2, 8))).toEqual(new Date(2026, 10, 9));
+    // Across a month end.
+    expect(presetDay("tomorrow", new Date(2026, 9, 31, 22))).toEqual(new Date(2026, 10, 1));
+  });
+
+  it("moves a reminder to a day, keeping its time if it has one", () => {
+    const timed = { dueAt: local(10, 27, 17, 30), dueHasTime: true };
+    expect(dueOnDay(timed, new Date(2026, 10, 2))).toEqual({ dueAt: local(11, 2, 17, 30), dueHasTime: true });
+    expect(dueOnDay({ dueAt: null, dueHasTime: false }, new Date(2026, 10, 2))).toEqual({ dueAt: local(11, 2), dueHasTime: false });
+  });
+
+  it("sets or clears a time on the reminder's day, or today", () => {
+    const day = { dueAt: local(11, 2), dueHasTime: false };
+    expect(dueAtTime(day, "18:00", now)).toEqual({ dueAt: local(11, 2, 18), dueHasTime: true });
+    expect(dueAtTime({ dueAt: local(11, 2, 18), dueHasTime: true }, null, now)).toEqual({ dueAt: local(11, 2), dueHasTime: false });
+    expect(dueAtTime({ dueAt: null, dueHasTime: false }, "12:00", now)).toEqual({ dueAt: local(10, 27, 12), dueHasTime: true });
   });
 });

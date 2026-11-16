@@ -2703,7 +2703,7 @@ kbd {
 .menu {
   z-index: 30;
   min-width: 180px;
-  max-height: min(360px, var(--radix-popper-available-height, 360px));
+  max-height: var(--radix-popper-available-height, 70vh);
   overflow-y: auto;
   padding: 4px;
   border: 1px solid var(--line);
@@ -3165,4 +3165,191 @@ html.acrylic .float {
 .card:hover .task-row .info-btn,
 .card .task-row .info-btn:focus-visible {
   opacity: 1;
+}
+
+/* ---------- Quick edits: right-click menu, date picker, priority menu, typing preview ---------- */
+
+/* The row's date and priority are buttons; they look like text until hovered. */
+.due-btn,
+.task-meta button.prio {
+  font: inherit;
+  cursor: pointer;
+}
+
+.due-btn {
+  margin: -2px -4px;
+  padding: 2px 4px;
+  border-radius: var(--radius);
+  color: inherit;
+}
+
+.due-btn.overdue {
+  color: var(--c-red);
+}
+
+.due-btn:hover,
+.due-btn[data-state="open"] {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.due-btn.overdue:hover,
+.due-btn.overdue[data-state="open"] {
+  color: var(--c-red);
+}
+
+.task-meta button.prio:hover,
+.task-meta button.prio[data-state="open"] {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.task-meta button.prio.p1 {
+  color: var(--c-blue);
+}
+
+.menu-hint {
+  margin-left: auto;
+  padding-left: 16px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.menu-item[data-highlighted] .menu-hint {
+  color: var(--text);
+}
+
+.menu-check {
+  margin-left: auto;
+  display: inline-grid;
+  color: var(--ui);
+}
+
+.menu-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.menu-item[data-state="open"] {
+  background: var(--hover);
+}
+
+/* A radio item that is chosen shows a tick, not the accent bar of a drop-down. */
+[role="menuitemradio"].menu-item[data-state="checked"] {
+  background: transparent;
+}
+
+[role="menuitemradio"].menu-item[data-state="checked"]::before {
+  content: none;
+}
+
+[role="menuitemradio"].menu-item[data-highlighted] {
+  background: var(--hover);
+}
+
+.due-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 296px;
+  padding: 8px 10px 6px;
+}
+
+.due-pop:focus {
+  outline: none;
+}
+
+.due-pop-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.due-pop .menu-label {
+  padding: 0;
+}
+
+.due-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.due-chips .btn {
+  min-height: 28px;
+  padding: 0 9px;
+  font-size: 13px;
+}
+
+.due-chips .btn[aria-pressed="true"] {
+  border-color: var(--ui);
+  background: var(--selected);
+  font-weight: 600;
+}
+
+.due-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+}
+
+.due-pop .field {
+  min-height: 30px;
+  padding: 3px 8px;
+  color-scheme: inherit;
+}
+
+.due-remove {
+  align-self: flex-start;
+  min-height: 28px;
+  margin-left: -6px;
+  padding: 0 6px;
+  color: var(--c-red);
+}
+
+/* While a new reminder's title is typed: what its date, repeat or priority words will set. */
+.qa-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.qa-preview span {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ui) 14%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.float-qa {
+  margin: 0;
+  padding: 6px 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.float-qa + .float-add {
+  border-top: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .qa-preview span {
+    animation: qa-in 0.12s ease-out;
+  }
+}
+
+@keyframes qa-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
 }

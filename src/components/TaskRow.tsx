@@ -1,10 +1,10 @@
 import { AlertOff, AlertUrgent, Fire, FlagOn, Info, Repeat, Subtasks, Timer, Window } from "../icons";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { REPEAT_LABELS, currentStreak, formatDue, isOverdue } from "../dates";
 import { activeSnooze, snoozeLabel } from "../model";
+import { parseQuickAdd, quickAddSummary } from "../quickAdd";
 import type { ReminderList, Task } from "../types";
-
-const PRIORITY_NAMES = ["", "Low", "Medium", "High"];
+import { DuePicker, PriorityPicker, TaskContextMenu } from "./TaskControls";
 
 interface Props {
   task: Task;
@@ -28,12 +28,19 @@ interface Props {
   onEmpty?(titleBefore: string): void;
   /** The title lost focus with text in it. */
   onCommit?(): void;
+  /** With `onDelete`, right-clicking the row opens a menu of quick changes; it moves reminders to these lists. */
+  lists?: ReminderList[];
+  /** Deletes the reminder (to Recently deleted). */
+  onDelete?(): void;
+  /** The title is new: while it is typed, show what a date or priority in it will set. */
+  preview?: boolean;
 }
 
 export function TaskRow(props: Props) {
   const { task, list, now, selected, compact } = props;
   const title = useRef<HTMLTextAreaElement>(null);
   const titleOnFocus = useRef(task.title);
+  const [editing, setEditing] = useState(false);
   const color = list?.color ?? "blue";
 
   useEffect(() => {
@@ -47,8 +54,9 @@ export function TaskRow(props: Props) {
   const subtasksDone = task.subtasks.filter((s) => s.done).length;
   const streak = currentStreak(task, now);
   const snoozed = activeSnooze(task, now);
+  const summary = props.preview && editing ? quickAddSummary(parseQuickAdd(task.title, now), now) : [];
 
-  return (
+  const row = (
     <div
       className={`task-row${task.completed ? " done" : ""}${selected ? " selected" : ""}${compact ? " compact" : ""}`}
       onClick={props.onSelect}
@@ -85,21 +93,32 @@ export function TaskRow(props: Props) {
             }}
             onFocus={() => {
               titleOnFocus.current = task.title;
+              setEditing(true);
               props.onSelect?.();
             }}
+            onContextMenu={(e) => {
+              // While typing, right-click gives the usual cut, copy and paste.
+              if (document.activeElement === e.currentTarget) e.stopPropagation();
+            }}
             onBlur={() => {
+              setEditing(false);
               if (!task.title.trim()) props.onEmpty?.(titleOnFocus.current);
               else props.onCommit?.();
             }}
           />
         </div>
+        {summary.length > 0 && (
+          <div className="qa-preview" aria-live="polite">
+            {summary.map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+        )}
         {!compact && task.notes && <div className="task-notes">{task.notes}</div>}
         {(task.priority > 0 || due || task.subtasks.length > 0 || task.pomodoros > 0 || task.appTrigger || props.showList || snoozed) && (
           <div className="task-meta">
-            {task.priority > 0 && (
-              <span className={`prio p${task.priority}`}>{PRIORITY_NAMES[task.priority]}</span>
-            )}
-            {due && <span className={overdue ? "overdue" : undefined}>{due}</span>}
+            {task.priority > 0 && <PriorityPicker task={task} onChange={props.onChange} />}
+            {due && <DuePicker task={task} now={now} label={due} overdue={overdue} onChange={props.onChange} />}
             {snoozed && (
               <span className="meta-icon snoozed" title="Its popup comes back then; the due time stays">
                 <AlertOff size={11} />
@@ -171,6 +190,21 @@ export function TaskRow(props: Props) {
         </button>
       )}
     </div>
+  );
+
+  if (!props.lists || !props.onDelete) return row;
+  return (
+    <TaskContextMenu
+      task={task}
+      lists={props.lists}
+      now={now}
+      onChange={props.onChange}
+      onDelete={props.onDelete}
+      onInfo={props.onInfo}
+      onFocus={props.onFocus}
+    >
+      {row}
+    </TaskContextMenu>
   );
 }
 

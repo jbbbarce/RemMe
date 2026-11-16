@@ -35,7 +35,7 @@ export function isOverdue(task: Task, now: Date): boolean {
   return task.dueHasTime ? due < now : due < startOfDay(now);
 }
 
-export function formatDue(task: Task, now: Date): string {
+export function formatDue(task: Pick<Task, "dueAt" | "dueHasTime">, now: Date): string {
   if (!task.dueAt) return "";
   const due = new Date(task.dueAt);
   const days = Math.round((startOfDay(due).getTime() - startOfDay(now).getTime()) / DAY);
@@ -87,6 +87,64 @@ export function doneOnTime(task: Task, doneAt: Date): boolean {
 export function currentStreak(task: Task, now: Date): number {
   if (!task.repeat || !task.dueAt || task.completed || !doneOnTime(task, now)) return 0;
   return task.streak;
+}
+
+/** The quick date choices on a reminder's menu and date picker. */
+export const DAY_PRESETS = ["today", "tomorrow", "nextWeek"] as const;
+export type DayPreset = (typeof DAY_PRESETS)[number];
+
+export const DAY_PRESET_LABELS: Record<DayPreset, string> = {
+  today: "Today",
+  tomorrow: "Tomorrow",
+  nextWeek: "Next week",
+};
+
+/** The day a preset means. Next week is the coming Monday (a week on, if today is Monday). */
+export function presetDay(preset: DayPreset, now: Date): Date {
+  const today = startOfDay(now);
+  if (preset === "today") return today;
+  if (preset === "tomorrow") return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  const toMonday = ((8 - today.getDay()) % 7) || 7;
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate() + toMonday);
+}
+
+/** "Mon 23 Nov": the short date shown beside a preset. */
+export function shortDay(day: Date): string {
+  return day.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+}
+
+type Due = Pick<Task, "dueAt" | "dueHasTime">;
+
+/** Moves a reminder to `day`. A reminder with a time keeps it; one without gets the usual 9:00 date-only due. */
+export function dueOnDay(task: Due, day: Date): Due {
+  const [h, m] = task.dueAt && task.dueHasTime ? toTimeInput(task.dueAt).split(":") : ["09", "00"];
+  return { dueAt: fromInputs(toDateInput(day.toISOString()), `${h}:${m}`), dueHasTime: task.dueHasTime && !!task.dueAt };
+}
+
+/**
+ * Sets a reminder's time (`HH:mm`), on its own day or today if it has none. `null` takes the time off
+ * and keeps the day.
+ */
+export function dueAtTime(task: Due, time: string | null, now: Date): Due {
+  const day = task.dueAt ? toDateInput(task.dueAt) : toDateInput(now.toISOString());
+  return time ? { dueAt: fromInputs(day, time), dueHasTime: true } : { dueAt: fromInputs(day, "09:00"), dueHasTime: false };
+}
+
+/** Taking the date off also ends a repeat and nagging, which both need a date. */
+export const NO_DUE: Pick<Task, "dueAt" | "dueHasTime" | "repeat" | "nagMinutes"> = {
+  dueAt: null,
+  dueHasTime: false,
+  repeat: null,
+  nagMinutes: null,
+};
+
+/** The quick time choices in the date picker, as `HH:mm`. */
+export const TIME_PRESETS = ["09:00", "12:00", "18:00"] as const;
+
+/** "9:00 am" in the reader's own clock style. */
+export function timeLabel(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  return new Date(2000, 0, 1, h, m).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
 export const REPEAT_LABELS: Record<Repeat, string> = {

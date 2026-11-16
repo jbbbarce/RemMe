@@ -87,6 +87,9 @@ export function ListView({ data, view, tasks, now, actions, selectedId, onSelect
               onEnter={() => actions.add(task.id, { listId: task.listId, section: task.section })}
               onEmpty={(before) => actions.removeEmptied(task, before)}
               onCommit={() => actions.commit(task)}
+              lists={data.lists}
+              onDelete={() => actions.remove(task.id)}
+              preview={actions.isFresh(task.id)}
             />
           ))}
           {canAdd && view.kind === "list" && group.key !== "" && (
@@ -210,6 +213,9 @@ export function BoardView({ data, view, tasks, now, actions, selectedId, onSelec
                 onEnter={() => actions.add(task.id, { ...col.patch })}
                 onEmpty={(before) => actions.removeEmptied(task, before)}
                 onCommit={() => actions.commit(task)}
+                lists={data.lists}
+                onDelete={() => actions.remove(task.id)}
+                preview={actions.isFresh(task.id)}
               />
             </div>
           ))}
