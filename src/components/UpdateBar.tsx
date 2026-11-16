@@ -1,4 +1,4 @@
-import { Download, X } from "lucide-react";
+import { Dismiss, Download } from "../icons";
 import type { useUpdates } from "../updates";
 
 /** A bar at the bottom of the main window when a new version is ready. */
@@ -13,7 +13,7 @@ export function UpdateBar({ updates }: { updates: ReturnType<typeof useUpdates> 
           Update and restart
         </button>
         <button className="icon-btn" aria-label="Later" title="Later" onClick={updates.dismiss}>
-          <X size={14} />
+          <Dismiss size={14} />
         </button>
       </div>
     );

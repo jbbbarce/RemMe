@@ -652,6 +652,49 @@ fn set_title_bar(window: WebviewWindow, caption: Option<String>, text: Option<St
     Ok(())
 }
 
+/// The accent colour chosen in Windows Settings, as `#rrggbb`: the shade Windows uses on light
+/// backgrounds and the one it uses on dark ones. `None` where Windows has no such colour.
+#[derive(Serialize)]
+struct Accent {
+    light: String,
+    dark: String,
+}
+
+#[tauri::command]
+fn get_accent() -> Option<Accent> {
+    #[cfg(windows)]
+    {
+        use windows::UI::ViewManagement::{UIColorType, UISettings};
+        let settings = UISettings::new().ok()?;
+        let hex = |kind: UIColorType| {
+            settings.GetColorValue(kind).ok().map(|c| format!("#{:02x}{:02x}{:02x}", c.R, c.G, c.B))
+        };
+        Some(Accent { light: hex(UIColorType::AccentDark1)?, dark: hex(UIColorType::AccentLight2)? })
+    }
+    #[cfg(not(windows))]
+    None
+}
+
+/// Asks Windows 11 to round a window's corners, or to leave them square. The floating list has
+/// no frame, so Windows leaves it square unless asked; with Acrylic the window itself is what
+/// shows, so its corners must be rounded by Windows. Windows 10 ignores this.
+#[tauri::command]
+fn set_round_corners(window: WebviewWindow, round: bool) {
+    #[cfg(windows)]
+    {
+        use windows::Win32::Graphics::Dwm::{
+            DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_DONOTROUND, DWMWCP_ROUND, DwmSetWindowAttribute,
+        };
+        let Ok(hwnd) = window.hwnd() else { return };
+        let preference = if round { DWMWCP_ROUND } else { DWMWCP_DONOTROUND };
+        unsafe {
+            let _ = DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &preference as *const _ as _, 4);
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = (window, round);
+}
+
 fn set_float_locked(app: &AppHandle, locked: bool) {
     let Some(window) = app.get_webview_window(FLOAT) else { return };
     let state = app.state::<AppState>();
@@ -1196,6 +1239,8 @@ pub fn run() {
             pomodoro_skip,
             pomodoro_reset,
             set_title_bar,
+            get_accent,
+            set_round_corners,
             list_backups,
             backup_now,
             restore_backup,

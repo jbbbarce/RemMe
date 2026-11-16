@@ -1,6 +1,6 @@
+import { Add, Board, Delete, FloatingList, ListLayout, LockClosed, LockOpen, More, Settings as SettingsIcon } from "../icons";
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { Columns3, LayoutList, Lock, LockOpen, PanelTopOpen, Plus, Settings as SettingsIcon } from "lucide-react";
 import {
   clearCompleted,
   deleteList,
@@ -19,7 +19,8 @@ import type { AppData, PopupAction, ReminderList, TimerFinished, View } from "..
 import { ListDialog, SettingsDialog } from "./Dialogs";
 import { UpdateBar } from "./UpdateBar";
 import { RecoveryBanner } from "./Backups";
-import { Inspector } from "./Inspector";
+import { Inspector, Switch } from "./Inspector";
+import { Menu, Tip } from "./ui";
 import { Sidebar } from "./Sidebar";
 import { CalendarView } from "./CalendarView";
 import { BoardView, ListView } from "./TaskViews";
@@ -202,7 +203,8 @@ export function MainApp({ data, update, saveError }: Props) {
               title="List"
               onClick={() => setLayout("list")}
             >
-              <LayoutList size={16} />
+              <ListLayout size={16} />
+              List
             </button>
             <button
               className={layout === "board" ? "on" : ""}
@@ -210,7 +212,8 @@ export function MainApp({ data, update, saveError }: Props) {
               title="Board"
               onClick={() => setLayout("board")}
             >
-              <Columns3 size={16} />
+              <Board size={16} />
+              Board
             </button>
           </div>
           )}
@@ -220,25 +223,30 @@ export function MainApp({ data, update, saveError }: Props) {
             title={`Floating list (${data.settings.toggleShortcut})`}
             onClick={() => setFloat({ visible: !float.visible })}
           >
-            <PanelTopOpen size={17} />
-            Float
+            <FloatingList size={16} />
+            Floating list
           </button>
           <button
             className={`tool${float.locked ? " on" : ""}`}
             title={`Lock floating list (${data.settings.lockShortcut})`}
             onClick={() => setFloat({ locked: !float.locked })}
           >
-            {float.locked ? <Lock size={16} /> : <LockOpen size={16} />}
+            {float.locked ? <LockClosed size={16} /> : <LockOpen size={16} />}
             {float.locked ? "Locked" : "Lock"}
           </button>
-          {canAdd && (
-            <button className="icon-btn big" aria-label="New reminder (Ctrl+N)" title="New reminder (Ctrl+N)" onClick={() => actions.add()}>
-              <Plus size={20} />
+          <Tip text="Settings">
+            <button className="icon-btn big" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
+              <SettingsIcon size={20} />
             </button>
+          </Tip>
+          {canAdd && (
+            <Tip text="New reminder (Ctrl+N)">
+              <button className="btn primary" onClick={() => actions.add()}>
+                <Add size={16} />
+                New reminder
+              </button>
+            </Tip>
           )}
-          <button className="icon-btn big" aria-label="Settings" title="Settings" onClick={() => setSettingsOpen(true)}>
-            <SettingsIcon size={18} />
-          </button>
         </div>
 
         {isDeleted ? (
@@ -255,23 +263,28 @@ export function MainApp({ data, update, saveError }: Props) {
             ) : (
               <>
                 <span>{openCount} open</span>
-                <span className="dot">·</span>
                 <span>{completedCount} done</span>
-                {completedCount > 0 && (
-                  <>
-                    <span className="dot">·</span>
-                    <button className="link" onClick={() => undo.trash((d, batch) => clearCompleted(d, view, new Date(), batch), true)}>
-                      Clear
-                    </button>
-                  </>
-                )}
                 {view.kind !== "smart" && (
-                  <>
-                    <span className="dot">·</span>
-                    <button className="link" onClick={() => setShowCompleted(!showCompleted)}>
-                      {showCompleted ? "Hide done" : "Show done"}
-                    </button>
-                  </>
+                  <label className="with-switch">
+                    <Switch checked={showCompleted} onChange={setShowCompleted} />
+                    Show done
+                  </label>
+                )}
+                {completedCount > 0 && (
+                  <Menu
+                    trigger={
+                      <button className="icon-btn" aria-label="More">
+                        <More size={16} />
+                      </button>
+                    }
+                    items={[
+                      {
+                        label: `Clear ${completedCount} completed`,
+                        icon: <Delete size={16} />,
+                        onSelect: () => undo.trash((d, batch) => clearCompleted(d, view, new Date(), batch), true),
+                      },
+                    ]}
+                  />
                 )}
               </>
             )}

@@ -62,6 +62,9 @@ export interface Task {
 export const THEMES = ["pro", "calm", "paper", "fluent"] as const;
 export type ThemeId = (typeof THEMES)[number];
 
+export const DENSITIES = ["comfortable", "compact"] as const;
+export type Density = (typeof DENSITIES)[number];
+
 export interface Settings {
   toggleShortcut: string;
   lockShortcut: string;
@@ -76,6 +79,8 @@ export interface Settings {
   pomodoroChime: boolean;
   /** Shows the verse of the day in the sidebar and the floating list. */
   verseOfDay: boolean;
+  /** How tightly rows are packed in the main window. The floating list is always compact. */
+  density: Density;
   /** Due-reminder popups stay on screen until Snooze, Done or ✕ is pressed. */
   stickyReminders: boolean;
 }

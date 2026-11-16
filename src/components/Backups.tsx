@@ -1,6 +1,6 @@
+import { Delete, Dismiss, FolderOpen, Restore } from "../icons";
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ArchiveRestore, FolderOpen, Trash2, X } from "lucide-react";
 
 type BackupKind = "daily" | "manual" | "beforeRestore" | "beforeImport";
 
@@ -203,7 +203,7 @@ export function BackupsSection() {
                   disabled={busy}
                   onClick={() => run(() => invoke("delete_backup", { name: b.name }).then(() => null))}
                 >
-                  <Trash2 size={14} />
+                  <Delete size={14} />
                 </button>
               )}
             </span>
@@ -233,7 +233,7 @@ export function RecoveryBanner() {
   };
   return (
     <div className="recovery-bar" role="alert">
-      <ArchiveRestore size={15} />
+      <Restore size={15} />
       <span>
         {recovery.restoredFrom
           ? `Your reminders file was damaged. RemMe restored the backup from ${formatWhen(recovery.restoredFrom, false)}.`
@@ -241,7 +241,7 @@ export function RecoveryBanner() {
       </span>
       <button onClick={() => invoke("open_backup_folder")}>Open backup folder</button>
       <button className="icon-btn" aria-label="Dismiss" title="Dismiss" onClick={dismiss}>
-        <X size={14} />
+        <Dismiss size={14} />
       </button>
     </div>
   );

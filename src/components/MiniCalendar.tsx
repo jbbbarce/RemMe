@@ -1,5 +1,5 @@
+import { ChevronLeft, ChevronRight } from "../icons";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { dayKey, itemsByDay, monthGrid, sameDay, shiftAnchor, weekStartDay } from "../calendar";
 import type { AppData } from "../types";
 import { TaskRow } from "./TaskRow";

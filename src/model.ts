@@ -1,5 +1,6 @@
 import { doneOnTime, endOfDay, nextDue, startOfDay } from "./dates";
 import {
+  DENSITIES,
   LIST_COLORS,
   LIST_ICONS,
   REPEATS,
@@ -17,7 +18,7 @@ export const DEFAULT_SETTINGS: Settings = {
   toggleShortcut: "Ctrl+Shift+O",
   lockShortcut: "Ctrl+Shift+L",
   floatView: "today",
-  theme: "pro",
+  theme: "fluent",
   pomodoroShortcut: "Ctrl+Shift+P",
   pomodoroFocus: 25,
   pomodoroShort: 5,
@@ -25,6 +26,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pomodoroChime: true,
   verseOfDay: true,
   stickyReminders: true,
+  density: "comfortable",
 };
 
 /** Session lengths are whole minutes from 1 to 180. */
@@ -67,6 +69,7 @@ export function normalize(raw: SavedData | null | undefined): AppData {
   settings.pomodoroChime = settings.pomodoroChime !== false;
   settings.verseOfDay = settings.verseOfDay !== false;
   settings.stickyReminders = settings.stickyReminders !== false;
+  if (!DENSITIES.includes(settings.density)) settings.density = DEFAULT_SETTINGS.density;
   const deleted = (Array.isArray(raw?.deleted) ? raw.deleted : []).flatMap(deletedFrom);
   return { version: 1, lists, tasks, settings, deleted };
 }

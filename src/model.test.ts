@@ -13,7 +13,7 @@ import {
   updateTask,
 } from "./model";
 import { shortcutFromEvent } from "./shortcut";
-import { isDarkColor } from "./theme";
+import { isDarkColor, readableAccent } from "./theme";
 import type { Task } from "./types";
 
 const now = new Date(2026, 9, 27, 12, 0);
@@ -246,10 +246,24 @@ describe("habit streaks", () => {
 });
 
 describe("themes", () => {
-  it("defaults to Sharp dark pro, and replaces a theme it doesn't know", () => {
-    expect(normalize({}).settings.theme).toBe("pro");
+  it("defaults to Windows Fluent, and replaces a theme it doesn't know", () => {
+    expect(normalize({}).settings.theme).toBe("fluent");
     expect(normalize({ settings: { theme: "paper" } }).settings.theme).toBe("paper");
-    expect(normalize({ settings: { theme: "neon" as never } }).settings.theme).toBe("pro");
+    expect(normalize({ settings: { theme: "neon" as never } }).settings.theme).toBe("fluent");
+  });
+
+  it("keeps a saved theme and density, and defaults density to comfortable", () => {
+    expect(normalize({ settings: { theme: "pro" } }).settings.theme).toBe("pro");
+    expect(normalize({}).settings.density).toBe("comfortable");
+    expect(normalize({ settings: { density: "compact" } }).settings.density).toBe("compact");
+    expect(normalize({ settings: { density: "tiny" as never } }).settings.density).toBe("comfortable");
+  });
+
+  it("only takes an accent colour that stays readable", () => {
+    expect(readableAccent("#0067c0", "#f9f9f9")).toEqual({ ui: "#0067c0", text: "#ffffff" });
+    expect(readableAccent("#99ebff", "#272727")).toEqual({ ui: "#99ebff", text: "#000000" });
+    expect(readableAccent("#ffe14d", "#f9f9f9")).toBeNull();
+    expect(readableAccent("nonsense", "#f9f9f9")).toBeNull();
   });
 });
 

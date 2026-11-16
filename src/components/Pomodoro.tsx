@@ -1,4 +1,4 @@
-import { Pause, Play, RotateCcw, SkipForward, Timer } from "lucide-react";
+import { Pause, Play, Reset, Skip, Timer } from "../icons";
 import { PHASE_NAMES, formatClock, resetTimer, skipTimer, toggleTimer, usePomodoro } from "../pomodoro";
 import type { AppData } from "../types";
 
@@ -53,10 +53,10 @@ export function PomodoroPanel({ data }: { data: AppData }) {
         {!idle && (
           <>
             <button className="icon-btn" aria-label="Skip to the next phase" title="Skip" onClick={skipTimer}>
-              <SkipForward size={14} />
+              <Skip size={14} />
             </button>
             <button className="icon-btn" aria-label="Stop and reset" title="Reset" onClick={resetTimer}>
-              <RotateCcw size={14} />
+              <Reset size={14} />
             </button>
           </>
         )}

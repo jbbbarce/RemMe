@@ -4,6 +4,7 @@ import { FloatApp } from "./components/FloatApp";
 import { MainApp } from "./components/MainApp";
 import { useAppData } from "./store";
 import { applyTheme } from "./theme";
+import { TipProvider } from "./components/ui";
 
 const isFloat = getCurrentWindow().label === "float";
 document.documentElement.classList.toggle("is-float", isFloat);
@@ -11,6 +12,11 @@ document.documentElement.classList.toggle("is-float", isFloat);
 export default function App() {
   const { data, update, saveError, loadError } = useAppData();
   const theme = data?.settings.theme;
+  const density = data?.settings.density;
+
+  useEffect(() => {
+    if (density) document.documentElement.dataset.density = density;
+  }, [density]);
 
   useEffect(() => {
     if (!theme) return;
@@ -31,9 +37,9 @@ export default function App() {
       </p>
     ) : null;
   }
-  return isFloat ? (
-    <FloatApp data={data} update={update} />
-  ) : (
-    <MainApp data={data} update={update} saveError={saveError} />
+  return (
+    <TipProvider>
+      {isFloat ? <FloatApp data={data} update={update} /> : <MainApp data={data} update={update} saveError={saveError} />}
+    </TipProvider>
   );
 }

@@ -1,9 +1,9 @@
 import { Fragment } from "react";
-import { CirclePlus, Search, Trash2, X } from "lucide-react";
-import { LIST_ICON_COMPONENTS, SMART_ICONS } from "../icons";
+import { Add, Delete, Dismiss, LIST_ICON_COMPONENTS, More, SMART_ICONS, Search } from "../icons";
 import { SMART_LISTS, smartCount } from "../model";
 import type { AppData, ReminderList, View } from "../types";
 import { PomodoroPanel } from "./Pomodoro";
+import { Menu, Tip } from "./ui";
 import { VerseCard } from "./Verse";
 
 interface Props {
@@ -32,7 +32,7 @@ export function Sidebar({ data, view, now, search, onSearch, onView, onAddList, 
         />
         {search && (
           <button className="icon-btn" aria-label="Clear search" onClick={() => onSearch("")}>
-            <X size={14} />
+            <Dismiss size={14} />
           </button>
         )}
       </label>
@@ -43,69 +43,78 @@ export function Sidebar({ data, view, now, search, onSearch, onView, onAddList, 
           const active = view.kind === "smart" && view.id === smart.id;
           return (
             <Fragment key={smart.id}>
+            {smart.id === "calendar" && <div className="side-sep" />}
             <button
               className={`nav-item${active ? " active" : ""}`}
               onClick={() => onView({ kind: "smart", id: smart.id })}
             >
               <span className="nav-icon">
-                <Icon size={15} />
+                <Icon size={18} />
               </span>
               <span className="nav-name">{smart.name}</span>
-              {smart.id !== "completed" && smart.id !== "calendar" && (
+              {smart.id !== "completed" && smart.id !== "calendar" && smartCount(data, smart.id, now) > 0 && (
                 <span className="nav-count">{smartCount(data, smart.id, now)}</span>
               )}
             </button>
-            {smart.id === "completed" && (
-              <button
-                className={`nav-item${view.kind === "deleted" ? " active" : ""}`}
-                onClick={() => onView({ kind: "deleted" })}
-              >
-                <span className="nav-icon">
-                  <Trash2 size={15} />
-                </span>
-                <span className="nav-name">Recently deleted</span>
-                {data.deleted.length > 0 && <span className="nav-count">{data.deleted.length}</span>}
-              </button>
-            )}
             </Fragment>
           );
         })}
       </nav>
 
-      <div className="section-label">Lists</div>
+      <div className="side-head">
+        <span>Lists</span>
+        <Tip text="Add list">
+          <button className="icon-btn" aria-label="Add list" onClick={onAddList}>
+            <Add size={16} />
+          </button>
+        </Tip>
+      </div>
       <nav className="lists" aria-label="Your lists">
         {data.lists.map((list) => {
           const active = view.kind === "list" && view.id === list.id;
           const Icon = LIST_ICON_COMPONENTS[list.icon];
           return (
-            <button
-              key={list.id}
-              className={`nav-item${active ? " active" : ""}`}
-              onClick={() => onView({ kind: "list", id: list.id })}
-              onDoubleClick={() => onEditList(list)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                onEditList(list);
-              }}
-              title="Double-click or right-click to edit"
-            >
-              <span className="nav-icon" style={{ color: `var(--c-${list.color})` }}>
-                <Icon size={15} />
-              </span>
-              <span className="nav-name">{list.name}</span>
-              <span className="nav-count">{openCount(list.id)}</span>
-            </button>
+            <div className="nav-row" key={list.id}>
+              <button
+                className={`nav-item${active ? " active" : ""}`}
+                onClick={() => onView({ kind: "list", id: list.id })}
+                onDoubleClick={() => onEditList(list)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  onEditList(list);
+                }}
+              >
+                <span className="nav-icon" style={{ color: `var(--c-${list.color})` }}>
+                  <Icon size={18} />
+                </span>
+                <span className="nav-name">{list.name}</span>
+                {openCount(list.id) > 0 && <span className="nav-count">{openCount(list.id)}</span>}
+              </button>
+              <Menu
+                align="end"
+                trigger={
+                  <button className="icon-btn nav-more" aria-label={`More for ${list.name}`}>
+                    <More size={16} />
+                  </button>
+                }
+                items={[{ label: "Edit list…", onSelect: () => onEditList(list) }]}
+              />
+            </div>
           );
         })}
       </nav>
 
+      <div className="side-sep" />
+      <button className={`nav-item${view.kind === "deleted" ? " active" : ""}`} onClick={() => onView({ kind: "deleted" })}>
+        <span className="nav-icon">
+          <Delete size={18} />
+        </span>
+        <span className="nav-name">Recently deleted</span>
+        {data.deleted.length > 0 && <span className="nav-count">{data.deleted.length}</span>}
+      </button>
+
       {data.settings.verseOfDay && <VerseCard now={now} />}
       <PomodoroPanel data={data} />
-
-      <button className="add-list" onClick={onAddList}>
-        <CirclePlus size={15} />
-        Add list
-      </button>
     </aside>
   );
 }

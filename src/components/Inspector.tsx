@@ -1,4 +1,5 @@
-import { AppWindow, BellOff, BellRing, Flag, Plus, Timer, Trash2, X } from "lucide-react";
+import { Add, AlertOff, AlertUrgent, Delete, Dismiss, Flag, Timer, Window } from "../icons";
+import { Dropdown } from "./ui";
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { activeSnooze, newId, snoozeLabel } from "../model";
@@ -46,7 +47,7 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
       <header>
         <h2>Details</h2>
         <button className="icon-btn" aria-label="Close details" onClick={onClose}>
-          <X size={16} />
+          <Dismiss size={16} />
         </button>
       </header>
 
@@ -92,43 +93,36 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
           />
         )}
         {task.dueAt && (
-          <label className="row">
+          <div className="row">
             <span>Repeat</span>
-            <select
+            <Dropdown
+              label="Repeat"
               value={task.repeat ?? ""}
-              onChange={(e) => onChange({ repeat: (e.target.value || null) as Repeat | null })}
-            >
-              <option value="">Never</option>
-              {REPEATS.map((r) => (
-                <option key={r} value={r}>
-                  {REPEAT_LABELS[r]}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(v) => onChange({ repeat: (v || null) as Repeat | null })}
+              options={[{ value: "", label: "Never" }, ...REPEATS.map((r) => ({ value: r, label: REPEAT_LABELS[r] }))]}
+            />
+          </div>
         )}
         {task.dueAt && (
-          <label className="row" title="Keep notifying until it's done">
+          <div className="row" title="Keep notifying until it's done">
             <span className="with-icon">
-              <BellRing size={14} /> Nag
+              <AlertUrgent size={14} /> Nag
             </span>
-            <select
-              value={task.nagMinutes ?? ""}
-              onChange={(e) => onChange({ nagMinutes: e.target.value ? Number(e.target.value) : null })}
-            >
-              <option value="">Off</option>
-              {NAG_MINUTES.map((m) => (
-                <option key={m} value={m}>
-                  Every {m === 60 ? "hour" : `${m} min`}
-                </option>
-              ))}
-            </select>
-          </label>
+            <Dropdown
+              label="Nag"
+              value={task.nagMinutes ? String(task.nagMinutes) : ""}
+              onChange={(v) => onChange({ nagMinutes: v ? Number(v) : null })}
+              options={[
+                { value: "", label: "Off" },
+                ...NAG_MINUTES.map((m) => ({ value: String(m), label: `Every ${m === 60 ? "hour" : `${m} min`}` })),
+              ]}
+            />
+          </div>
         )}
         {snoozed && (
           <div className="row snooze-row">
             <span className="with-icon">
-              <BellOff size={14} /> {snoozeLabel(snoozed, now)}
+              <AlertOff size={14} /> {snoozeLabel(snoozed, now)}
             </span>
             <button className="link-btn" onClick={() => onChange({ snoozedUntil: null })}>
               Clear
@@ -148,47 +142,37 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
           </span>
           <Switch checked={task.flagged} onChange={(flagged) => onChange({ flagged })} />
         </label>
-        <label className="row">
+        <div className="row">
           <span>Priority</span>
-          <select
-            value={task.priority}
-            onChange={(e) => onChange({ priority: Number(e.target.value) as Priority })}
-          >
-            {PRIORITIES.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </label>
+          <Dropdown
+            label="Priority"
+            value={String(task.priority)}
+            onChange={(v) => onChange({ priority: Number(v) as Priority })}
+            options={PRIORITIES.map((p) => ({ value: String(p.value), label: p.label }))}
+          />
+        </div>
       </div>
 
       <div className="group">
-        <label className="row">
+        <div className="row">
           <span>List</span>
-          <select value={task.listId} onChange={(e) => onChange({ listId: e.target.value, section: null })}>
-            {data.lists.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
+          <Dropdown
+            label="List"
+            value={task.listId}
+            onChange={(listId) => onChange({ listId, section: null })}
+            options={data.lists.map((l) => ({ value: l.id, label: l.name }))}
+          />
+        </div>
         {list && list.sections.length > 0 && (
-          <label className="row">
+          <div className="row">
             <span>Section</span>
-            <select
+            <Dropdown
+              label="Section"
               value={task.section ?? ""}
-              onChange={(e) => onChange({ section: e.target.value || null })}
-            >
-              <option value="">Others</option>
-              {list.sections.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(v) => onChange({ section: v || null })}
+              options={[{ value: "", label: "Others" }, ...list.sections.map((s) => ({ value: s, label: s }))]}
+            />
+          </div>
         )}
       </div>
 
@@ -200,7 +184,7 @@ export function Inspector({ data, task, now, onChange, onDelete, onClose }: Prop
       )}
 
       <button className="danger" onClick={onDelete}>
-        <Trash2 size={15} /> Delete Reminder
+        <Delete size={15} /> Delete Reminder
       </button>
     </aside>
   );
@@ -212,7 +196,7 @@ function AppTrigger({ value, onChange }: { value: string | null; onChange(value:
     <div className="group">
       <label className="row" title="Get a notification each time this app opens, until the reminder is done">
         <span className="with-icon">
-          <AppWindow size={14} /> When I open
+          <Window size={14} /> When I open
         </span>
         <input
           className="field app-field"
@@ -263,12 +247,12 @@ function Subtasks({ subtasks, onChange }: { subtasks: Subtask[]; onChange(subtas
             onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
           />
           <button className="icon-btn" aria-label="Delete subtask" onClick={() => onChange(subtasks.filter((x) => x.id !== s.id))}>
-            <X size={13} />
+            <Dismiss size={13} />
           </button>
         </div>
       ))}
       <div className="subtask">
-        <Plus size={14} className="subtask-plus" />
+        <Add size={14} className="subtask-plus" />
         <input
           value={draft}
           placeholder="Add Subtask"

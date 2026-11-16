@@ -1,5 +1,5 @@
+import { Dismiss, Undo } from "../icons";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Undo2, X } from "lucide-react";
 import { deletedMessage, newId, undoDelete } from "../model";
 import type { AppData } from "../types";
 
@@ -89,11 +89,11 @@ export function UndoToast({ state }: { state: UndoState }) {
     <div className="toast undo-toast" role="status">
       <span className="undo-message">{state.offer.message}</span>
       <button className="undo-btn" title="Undo (Ctrl+Z)" onClick={state.undo}>
-        <Undo2 size={14} />
+        <Undo size={14} />
         Undo
       </button>
       <button className="icon-btn" aria-label="Dismiss" onClick={state.dismiss}>
-        <X size={13} />
+        <Dismiss size={13} />
       </button>
     </div>
   );

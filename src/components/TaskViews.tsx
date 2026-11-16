@@ -1,5 +1,5 @@
+import { Add, Delete } from "../icons";
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
 import { formatDue, isOverdue } from "../dates";
 import { deleteSection, renameSection, upsertList } from "../model";
 import { startFocus } from "../pomodoro";
@@ -103,7 +103,7 @@ export function ListView({ data, view, tasks, now, actions, selectedId, onSelect
 function AddRow({ onAdd }: { onAdd(): void }) {
   return (
     <button className="add-row" onClick={onAdd}>
-      <Plus size={16} />
+      <Add size={16} />
       New Reminder
     </button>
   );
@@ -215,7 +215,7 @@ export function BoardView({ data, view, tasks, now, actions, selectedId, onSelec
           ))}
           {canAdd && (
             <button className="add-card" onClick={() => actions.add(col.tasks.at(-1)?.id, { ...col.patch })}>
-              <Plus size={15} />
+              <Add size={15} />
             </button>
           )}
         </div>
@@ -255,7 +255,7 @@ function SectionTitle({ list, name, update }: { list: ReminderList; name: string
         title="Delete section (its reminders move to Others)"
         onClick={() => update((d) => deleteSection(d, list.id, name))}
       >
-        <Trash2 size={13} />
+        <Delete size={13} />
       </button>
     </div>
   );

@@ -1,5 +1,5 @@
 import { BackupsSection } from "./Backups";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { ListBadge, LIST_ICON_COMPONENTS } from "../icons";
@@ -7,24 +7,9 @@ import { shortcutFromEvent, shortcutParts } from "../shortcut";
 import { THEME_NAMES } from "../theme";
 import type { useUpdates } from "../updates";
 import { DEFAULT_SETTINGS, validMinutes } from "../model";
-import { LIST_COLORS, LIST_ICONS, THEMES, type AppData, type ReminderList, type Settings, type ThemeId } from "../types";
+import { DENSITIES, LIST_COLORS, LIST_ICONS, THEMES, type AppData, type ReminderList, type Settings, type ThemeId } from "../types";
 import { Switch } from "./Inspector";
-
-function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose(): void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return (
-    <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" role="dialog" aria-label={title}>
-        <h2>{title}</h2>
-        {children}
-      </div>
-    </div>
-  );
-}
+import { Modal } from "./ui";
 
 interface ListDialogProps {
   list: ReminderList;
@@ -216,6 +201,27 @@ export function SettingsDialog({ data, onShortcuts, onTheme, onSettings, updates
         </div>
       </div>
       <p className="hint">The long break comes after every fourth focus session. New lengths apply from the next session.</p>
+
+      <h3 className="settings-head">Layout</h3>
+      <div className="group">
+        <div className="row">
+          <span>Row spacing</span>
+          <div className="segmented" role="group" aria-label="Row spacing">
+            {DENSITIES.map((d) => (
+              <button
+                key={d}
+                type="button"
+                className={data.settings.density === d ? "on" : ""}
+                aria-pressed={data.settings.density === d}
+                onClick={() => onSettings({ density: d })}
+              >
+                {d === "compact" ? "Compact" : "Comfortable"}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <p className="hint">Compact fits more reminders in the main window. The floating list is always compact.</p>
 
       <h3 className="settings-head">Notifications</h3>
       <div className="group">

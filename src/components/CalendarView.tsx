@@ -1,5 +1,5 @@
+import { ChevronLeft, ChevronRight, PanelClose, PanelOpen } from "../icons";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen } from "lucide-react";
 import {
   type CalendarItem,
   type CalendarMode,
@@ -153,7 +153,7 @@ export function CalendarView({ data, now, actions, update, onInfo }: Props) {
             title="No date"
             onClick={() => setNoDateOpen(!noDateOpen)}
           >
-            {noDateOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+            {noDateOpen ? <PanelClose size={16} /> : <PanelOpen size={16} />}
           </button>
         </div>
       </header>

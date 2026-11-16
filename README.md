@@ -6,11 +6,11 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
 
 ## Features
 
-- **Themes:** pick one in **Settings** (gear icon). It applies at once to both windows.
-  - **Sharp dark pro** (default): near-black, thin borders, an indigo accent.
-  - **Calm minimal:** warm and roomy, with a teal accent. Follows Windows light or dark mode.
+- **Themes:** pick one in **Settings** (gear icon). It applies at once to both windows. All four share one Windows 11-style layout (Segoe UI, the same control sizes and corners); a theme changes colours and a few details.
+  - **Windows Fluent** (default): Windows colours and your Windows accent colour. Follows Windows light or dark mode. On Windows 11 the main window has the see-through Mica background and the floating list is see-through Acrylic.
+  - **Sharp dark pro:** near-black, with an indigo accent.
+  - **Calm minimal:** warm, with a teal accent and round checkboxes. Follows Windows light or dark mode.
   - **Paper and ink:** cream paper, serif headings, hand-drawn-style checkboxes.
-  - **Windows Fluent:** Segoe UI and Windows colours. Follows Windows light or dark mode, with the see-through Mica background on Windows 11.
   - The window's title bar takes the theme's colour too (on Windows 10, only light or dark).
 - **Smart lists:** Today, Upcoming, All, Flagged and Done, with live counts.
 - **Calendar** (in the sidebar): dated reminders from every list on a **Month** or **Week** grid, in their list's colour. The week starts on the day your Windows region uses.
@@ -18,9 +18,9 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
   - Drag a reminder to another day to move it; its time stays. Drag one onto the **No date** column to remove its date, or from there onto a day to give it one.
   - A repeating reminder's later dates show faded. Overdue reminders stay on their day, in red. **Show done** shows finished ones.
   - In the floating list, pick **Calendar** from its list picker for a small month view with the chosen day's reminders.
-- **Your own lists,** each with a color and an icon. Double-click or right-click a list to edit or delete it.
+- **Your own lists,** each with a color and an icon. Add one with **+** beside **Lists**. To edit or delete a list, use its **⋯** button, or double-click or right-click it.
 - **List and board layouts.** In a list's board view, sections are columns (for example one per person). Drag cards between columns, add sections at the right, and rename or delete them from the column header.
-- **Reminders** have a title, notes, a date with optional time, a flag, a priority (`!`, `!!`, `!!!`), a list and a section. Click **ⓘ** on a reminder to open its details.
+- **Reminders** have a title, notes, a date with optional time, a flag, a priority (shown as a **Low**, **Medium** or **High** chip), a list and a section. Click **ⓘ** on a reminder to open its details.
 - **Natural-language add:** type a date, time or priority into a new reminder's title and it is set for you when you finish typing. For example, `Call mom tomorrow 5pm !!` becomes "Call mom", due tomorrow at 5:00 PM with medium priority. It understands today, tonight, tomorrow, weekdays (`friday`, `next mon`), dates (`oct 30`, `30 oct`), `in 3 days`, `in 20 minutes`, times (`5pm`, `5:30 pm`, `17:00`, `at 6`, `noon`) and repeats (`daily`, `every week`, `every thursday`). This also works in the floating list's add box.
 - **Repeating reminders:** set **Repeat** (daily, weekly, monthly or yearly) in a reminder's details. Checking it off keeps the done one in Completed and adds the next one; uncheck it straight away to take that back. A reminder finished late comes back on its next future date.
 - **Subtasks:** add a checklist in a reminder's details. The row shows how many are done, and the next repeat starts with them all unchecked.
@@ -58,6 +58,8 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
 - **Undo and Recently deleted:** deleting a reminder, clearing completed ones or deleting a list shows an **Undo** toast for a few seconds, in the main window or the floating list. **Ctrl+Z** does the same while it shows (inside a text box, Ctrl+Z still undoes typing). Undo puts everything back where it was.
   - Deleted reminders and lists stay in **Recently deleted** (in the sidebar, below Done) for 30 days. **Restore** puts one back at the end of its list (or your first list, if its list is gone); restoring a list brings its reminders too. The bin button deletes one for good, and **Empty Recently Deleted** clears them all; both ask first.
   - A new reminder you never typed into is just dropped. Deleted reminders don't notify and don't show in counts, search or the calendar. They are in backups and exports.
+- **Row spacing:** **Settings → Layout** switches the main window between **Comfortable** and **Compact** rows. The floating list is always compact.
+- **Keyboard and readability:** everything can be reached with Tab and shows a focus ring; menus and dialogs close with Esc; icon buttons have tooltips. Text colours meet the WCAG AA contrast level in every theme, and animations switch off when Windows' **Animation effects** setting is off.
 - **Start with Windows** (in Settings) launches the app at sign-in, hidden in the tray.
 
 Keyboard: **Ctrl+N** adds a reminder, **Enter** in a title adds the next one, **Esc** leaves a title. A reminder whose title is left empty goes to Recently deleted.
@@ -117,9 +119,15 @@ One-time setup: the signing key lives at `%USERPROFILE%\.tauri\remme.key` and in
 
 ## Project layout
 
-- `src/`: React UI. `model.ts` holds data rules (smart lists, sections, sorting), `store.ts` loads, saves and syncs data between the two windows, and `components/` has the screens.
+- `src/`: React UI. `icons.tsx` is the one place icons come from, `components/ui.tsx` has the shared dialog, menu, drop-down and tooltip, `model.ts` holds data rules (smart lists, sections, sorting), `store.ts` loads, saves and syncs data between the two windows, and `components/` has the screens.
 - `src-tauri/src/lib.rs`: saving files, reminder notifications, global shortcuts, the tray icon and the floating window's lock.
 - `src-tauri/tauri.conf.json`: window definitions (`main` and `float`).
+
+## Credits
+
+- Icons: [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons) by Microsoft (MIT).
+- Menus, dialogs, drop-downs and tooltips: [Radix UI](https://www.radix-ui.com) primitives (MIT).
+- Layout and control sizes follow Microsoft's [Fluent 2](https://fluent2.microsoft.design) design system.
 
 ## License
 

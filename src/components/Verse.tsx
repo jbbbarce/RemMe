@@ -1,5 +1,5 @@
+import { BookOpen, ChevronDown, ChevronUp, Subtract } from "../icons";
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, ChevronDown, ChevronUp, Minus } from "lucide-react";
 import { dayKey } from "../calendar";
 import { isMinimized, verseClipboardText, verseFor } from "../verse";
 import type { Verse } from "../verses";
@@ -110,7 +110,7 @@ export function VerseCard({ now }: { now: Date }) {
           {short ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
         </button>
         <button className="icon-btn" title="Minimize the verse" onClick={() => setMinimized(true)}>
-          <Minus size={13} />
+          <Subtract size={13} />
         </button>
       </div>
       <VerseText verse={verse} clamp={short} onExpand={() => setShort(false)} />
@@ -191,7 +191,7 @@ export function VersePanel({ now, locked }: { now: Date; locked: boolean }) {
       </div>
       {!locked && (
         <button className="icon-btn verse-minimize" title="Minimize the verse" onClick={() => setMinimized(true)}>
-          <Minus size={13} />
+          <Subtract size={13} />
         </button>
       )}
     </section>

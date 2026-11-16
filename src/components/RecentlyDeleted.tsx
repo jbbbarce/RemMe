@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { ArchiveRestore, Trash2 } from "lucide-react";
 import { formatDue } from "../dates";
-import { LIST_ICON_COMPONENTS } from "../icons";
+import { Delete, LIST_ICON_COMPONENTS, Restore } from "../icons";
 import { KEEP_DELETED_DAYS, emptyDeleted, forgetDeleted, restoreDeleted } from "../model";
 import type { AppData, DeletedItem } from "../types";
 
@@ -121,7 +120,7 @@ function DeletedRow({ item, data, now, confirming, onRestore, onDelete, onBlurDe
       </div>
       <span className="row-actions">
         <button className="deleted-restore" onClick={onRestore} title="Put it back">
-          <ArchiveRestore size={14} />
+          <Restore size={14} />
           Restore
         </button>
         <button
@@ -131,7 +130,7 @@ function DeletedRow({ item, data, now, confirming, onRestore, onDelete, onBlurDe
           onClick={onDelete}
           onBlur={onBlurDelete}
         >
-          {confirming ? "Delete forever?" : <Trash2 size={15} />}
+          {confirming ? "Delete forever?" : <Delete size={15} />}
         </button>
       </span>
     </div>

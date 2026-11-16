@@ -1,202 +1,55 @@
 /*
- * Themes. Each theme sets the same tokens; components only use the tokens.
- * `data-theme` sits on <html>, and on the previews in Settings.
- * Sharp dark pro is the default, so it is also what shows before data loads.
+ * Themes. Every theme shares one structure, measured against Microsoft's Fluent 2 kit: Segoe UI
+ * Variable, 4 px and 8 px corners, 32 px controls. A theme changes colours and a few details only.
+ * `data-theme` sits on <html>, and on the previews in Settings. Windows Fluent is the default, so
+ * it is also what shows before data loads.
+ *
+ * Text colours (--text, --text-2, --text-3, --ui, --c-red, --c-orange) are at least 4.5:1 against
+ * --bg, --content and --card in every theme (WCAG AA).
  */
 
 :root,
-[data-theme="pro"] {
-  --c-red: #ff6b6b;
-  --c-orange: #f0a35e;
-  --c-yellow: #e8c547;
-  --c-green: #5ec48a;
-  --c-teal: #5ec4a8;
-  --c-blue: #6b8bff;
-  --c-indigo: #8b95ff;
-  --c-purple: #b48bff;
-  --c-pink: #ff7aa8;
-  --c-brown: #b8946a;
-  --c-gray: #8a91a0;
-  --c-graphite: #6b7280;
-
-  --bg: #0b0c0f;
-  --sidebar: #0e1014;
-  --content: #0b0c0f;
-  --surface: #12151b;
-  --card: #12151b;
-  --hover: rgba(255, 255, 255, 0.04);
-  --selected: rgba(139, 149, 255, 0.12);
-  --text: #e6e8ee;
-  --text-2: #8a91a0;
-  --text-3: #555c6a;
-  --line: #1f232b;
-  --field: #161a21;
-  --shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
-  --float-bg: rgba(14, 16, 20, 0.97);
-
-  --ui: #8b95ff;
-  --ui-text: #0b0c0f;
-  --font: "Geist Variable", "Segoe UI", system-ui, sans-serif;
-  --font-head: var(--font);
-  --head-size: 20px;
-  --head-weight: 600;
-  --radius: 6px;
-  --radius-lg: 10px;
-  --check-size: 16px;
-  --check-radius: 4px;
-  --switch-radius: 4px;
-  --badge-radius: 6px;
-  --row-line: solid;
-  --selected-ring: 0 0 0 1px rgba(139, 149, 255, 0.35);
-
-  color-scheme: dark;
-}
-
-[data-theme="calm"] {
-  --c-red: #c9564a;
-  --c-orange: #c97a4b;
-  --c-yellow: #b8902a;
-  --c-green: #4f8f5e;
-  --c-teal: #2f7f73;
-  --c-blue: #4f73bd;
-  --c-indigo: #6064b8;
-  --c-purple: #8460ad;
-  --c-pink: #bd5d82;
-  --c-brown: #93704c;
-  --c-gray: #8a847b;
-  --c-graphite: #66615a;
-
-  --bg: #fbfaf7;
-  --sidebar: #f4f1ec;
-  --content: #fbfaf7;
-  --surface: #ffffff;
-  --card: #ffffff;
-  --hover: rgba(60, 50, 40, 0.05);
-  --selected: rgba(47, 127, 115, 0.1);
-  --text: #2b2a28;
-  --text-2: #66615a;
-  --text-3: #a39d93;
-  --line: rgba(60, 50, 40, 0.1);
-  --field: #efebe4;
-  --shadow: 0 12px 32px rgba(60, 50, 40, 0.14);
-  --float-bg: rgba(251, 250, 247, 0.98);
-
-  --ui: #2f7f73;
-  --ui-text: #ffffff;
-  --font: "Nunito Variable", "Segoe UI", system-ui, sans-serif;
-  --font-head: var(--font);
-  --head-size: 26px;
-  --head-weight: 600;
-  --radius: 12px;
-  --radius-lg: 18px;
-  --check-size: 20px;
-  --check-radius: 50%;
-  --switch-radius: 999px;
-  --badge-radius: 50%;
-  --row-line: solid;
-  --selected-ring: none;
-
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  [data-theme="calm"] {
-    --c-red: #e07b6f;
-    --c-orange: #e09a6c;
-    --c-yellow: #d9b44f;
-    --c-green: #78b887;
-    --c-teal: #5ec4a8;
-    --c-blue: #7d9de0;
-    --c-indigo: #8f92dd;
-    --c-purple: #a98ad0;
-    --c-pink: #dd88a8;
-    --c-brown: #b8956e;
-    --c-gray: #a6a097;
-    --c-graphite: #8a847b;
-
-    --bg: #1d1c1a;
-    --sidebar: #232220;
-    --content: #1d1c1a;
-    --surface: #2a2926;
-    --card: #2a2926;
-    --hover: rgba(255, 255, 255, 0.05);
-    --selected: rgba(94, 196, 168, 0.14);
-    --text: #ece8e1;
-    --text-2: #a6a097;
-    --text-3: #6e6961;
-    --line: rgba(255, 255, 255, 0.08);
-    --field: #33312d;
-    --shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-    --float-bg: rgba(35, 34, 32, 0.98);
-    --ui: #5ec4a8;
-    --ui-text: #10201c;
-
-    color-scheme: dark;
-  }
-}
-
-[data-theme="paper"] {
-  --c-red: #b95e51;
-  --c-orange: #b97b4c;
-  --c-yellow: #a08433;
-  --c-green: #5f8a58;
-  --c-teal: #4f8680;
-  --c-blue: #5a76a3;
-  --c-indigo: #6a6fa3;
-  --c-purple: #82689a;
-  --c-pink: #a8627c;
-  --c-brown: #8a6846;
-  --c-gray: #8c8273;
-  --c-graphite: #5a5148;
-
-  --bg: #f7f1e3;
-  --sidebar: #f2ead8;
-  --content: #f7f1e3;
-  --surface: #fbf7ee;
-  --card: #fbf7ee;
-  --hover: rgba(80, 60, 30, 0.05);
-  --selected: rgba(42, 38, 34, 0.07);
-  --text: #2a2622;
-  --text-2: #6e6457;
-  --text-3: #a89c88;
-  --line: #ddd1b9;
-  --field: #ece3cf;
-  --shadow: 0 14px 30px rgba(80, 60, 30, 0.18);
-  --float-bg: rgba(247, 241, 227, 0.99);
-
-  --ui: #2a2622;
-  --ui-text: #f7f1e3;
-  --font: "Inter Variable", "Segoe UI", system-ui, sans-serif;
-  --font-head: "Fraunces", Georgia, serif;
-  --head-size: 32px;
+[data-theme] {
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-head: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --head-size: 28px;
   --head-weight: 600;
   --radius: 4px;
-  --radius-lg: 6px;
-  --check-size: 18px;
-  /* Slightly uneven corners, like a box drawn by hand. */
-  --check-radius: 3px 6px 4px 7px / 6px 3px 7px 4px;
-  --switch-radius: 4px;
-  --badge-radius: 3px;
-  --row-line: dashed;
+  --radius-lg: 8px;
+  --ctl-h: 32px;
+  --nav-h: 36px;
+  --row-pad: 8px;
+  --check-size: 20px;
+  --check-radius: 4px;
+  --switch-radius: 999px;
+  --badge-radius: 4px;
+  --row-line: solid;
   --selected-ring: none;
-
-  color-scheme: light;
+  --focus: var(--text);
 }
 
+/* Compact: more reminders on screen. The floating list is always compact. */
+[data-density="compact"],
+html.is-float {
+  --nav-h: 30px;
+  --row-pad: 3px;
+}
+
+
+:root,
 [data-theme="fluent"] {
   --c-red: #c42b1c;
-  --c-orange: #c75a0e;
-  --c-yellow: #9d6c00;
+  --c-orange: #9a4d00;
+  --c-yellow: #806000;
   --c-green: #0f7b0f;
-  --c-teal: #038387;
+  --c-teal: #036b6e;
   --c-blue: #005fb8;
-  --c-indigo: #4f6bed;
-  --c-purple: #8764b8;
+  --c-indigo: #4353c9;
+  --c-purple: #7650a8;
   --c-pink: #c30052;
   --c-brown: #8e562e;
-  --c-gray: #7a7574;
-  --c-graphite: #5d5a58;
-
+  --c-gray: #6b6b6b;
+  --c-graphite: #5c5c5c;
   --bg: #f3f3f3;
   --sidebar: #f3f3f3;
   --content: #f9f9f9;
@@ -204,36 +57,24 @@
   --card: #ffffff;
   --hover: rgba(0, 0, 0, 0.04);
   --selected: rgba(0, 0, 0, 0.06);
-  --text: #1b1b1b;
-  --text-2: #5d5d5d;
-  --text-3: #8a8a8a;
-  --line: rgba(0, 0, 0, 0.08);
+  --text: #1a1a1a;
+  --text-2: #5c5c5c;
+  --text-3: #6b6b6b;
+  --line: rgba(0, 0, 0, 0.09);
+  --stroke-strong: rgba(0, 0, 0, 0.45);
   --field: #ffffff;
-  --shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
   --float-bg: rgba(249, 249, 249, 0.98);
-
   --ui: #005fb8;
   --ui-text: #ffffff;
-  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  --font-head: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-  --head-size: 28px;
-  --head-weight: 600;
-  --radius: 4px;
-  --radius-lg: 8px;
-  --check-size: 18px;
-  --check-radius: 4px;
-  --switch-radius: 999px;
-  --badge-radius: 4px;
-  --row-line: solid;
-  --selected-ring: none;
-
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
+  :root,
   [data-theme="fluent"] {
     --c-red: #ff99a4;
-    --c-orange: #fc9d5a;
+    --c-orange: #ffc46b;
     --c-yellow: #ffd34f;
     --c-green: #6ccb5f;
     --c-teal: #4ec9b0;
@@ -242,28 +83,167 @@
     --c-purple: #c7a8ff;
     --c-pink: #ff8ad0;
     --c-brown: #d4a27a;
-    --c-gray: #a19f9d;
-    --c-graphite: #8a8886;
-
+    --c-gray: #a3a3a3;
+    --c-graphite: #a3a3a3;
     --bg: #202020;
     --sidebar: #202020;
     --content: #272727;
     --surface: #2d2d2d;
     --card: #2d2d2d;
-    --hover: rgba(255, 255, 255, 0.05);
-    --selected: rgba(255, 255, 255, 0.07);
+    --hover: rgba(255, 255, 255, 0.06);
+    --selected: rgba(255, 255, 255, 0.08);
     --text: #ffffff;
-    --text-2: #c5c5c5;
-    --text-3: #8a8a8a;
-    --line: rgba(255, 255, 255, 0.08);
+    --text-2: #cfcfcf;
+    --text-3: #a3a3a3;
+    --line: rgba(255, 255, 255, 0.09);
+    --stroke-strong: rgba(255, 255, 255, 0.55);
     --field: #2d2d2d;
-    --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     --float-bg: rgba(39, 39, 39, 0.98);
     --ui: #60cdff;
-    --ui-text: #003a57;
-
+    --ui-text: #00344d;
     color-scheme: dark;
   }
+}
+
+[data-theme="pro"] {
+  --c-red: #ff7b7b;
+  --c-orange: #f5b55f;
+  --c-yellow: #e8c547;
+  --c-green: #5ec48a;
+  --c-teal: #5ec4a8;
+  --c-blue: #7f9bff;
+  --c-indigo: #8b95ff;
+  --c-purple: #b48bff;
+  --c-pink: #ff7aa8;
+  --c-brown: #b8946a;
+  --c-gray: #878f9f;
+  --c-graphite: #878f9f;
+  --bg: #0b0c0f;
+  --sidebar: #0b0c0f;
+  --content: #0e1014;
+  --surface: #151920;
+  --card: #151920;
+  --hover: rgba(255, 255, 255, 0.05);
+  --selected: rgba(139, 149, 255, 0.14);
+  --text: #e6e8ee;
+  --text-2: #a7aebd;
+  --text-3: #878f9f;
+  --line: rgba(255, 255, 255, 0.1);
+  --stroke-strong: rgba(255, 255, 255, 0.5);
+  --field: #151920;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --float-bg: rgba(14, 16, 20, 0.98);
+  --ui: #8b95ff;
+  --ui-text: #0b0c0f;
+  color-scheme: dark;
+}
+
+[data-theme="calm"] {
+  --c-red: #ad3f33;
+  --c-orange: #8a5200;
+  --c-yellow: #7a5f12;
+  --c-green: #3d7a4c;
+  --c-teal: #23695f;
+  --c-blue: #3f62ab;
+  --c-indigo: #5458ad;
+  --c-purple: #77539f;
+  --c-pink: #a94a70;
+  --c-brown: #7f5f3e;
+  --c-gray: #6c665d;
+  --c-graphite: #5a554e;
+  --bg: #f4f1ec;
+  --sidebar: #f4f1ec;
+  --content: #fbfaf7;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --hover: rgba(60, 50, 40, 0.05);
+  --selected: rgba(35, 105, 95, 0.11);
+  --text: #2b2a28;
+  --text-2: #5a554e;
+  --text-3: #6c665d;
+  --line: rgba(60, 50, 40, 0.13);
+  --stroke-strong: rgba(60, 50, 40, 0.5);
+  --field: #ffffff;
+  --shadow: 0 8px 24px rgba(60, 50, 40, 0.16);
+  --float-bg: rgba(251, 250, 247, 0.98);
+  --ui: #23695f;
+  --ui-text: #ffffff;
+  color-scheme: light;
+  --check-radius: 50%;
+  --badge-radius: 50%;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="calm"] {
+    --c-red: #eb968b;
+    --c-orange: #e8b973;
+    --c-yellow: #d9b44f;
+    --c-green: #78b887;
+    --c-teal: #5ec4a8;
+    --c-blue: #8eabe6;
+    --c-indigo: #9da0e6;
+    --c-purple: #b59ad8;
+    --c-pink: #e394b1;
+    --c-brown: #c2a07a;
+    --c-gray: #a19b91;
+    --c-graphite: #a19b91;
+    --bg: #1d1c1a;
+    --sidebar: #1d1c1a;
+    --content: #232220;
+    --surface: #2a2926;
+    --card: #2a2926;
+    --hover: rgba(255, 255, 255, 0.05);
+    --selected: rgba(94, 196, 168, 0.15);
+    --text: #ece8e1;
+    --text-2: #bab4aa;
+    --text-3: #a19b91;
+    --line: rgba(255, 255, 255, 0.1);
+    --stroke-strong: rgba(255, 255, 255, 0.5);
+    --field: #2a2926;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --float-bg: rgba(35, 34, 32, 0.98);
+    --ui: #5ec4a8;
+    --ui-text: #10201c;
+    color-scheme: dark;
+  }
+}
+
+[data-theme="paper"] {
+  --c-red: #9c4236;
+  --c-orange: #7d4c0b;
+  --c-yellow: #6f5a14;
+  --c-green: #4a7343;
+  --c-teal: #3c6f69;
+  --c-blue: #47628f;
+  --c-indigo: #585d93;
+  --c-purple: #6f5687;
+  --c-pink: #93506a;
+  --c-brown: #765735;
+  --c-gray: #685e50;
+  --c-graphite: #5a5145;
+  --bg: #f2ead8;
+  --sidebar: #f2ead8;
+  --content: #f7f1e3;
+  --surface: #fbf7ee;
+  --card: #fbf7ee;
+  --hover: rgba(80, 60, 30, 0.06);
+  --selected: rgba(42, 38, 34, 0.09);
+  --text: #2a2622;
+  --text-2: #5a5145;
+  --text-3: #685e50;
+  --line: rgba(80, 60, 30, 0.2);
+  --stroke-strong: rgba(42, 38, 34, 0.75);
+  --field: #fbf7ee;
+  --shadow: 0 8px 24px rgba(80, 60, 30, 0.18);
+  --float-bg: rgba(247, 241, 227, 0.99);
+  --ui: #2a2622;
+  --ui-text: #f7f1e3;
+  color-scheme: light;
+  --font-head: "Fraunces", Georgia, serif;
+  --head-size: 30px;
+  --check-radius: 3px 6px 4px 7px / 6px 3px 7px 4px;
+  --row-line: dashed;
 }
 
 /* Windows 11 Mica: the window itself is the backdrop, so the outer layers go see-through. */
@@ -276,6 +256,17 @@ html.mica[data-theme="fluent"] {
 @media (prefers-color-scheme: dark) {
   html.mica[data-theme="fluent"] {
     --content: rgba(255, 255, 255, 0.04);
+  }
+}
+
+/* Windows 11 Acrylic behind the floating list: the window blurs what is behind it. */
+html.acrylic[data-theme="fluent"] {
+  --float-bg: rgba(243, 243, 243, 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  html.acrylic[data-theme="fluent"] {
+    --float-bg: rgba(32, 32, 32, 0.6);
   }
 }
 
@@ -2461,4 +2452,717 @@ kbd {
 
 .deleted-forever {
   padding: 4px 10px;
+}
+
+/* ==========================================================================
+   Fluent base. One structure for every theme: 32 px controls, 4 px corners
+   on controls and 8 px on surfaces that float, a visible keyboard focus ring,
+   thin scrollbars. Rules here come last so they set the shared shape; themes
+   above only change colours and a few details.
+   ========================================================================== */
+
+:root,
+[data-theme] {
+  line-height: 20px;
+}
+
+/* Thin scrollbars without arrow buttons, in place of the browser default. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--text-3) 70%, transparent);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  border-width: 2px;
+  background-color: var(--text-2);
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* Keyboard focus: a 2 px ring on anything reached with Tab. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+  border-radius: var(--radius);
+}
+
+/* Text boxes show focus with an accent underline, the Fluent way; the caret marks the spot. */
+.field:focus-visible,
+.section-title input:focus-visible,
+.new-section input:focus-visible,
+.subtask input:focus-visible,
+.cal-add:focus-visible,
+.task-title:focus-visible,
+.search input:focus-visible,
+.float-add input:focus-visible {
+  outline: none;
+}
+
+.field:focus,
+.search:focus-within,
+.new-section input:focus,
+.cal-add:focus {
+  border-bottom-color: var(--ui);
+  box-shadow: inset 0 -1px 0 var(--ui);
+}
+
+.float-add:focus-within {
+  box-shadow: inset 0 -2px 0 var(--ui);
+}
+
+/* With the Animation effects setting off in Windows, nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* ---------- Buttons ---------- */
+
+.btn,
+.modal-actions button:not(.danger),
+.row-actions button:not(.icon-btn):not(.danger),
+.deleted-restore,
+.recovery-bar > button:not(.icon-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--ctl-h);
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-bottom-color: color-mix(in srgb, var(--stroke-strong) 40%, transparent);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+  white-space: nowrap;
+  transition: background 0.1s ease;
+}
+
+.btn:hover:not(:disabled),
+.modal-actions button:not(.danger):not(.primary):hover,
+.row-actions button:not(.icon-btn):not(.danger):hover,
+.deleted-restore:hover {
+  background: color-mix(in srgb, var(--card) 92%, var(--text));
+}
+
+.btn.primary,
+.modal-actions button.primary,
+.update-go,
+.timer-main {
+  border-color: transparent;
+  background: var(--ui);
+  color: var(--ui-text);
+  font-weight: 600;
+}
+
+.btn.primary:hover:not(:disabled),
+.modal-actions button.primary:hover,
+.update-go:hover {
+  background: color-mix(in srgb, var(--ui) 90%, var(--text));
+}
+
+.btn.subtle,
+.tool {
+  border-color: transparent;
+  background: transparent;
+}
+
+.tool {
+  height: var(--ctl-h);
+  padding: 0 10px;
+  border-radius: var(--radius);
+  color: var(--text);
+  font-weight: 400;
+}
+
+.btn.subtle:hover:not(:disabled),
+.tool:hover {
+  background: var(--hover);
+}
+
+.tool.on {
+  background: var(--selected);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.danger {
+  min-height: var(--ctl-h);
+  border-radius: var(--radius);
+}
+
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius);
+}
+
+.icon-btn.big {
+  width: var(--ctl-h);
+  height: var(--ctl-h);
+  color: var(--text);
+}
+
+.icon-btn svg,
+.tool svg,
+.btn svg,
+.nav-icon svg {
+  flex: none;
+}
+
+/* ---------- Fields ---------- */
+
+.field,
+.search,
+.new-section input {
+  border: 1px solid var(--line);
+  border-bottom-color: var(--stroke-strong);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+
+.field {
+  min-height: var(--ctl-h);
+  padding: 5px 10px;
+}
+
+.search {
+  height: var(--ctl-h);
+}
+
+.field::placeholder,
+.search input::placeholder,
+.float-add input::placeholder,
+.new-section input::placeholder,
+.task-title::placeholder {
+  color: var(--text-3);
+}
+
+/* ---------- Drop-down (Radix Select) and menus ---------- */
+
+.select-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: var(--ctl-h);
+  max-width: 190px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--line);
+  border-bottom-color: color-mix(in srgb, var(--stroke-strong) 40%, transparent);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.select-trigger > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-trigger:hover {
+  background: color-mix(in srgb, var(--card) 92%, var(--text));
+}
+
+.select-trigger svg {
+  flex: none;
+  color: var(--text-2);
+}
+
+.select-trigger.plain {
+  border-color: transparent;
+  background: transparent;
+  font-family: var(--font-head);
+  font-weight: 600;
+}
+
+.select-trigger.plain:hover {
+  background: var(--hover);
+}
+
+.menu {
+  z-index: 30;
+  min-width: 180px;
+  max-height: min(360px, var(--radix-popper-available-height, 360px));
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  user-select: none;
+}
+
+.menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  outline: none;
+  cursor: default;
+}
+
+.menu-item[data-highlighted] {
+  background: var(--hover);
+}
+
+.menu-item[data-state="checked"] {
+  background: var(--selected);
+}
+
+.menu-item[data-state="checked"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 2px;
+  background: var(--ui);
+}
+
+.menu-item[data-disabled] {
+  color: var(--text-3);
+}
+
+.menu-item.danger-item {
+  color: var(--c-red);
+}
+
+.menu-label {
+  padding: 6px 10px 2px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--line);
+}
+
+.is-float .menu {
+  min-width: 150px;
+  font-size: 13px;
+}
+
+.is-float .menu-item {
+  min-height: 28px;
+}
+
+/* ---------- Tooltip ---------- */
+
+.tip {
+  z-index: 40;
+  max-width: 260px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-family: var(--font);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text);
+  user-select: none;
+}
+
+/* ---------- Switch and check ---------- */
+
+.switch {
+  width: 40px;
+  height: 20px;
+  padding: 3px;
+  border: 1px solid var(--stroke-strong);
+  border-radius: 999px;
+}
+
+.switch span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.switch.on span {
+  transform: translateX(20px);
+}
+
+.check {
+  border: 1px solid var(--stroke-strong);
+}
+
+[data-theme="paper"] .check {
+  border-width: 1.5px;
+}
+
+.task-row.done .check,
+.subtask.done .check,
+.cal-chip.done .check {
+  --check-mark: var(--ui-text);
+}
+
+[data-theme="paper"] .task-row.done .check {
+  --check-mark: var(--accent);
+}
+
+/* ---------- Segmented control ---------- */
+
+.segmented {
+  gap: 2px;
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.segmented button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 3px;
+  color: var(--text);
+}
+
+.segmented button.on {
+  background: var(--selected);
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.segmented button.on::after {
+  content: "";
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  bottom: 1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ui);
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  width: 240px;
+  padding: 10px 6px;
+  border-right: none;
+}
+
+.sidebar .search {
+  margin: 0 4px 8px;
+}
+
+.nav-item {
+  gap: 12px;
+  min-height: var(--nav-h);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.nav-item.active {
+  box-shadow: none;
+}
+
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 2px;
+  background: var(--ui);
+}
+
+[data-theme="paper"] .nav-item.active::before {
+  content: none;
+}
+
+.nav-count {
+  color: var(--text-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-row {
+  position: relative;
+  display: flex;
+}
+
+.nav-row .nav-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-more {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin-top: -12px;
+  opacity: 0;
+}
+
+.nav-row:hover .nav-more,
+.nav-more:focus-visible,
+.nav-more[data-state="open"] {
+  opacity: 1;
+  background: var(--surface);
+}
+
+.nav-row:hover .nav-count,
+.nav-row:focus-within .nav-count {
+  visibility: hidden;
+}
+
+.side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 4px 2px 10px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.side-head .icon-btn {
+  width: 24px;
+  height: 24px;
+}
+
+.side-sep {
+  flex: none;
+  height: 1px;
+  margin: 6px 10px;
+  background: var(--line);
+}
+
+.content {
+  border-left: 1px solid var(--line);
+  padding: 0 24px;
+}
+
+/* ---------- Header and rows ---------- */
+
+.view-head h1 {
+  line-height: 36px;
+}
+
+.view-sub {
+  gap: 12px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+
+.view-sub .with-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+}
+
+.view-body {
+  margin: 0 -24px;
+  padding: 0 24px 28px;
+}
+
+/* The divider belongs to the whole row, so it reaches the same edge as the header above. */
+.task-row {
+  padding: var(--row-pad) 8px;
+  border-bottom: 1px var(--row-line) var(--line);
+}
+
+.task-body,
+.task-row.selected .task-body {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.card .task-row,
+.float-body .task-row {
+  border-bottom: none;
+}
+
+.task-meta {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+
+/* Priority: a small chip beside the due date, not part of the title. */
+.prio {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+}
+
+.prio.p3 {
+  color: var(--c-red);
+}
+
+.prio.p2 {
+  color: var(--c-orange);
+}
+
+.prio.p1 {
+  color: var(--c-blue);
+}
+
+/* Row buttons stay faintly visible, so they can be found without hovering. */
+.task-row .info-btn {
+  visibility: visible;
+  opacity: 0.55;
+}
+
+.task-row:hover .info-btn,
+.task-row.selected .info-btn,
+.task-row .info-btn:focus-visible {
+  opacity: 1;
+}
+
+/* ---------- Dialogs (Radix Dialog) ---------- */
+
+.backdrop {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.modal {
+  gap: 12px;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+}
+
+.modal:focus {
+  outline: none;
+}
+
+.modal h2 {
+  font-size: 20px;
+  line-height: 28px;
+  text-align: left;
+}
+
+.group {
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.keys {
+  min-height: var(--ctl-h);
+  border-bottom-color: color-mix(in srgb, var(--stroke-strong) 40%, transparent);
+  background: var(--card);
+  cursor: pointer;
+}
+
+.hint {
+  color: var(--text-2);
+}
+
+.toast,
+.recovery-bar,
+.update-bar {
+  border-radius: var(--radius-lg);
+}
+
+/* ---------- Floating list ---------- */
+
+.float {
+  border-radius: var(--radius-lg);
+}
+
+/* Acrylic blurs the whole rectangular window, so the list fills it. */
+html.acrylic .float {
+  border-radius: 0;
+  border: none;
+}
+
+.float-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--selected);
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+  color: var(--text-2);
+}
+
+.float-count:empty {
+  display: none;
+}
+
+/* Board cards and floating rows keep their own tighter padding. */
+.card .task-row {
+  position: relative;
+  padding: 7px 8px;
+}
+
+.float-body .task-row {
+  padding: 4px;
+}
+
+.card .task-body,
+.float-body .task-body {
+  padding-bottom: 0;
+}
+
+/* On a card the row buttons float over the corner on hover, so the title gets the full width. */
+.card .task-row .info-btn {
+  position: absolute;
+  top: 5px;
+  right: 4px;
+  margin: 0;
+  background: var(--card);
+  opacity: 0;
+}
+
+.card .task-row .info-btn:nth-last-child(2) {
+  right: 34px;
+}
+
+.card:hover .task-row .info-btn,
+.card .task-row .info-btn:focus-visible {
+  opacity: 1;
 }

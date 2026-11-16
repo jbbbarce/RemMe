@@ -1,8 +1,10 @@
+import { AlertOff, AlertUrgent, Fire, FlagOn, Info, Repeat, Subtasks, Timer, Window } from "../icons";
 import { useEffect, useRef } from "react";
-import { AppWindow, BellOff, BellRing, Flag, Flame, Info, ListChecks, Repeat, Timer } from "lucide-react";
 import { REPEAT_LABELS, currentStreak, formatDue, isOverdue } from "../dates";
 import { activeSnooze, snoozeLabel } from "../model";
 import type { ReminderList, Task } from "../types";
+
+const PRIORITY_NAMES = ["", "Low", "Medium", "High"];
 
 interface Props {
   task: Task;
@@ -42,7 +44,6 @@ export function TaskRow(props: Props) {
 
   const due = formatDue(task, now);
   const overdue = isOverdue(task, now);
-  const marks = "!".repeat(task.priority);
   const subtasksDone = task.subtasks.filter((s) => s.done).length;
   const streak = currentStreak(task, now);
   const snoozed = activeSnooze(task, now);
@@ -65,7 +66,6 @@ export function TaskRow(props: Props) {
       </button>
       <div className="task-body">
         <div className="task-title-line">
-          {marks && <span className="priority" style={{ color: `var(--c-${color})` }}>{marks}</span>}
           <textarea
             ref={title}
             className="task-title"
@@ -94,12 +94,15 @@ export function TaskRow(props: Props) {
           />
         </div>
         {!compact && task.notes && <div className="task-notes">{task.notes}</div>}
-        {(due || task.subtasks.length > 0 || task.pomodoros > 0 || task.appTrigger || props.showList || snoozed) && (
+        {(task.priority > 0 || due || task.subtasks.length > 0 || task.pomodoros > 0 || task.appTrigger || props.showList || snoozed) && (
           <div className="task-meta">
+            {task.priority > 0 && (
+              <span className={`prio p${task.priority}`}>{PRIORITY_NAMES[task.priority]}</span>
+            )}
             {due && <span className={overdue ? "overdue" : undefined}>{due}</span>}
             {snoozed && (
               <span className="meta-icon snoozed" title="Its popup comes back then; the due time stays">
-                <BellOff size={11} />
+                <AlertOff size={11} />
                 {snoozeLabel(snoozed, now)}
               </span>
             )}
@@ -110,18 +113,18 @@ export function TaskRow(props: Props) {
             )}
             {streak > 0 && (
               <span className="meta-icon streak" title={`Done on time ${streak} ${streak === 1 ? "time" : "times"} in a row`}>
-                <Flame size={11} />
+                <Fire size={11} />
                 {streak}
               </span>
             )}
             {task.nagMinutes && task.dueAt && !task.completed && (
               <span className="meta-icon" title={`Nags every ${task.nagMinutes} minutes until done`}>
-                <BellRing size={11} />
+                <AlertUrgent size={11} />
               </span>
             )}
             {task.appTrigger && (
               <span className="meta-icon" title={`Reminds you when ${task.appTrigger} opens`}>
-                <AppWindow size={11} />
+                <Window size={11} />
                 {task.appTrigger}
               </span>
             )}
@@ -133,7 +136,7 @@ export function TaskRow(props: Props) {
             )}
             {task.subtasks.length > 0 && (
               <span className="meta-icon" title="Subtasks done">
-                <ListChecks size={12} />
+                <Subtasks size={12} />
                 {subtasksDone}/{task.subtasks.length}
               </span>
             )}
@@ -141,7 +144,7 @@ export function TaskRow(props: Props) {
           </div>
         )}
       </div>
-      {task.flagged && <Flag className="flag-mark" size={14} fill="currentColor" />}
+      {task.flagged && <FlagOn className="flag-mark" size={14} />}
       {props.onFocus && !task.completed && (
         <button
           className="icon-btn info-btn"
