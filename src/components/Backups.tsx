@@ -91,7 +91,6 @@ export function BackupsSection() {
 
   return (
     <>
-      <h3 className="settings-head">Backups</h3>
       <div className="group">
         <div className="row">
           <span>Back up your reminders</span>
@@ -210,10 +209,7 @@ export function BackupsSection() {
           </div>
         ))}
       </div>
-      <p className="hint">
-        RemMe keeps a backup from each of the last 7 days and one from each of the 4 weeks before. Restoring or
-        importing backs up your current data first, so it can be undone.
-      </p>
+      <p className="hint">Kept: one a day for 7 days, then one a week for 4 weeks. Restoring or importing backs up your current data first.</p>
     </>
   );
 }

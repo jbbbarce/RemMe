@@ -2,6 +2,7 @@ import type { ComponentType, SVGAttributes } from "react";
 import {
   AddCircleRegular,
   AddRegular,
+  AlertRegular,
   AirplaneRegular,
   AlertOffRegular,
   AlertUrgentRegular,
@@ -32,14 +33,17 @@ import {
   GiftRegular,
   HatGraduationRegular,
   HeartRegular,
+  HistoryRegular,
   HomeRegular,
   InfoRegular,
+  KeyboardRegular,
   LeafOneRegular,
   LockClosedRegular,
   LockOpenRegular,
   MailInboxRegular,
   MoreHorizontalRegular,
   NextRegular,
+  PaintBrushRegular,
   PanelLeftContractRegular,
   PanelLeftExpandRegular,
   PanelRightContractRegular,
@@ -76,6 +80,7 @@ function sized(Fluent: ComponentType<SVGAttributes<SVGElement>>): Icon {
 
 export const Add = sized(AddRegular);
 export const AddCircle = sized(AddCircleRegular);
+export const Alert = sized(AlertRegular);
 export const AlertOff = sized(AlertOffRegular);
 export const AlertUrgent = sized(AlertUrgentRegular);
 export const Board = sized(BoardRegular);
@@ -94,11 +99,14 @@ export const FlagOn = sized(FlagFilled);
 export const FloatingList = sized(PictureInPictureRegular);
 export const FolderOpen = sized(FolderOpenRegular);
 export const Grip = sized(ReOrderDotsVerticalRegular);
+export const History = sized(HistoryRegular);
 export const Info = sized(InfoRegular);
+export const Keyboard = sized(KeyboardRegular);
 export const ListLayout = sized(TextBulletListLtrRegular);
 export const LockClosed = sized(LockClosedRegular);
 export const LockOpen = sized(LockOpenRegular);
 export const More = sized(MoreHorizontalRegular);
+export const PaintBrush = sized(PaintBrushRegular);
 export const PanelClose = sized(PanelRightContractRegular);
 export const PanelOpen = sized(PanelRightExpandRegular);
 export const SidebarCollapse = sized(PanelLeftContractRegular);

@@ -8,7 +8,8 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
 
 For every feature with the version it arrived in, a shortcuts table and the app's history, see [docs/FEATURES.md](docs/FEATURES.md). How it's built is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-- **Themes:** pick one in **Settings** (gear icon). It applies at once to both windows. All four share one Windows 11-style layout (Segoe UI, the same control sizes and corners); a theme changes colours and a few details.
+- **Settings** (gear icon) has its sections down the left: General, Appearance, Floating list, Notifications, Focus timer, Verse of the day, Shortcuts, Backups and About. It reopens on the section you used last, and the arrow keys move between sections. In a narrow window the sections become tabs across the top.
+- **Themes:** pick one in **Settings → Appearance**. It applies at once to both windows. All four share one Windows 11-style layout (Segoe UI, the same control sizes and corners); a theme changes colours and a few details.
   - **Windows Fluent** (default): Windows colours and your Windows accent colour. Follows Windows light or dark mode. On Windows 11 the main window has the see-through Mica background and the floating list is see-through Acrylic.
   - **Sharp dark pro:** near-black, with an indigo accent.
   - **Calm minimal:** warm, with a teal accent and round checkboxes. Follows Windows light or dark mode.
@@ -49,8 +50,8 @@ For every feature with the version it arrived in, a shortcuts table and the app'
   - Breaks start by themselves; the next focus session waits for you. A notification and a quiet chime mark the end of each session.
   - **Ctrl+Shift+P** starts or pauses the timer from any app, even while the floating list is locked.
   - Each reminder counts its finished sessions, and the timer shows today's total.
-  - Change the lengths, the chime and the shortcut in **Settings**. The timer resets if you quit RemMe.
-- **Verse of the day:** a Bible verse from the World English Bible (British Edition, with the deuterocanonical books) that changes at midnight. It's in the sidebar above the timer and at the bottom of the floating list. Turn it off in **Settings**.
+  - Change the lengths and the chime in **Settings → Focus timer**, and the shortcut in **Settings → Shortcuts**. The timer resets if you quit RemMe.
+- **Verse of the day:** a Bible verse from the World English Bible (British Edition, with the deuterocanonical books) that changes at midnight. It's in the sidebar above the timer and at the bottom of the floating list. Turn it off in **Settings → Verse of the day**.
   - Click the verse to copy it with its reference.
   - In the sidebar, the arrow switches between the whole verse and 2 lines.
   - In the floating list, drag the line above the verse to make it taller or shorter (it scrolls if it doesn't fit); double-click that line to fit the verse again.
@@ -66,10 +67,10 @@ For every feature with the version it arrived in, a shortcuts table and the app'
 - **Floating list:** a small always-on-top window showing any smart list or list. Pick which one from its header.
   - **Ctrl+Shift+O** shows or hides it from any app.
   - **Ctrl+Shift+L** locks or unlocks it. When locked, the window is slightly transparent, can't be moved or edited, and mouse clicks go through it to the window behind.
-  - Change either shortcut in **Settings** (gear icon). Click the shortcut, then press the new keys.
+  - Change either shortcut in **Settings → Shortcuts**. Click the shortcut, then press the new keys. That section also lists the keys inside the main window.
   - **Settings → Floating list → Opacity** makes it see-through (40–100 %). Locked, it is a little fainter still.
 - **Tray icon:** closing a window keeps RemMe running in the tray. Hover over the icon to see how many reminders are due today and overdue. Left-click it to open the app; right-click it for **Add reminder…** (opens a new reminder in the main window), the floating list controls and **Quit**.
-- **Updates:** RemMe checks GitHub for a new version when it starts and every 6 hours. When one is out, a bar at the bottom of the window offers **Update and restart**; your reminders and settings stay. **Settings** shows the version you have and a **Check for updates** button.
+- **Updates:** RemMe checks GitHub for a new version when it starts and every 6 hours. When one is out, a bar at the bottom of the window offers **Update and restart**; your reminders and settings stay. **Settings → About** shows the version you have and a **Check for updates** button.
 - **Backups:** RemMe keeps a copy of your reminders from each of the last 7 days and one from each of the 4 weeks before, in `%APPDATA%\com.remme.app\backups\`. Manage them in **Settings → Backups**.
   - **Back up now** makes one by hand; those stay until you delete them. **Restore** puts a backup back (click it twice to confirm).
   - **Also back up to…** keeps a second copy of every backup in a folder you choose, such as OneDrive.
@@ -80,7 +81,7 @@ For every feature with the version it arrived in, a shortcuts table and the app'
   - Deleted reminders and lists stay in **Recently deleted** (in the sidebar, below Done) for 30 days. **Restore** puts one back at the end of its list (or your first list, if its list is gone); restoring a list brings its reminders too. The bin button deletes one for good, and **Empty Recently Deleted** clears them all; both ask first.
   - A new reminder you never typed into is just dropped. Deleted reminders don't notify and don't show in counts, search or the calendar. They are in backups and exports.
 - **Narrow windows:** below 900 px wide the sidebar becomes a strip of icons, with names in tooltips; the button at the top left of the window shows or hides it at any width.
-- **Row spacing:** **Settings → Layout** switches the main window between **Comfortable** and **Compact** rows. The floating list is always compact.
+- **Row spacing:** **Settings → Appearance** switches the main window between **Comfortable** and **Compact** rows. The floating list is always compact.
 - **Keyboard and readability:** everything can be reached with Tab and shows a focus ring; menus and dialogs close with Esc; icon buttons have tooltips. Text colours meet the WCAG AA contrast level in every theme, and animations switch off when Windows' **Animation effects** setting is off.
 - **Start with Windows** (in Settings) launches the app at sign-in, hidden in the tray.
 

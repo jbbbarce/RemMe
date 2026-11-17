@@ -45,7 +45,7 @@ Everything RemMe can do, from the first sticky-note version to 0.15.0, and when 
 | 0.12.0 | 16 Nov | The right-click menu on reminders, a clickable date and priority, and a preview of typed dates. |
 | 0.13.0 | 16 Nov | Drag to reorder and onto lists, Undo for ticking off and quick changes, the sidebar icon strip, floating list opacity, tray tooltip and Add reminder. |
 | 0.14.0 | 17 Nov | Overdue and day groups, keyboard navigation, multi-select with a selection bar, search highlighting. |
-| 0.15.0 | 17 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu, and a redesigned details panel. |
+| 0.15.0 | 17 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu, a redesigned details panel, and Settings as a two-pane page. |
 
 ## Before the rewrite: the WPF sticky notes
 
@@ -161,7 +161,7 @@ From 0.6.0, in the sidebar.
 
 - **The window** (rewrite): a small always-on-top window showing any smart list or one of your lists, picked from its header. It has its own add box, which understands typed dates like a new reminder does.
 - **Ctrl+Shift+O** (rewrite) shows or hides it from any app.
-- **Ctrl+Shift+L** (rewrite) locks it. Locked, it is slightly see-through, can't be moved or edited, and clicks pass through to the window behind. Change both shortcuts in **Settings**: click a shortcut, then press the new keys.
+- **Ctrl+Shift+L** (rewrite) locks it. Locked, it is slightly see-through, can't be moved or edited, and clicks pass through to the window behind. Change both shortcuts in **Settings → Shortcuts**: click a shortcut, then press the new keys.
 - **Opacity** (0.13.0): **Settings → Floating list → Opacity**, 40–100 %. Locked, it is a little fainter still.
 - It remembers where it was. A due reminder brings it up (rewrite). It shows the Pomodoro timer in its header (0.4.0) and the verse of the day at the bottom (0.7.0). Rows are always compact.
 - In a list (and unlocked), drag reminders to reorder them (0.13.0).
@@ -183,28 +183,33 @@ From 0.4.0.
 - Breaks start by themselves; the next focus session waits for you. A notification and a quiet chime mark each end.
 - **Ctrl+Shift+P** starts or pauses it from any app, even while the floating list is locked.
 - Each reminder counts its finished sessions, and the timer shows today's total.
-- Change the lengths, the chime and the shortcut in **Settings**. The timer resets if you quit RemMe.
+- Change the lengths and the chime in **Settings → Focus timer**, and the shortcut in **Settings → Shortcuts**. The timer resets if you quit RemMe.
 
 ## Verse of the day
 
 From 0.7.0.
 
 - A Bible verse from the World English Bible (British Edition, with the deuterocanonical books), built into the app, changing at midnight.
-- In the sidebar above the timer and at the bottom of the floating list. Turn it off in **Settings**.
+- In the sidebar above the timer and at the bottom of the floating list. Turn it off in **Settings → Verse of the day**.
 - Click the verse to copy it with its reference. In the sidebar, the arrow switches between the whole verse and 2 lines.
 - In the floating list, drag the line above the verse to resize it; double-click that line to fit the verse again.
 - **–** minimizes it to a bar with the reference; click the bar to bring it back. Each window minimizes on its own, and the next day's verse opens again.
 
 ## Look and feel
 
-- **Themes** (0.4.0; reworked in 0.11.0): pick one in **Settings**; it applies at once to both windows.
+- **Settings** (rewrite; two panes since 0.15.0): the gear icon opens a large dialog with nine sections down the left: General, Appearance, Floating list, Notifications, Focus timer, Verse of the day, Shortcuts, Backups and About.
+  - Each setting has at most one short line explaining it.
+  - It reopens on the section you used last. The arrow keys, Home and End move between sections.
+  - Below 700 px wide, the sections become a row of tabs across the top.
+  - **Shortcuts** holds the three global shortcuts (each a button: click it, then press the new keys) and **Restore defaults**. It also lists the keys inside the main window.
+- **Themes** (0.4.0; reworked in 0.11.0): pick one in **Settings → Appearance**; it applies at once to both windows.
   - **Windows Fluent** (the default since 0.11.0): Windows colours and your Windows accent colour (used only when it's readable). Follows Windows light or dark mode. On Windows 11 the main window has the see-through Mica background and the floating list Acrylic.
   - **Sharp dark pro**: near-black with an indigo accent (the default before 0.11.0).
   - **Calm minimal**: warm, teal accent, round checkboxes; follows light or dark mode.
   - **Paper and ink**: cream paper, serif headings, hand-drawn-style checkboxes.
 - **One layout for every theme** (0.11.0): a Windows 11 style shared by all four (Segoe UI, Fluent icons, the same control sizes and corners). Themes change colours and a few details.
 - **Title bar** (0.5.1): the window's title bar takes the theme's colour (on Windows 10, only light or dark).
-- **Row spacing** (0.11.0): **Settings → Layout** switches between **Comfortable** and **Compact**.
+- **Row spacing** (0.11.0): **Settings → Appearance** switches between **Comfortable** and **Compact**.
 - **Accessibility** (0.11.0): everything can be reached with Tab and shows a focus ring. Menus and dialogs close with Esc, and focus stays inside an open dialog. Icon buttons have tooltips. Text colours meet WCAG AA contrast in every theme. Animations switch off when Windows' **Animation effects** is off.
 - **Logo** (0.4.0): the RemMe logo, also used for the installer.
 
@@ -259,7 +264,7 @@ From 0.5.0.
 | Details panel edge | **←** / **→** | Make the panel wider or narrower | 0.15.0 |
 | Menus and dialogs | **Esc** | Close | 0.11.0 |
 
-The three global shortcuts can be changed in **Settings**.
+The three global shortcuts can be changed in **Settings → Shortcuts**, which also lists the in-app keys.
 
 ## Where your data is
 
@@ -284,6 +289,7 @@ These were built and tested by simulated input, but not yet seen working on a re
 - The Getting started list on a real new install: it was checked with the data file removed, not from the installer.
 - Opening the Snooze submenu with a real mouse.
 - Dragging the details panel's edge with a real mouse, and the panel in light themes.
+- Recording a new shortcut in the redesigned Settings with real key presses.
 
 ## Planned
 
@@ -292,7 +298,6 @@ Not started; each is done only when asked for.
 - **Screen-by-screen redesigns**:
   - the sidebar's verse and timer as one-line bars
   - the calendar
-  - Settings as a two-pane page
   - board columns and menus
   - the list dialog's colour and icon grids
   - the floating list's verse default

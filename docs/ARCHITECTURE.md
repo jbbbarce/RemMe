@@ -23,7 +23,7 @@ The developer side of RemMe: the stack, how the pieces fit, and where each featu
 - **27 Oct 2026, `0ddbfac`:** rewritten as a Tauri 2 + React + TypeScript app, keeping only the ideas (a floating window, tray, reminders, start with Windows). The WPF code was removed.
 - **4 Nov 2026:** renamed from Reminders to RemMe. The app id changed from `com.reminders.app` to `com.remme.app`, and the first start copies data from the old folder (`copy_old_data` in `lib.rs`).
 
-[PLAN.md](../PLAN.md) lists the 24 steps since the rewrite.
+[PLAN.md](../PLAN.md) lists the 25 steps since the rewrite.
 
 ## Stack
 
@@ -154,7 +154,7 @@ Everything is in `src-tauri/src/`:
   | `Inspector.tsx` | The details panel |
   | `CalendarView.tsx`, `MiniCalendar.tsx` | The calendar and the floating list's mini calendar |
   | `RecentlyDeleted.tsx` | The Recently deleted view |
-  | `Dialogs.tsx` | Settings and the list dialog |
+  | `Dialogs.tsx` | Settings (two panes: `SECTIONS`, `Setting`, `ShortcutRecorder`, `MinutesField`) and the list dialog |
   | `Backups.tsx` | The backups section and the recovery banner |
   | `Pomodoro.tsx` | The timer panel |
   | `Verse.tsx` | The verse card |
@@ -218,6 +218,7 @@ Everything is in `src-tauri/src/`:
 | Feature | Version | Main code |
 |---|---|---|
 | Lists, smart lists, sections, board | Rewrite | `model.ts` (`tasksFor`, sections), `TaskViews.tsx`, `Sidebar.tsx` |
+| Settings | Rewrite; two panes 0.15.0 | `SettingsDialog` in `Dialogs.tsx` (last section in `localStorage` `remme.settings`), `Modal` `className` in `ui.tsx`, `BackupsSection` in `Backups.tsx` |
 | Details panel | Rewrite; redesigned 0.15.0 | `Inspector.tsx` (`WhenControls`, `MonthPicker`, the resizable edge, `remme.inspector` width in `localStorage`); `detailsInfo` and the repeat and nag wording in `changeMessage` (`model.ts`) |
 | Search | Rewrite; marks 0.14.0 | `tasksFor` search branch; `highlightParts` in `selection.ts`, `TaskRow.tsx` |
 | Floating list, lock, shortcuts | Rewrite | `FloatApp.tsx`; `set_float_locked`, `register_shortcuts` in `lib.rs`; `shortcut.ts` |

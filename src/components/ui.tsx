@@ -28,12 +28,12 @@ export function Tip({ text, side = "bottom", children }: { text: string; side?: 
 }
 
 /** A dialog over the window. Esc or a click outside closes it. */
-export function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose(): void }) {
+export function Modal({ title, children, onClose, className }: { title: string; children: ReactNode; onClose(): void; className?: string }) {
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="backdrop">
-          <Dialog.Content className="modal" aria-describedby={undefined}>
+          <Dialog.Content className={`modal${className ? ` ${className}` : ""}`} aria-describedby={undefined}>
             <Dialog.Title asChild>
               <h2>{title}</h2>
             </Dialog.Title>

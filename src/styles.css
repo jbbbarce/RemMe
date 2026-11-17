@@ -3808,3 +3808,177 @@ html.acrylic .float {
     box-shadow: var(--shadow);
   }
 }
+
+/* ---------- Settings: two panes ---------- */
+
+.modal.settings-modal {
+  width: min(860px, calc(100vw - 32px));
+  height: min(600px, calc(100vh - 32px));
+  overflow: hidden;
+}
+
+.settings-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 20px;
+}
+
+.settings-nav {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 200px;
+  overflow-y: auto;
+}
+
+.settings-nav button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  color: var(--text);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.settings-nav button:hover {
+  background: var(--hover);
+}
+
+.settings-nav button.on {
+  background: var(--selected);
+  font-weight: 600;
+}
+
+/* The accent pill on the chosen section, as in the sidebar. */
+.settings-nav button.on::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--ui);
+}
+
+.settings-pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 0 4px 8px 0;
+}
+
+.settings-pane-title {
+  margin: 0 0 2px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.setting .row {
+  min-height: 32px;
+  font-size: 14px;
+}
+
+.settings-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-label {
+  font-size: 14px;
+}
+
+.settings-pane .themes {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.keys {
+  gap: 6px;
+}
+
+.keys-icon {
+  color: var(--text-2);
+}
+
+.link-btn.inline {
+  padding: 0;
+  font-size: inherit;
+}
+
+.key-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: 13px;
+}
+
+.key-list div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 30px;
+  border-bottom: 1px solid var(--line);
+}
+
+.key-list dt {
+  flex: none;
+  width: 190px;
+  color: var(--text-2);
+}
+
+.key-list dd {
+  margin: 0;
+}
+
+.key-list kbd {
+  font-size: 12px;
+}
+
+/* Narrow windows: the sections become a row of tabs across the top. */
+@media (max-width: 699px) {
+  .settings-body {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .settings-nav {
+    flex-direction: row;
+    width: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 4px;
+  }
+
+  .settings-nav button.on::before {
+    left: 10px;
+    right: 10px;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    height: 3px;
+  }
+
+  .settings-pane .themes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .key-list dt {
+    width: 140px;
+  }
+}
