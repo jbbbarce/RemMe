@@ -264,10 +264,15 @@ export function activeSnooze(task: Task, now: Date): Date | null {
 
 /** "Snoozed until 3:40 PM", with the day too when it isn't today. */
 export function snoozeLabel(until: Date, now: Date): string {
+  return `Snoozed until ${snoozeTime(until, now)}`;
+}
+
+/** "3:40 PM", or "Wed 18 Nov, 9:00 AM" when it isn't today. */
+function snoozeTime(until: Date, now: Date): string {
   const time = until.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const sameDay = until.toDateString() === now.toDateString();
   const day = until.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-  return `Snoozed until ${sameDay ? time : `${day}, ${time}`}`;
+  return sameDay ? time : `${day}, ${time}`;
 }
 
 /** How long after checking off a repeating reminder unchecking it takes back the next one. */
@@ -525,6 +530,9 @@ export function changeMessage(data: AppData, id: string, patch: Partial<Task>, n
   if (patch.flagged !== undefined && patch.flagged !== task.flagged) {
     return `${patch.flagged ? "Flagged" : "Unflagged"} ${name}`;
   }
+  if (patch.snoozedUntil !== undefined) {
+    return patch.snoozedUntil ? `Snoozed ${name} until ${snoozeTime(new Date(patch.snoozedUntil), now)}` : `Stopped snoozing ${name}`;
+  }
   return null;
 }
 
@@ -555,6 +563,9 @@ export function changeManyMessage(data: AppData, ids: readonly string[], patch: 
     return patch.priority ? `Set ${n} to ${["", "Low", "Medium", "High"][patch.priority]} priority` : `Removed the priority from ${n}`;
   }
   if (patch.flagged !== undefined) return `${patch.flagged ? "Flagged" : "Unflagged"} ${n}`;
+  if (patch.snoozedUntil !== undefined) {
+    return patch.snoozedUntil ? `Snoozed ${n} until ${snoozeTime(new Date(patch.snoozedUntil), now)}` : `Stopped snoozing ${n}`;
+  }
   return `Changed ${n}`;
 }
 
@@ -598,6 +609,49 @@ export function dayGroups(tasks: Task[], now: Date): DayGroup[] {
     groups.get(title)!.tasks.push(task);
   }
   return [...groups.values()].sort((a, b) => Number(b.overdue) - Number(a.overdue));
+}
+
+export interface EmptyMessage {
+  title: string;
+  hint: string;
+}
+
+/**
+ * What an empty view says: what would show up here and how to get it there. `hiddenDone`
+ * counts finished reminders hidden because Show done is off.
+ */
+export function emptyMessage(view: View, hiddenDone = 0): EmptyMessage {
+  const done = `${plural(hiddenDone, "finished reminder")} ${hiddenDone === 1 ? "is" : "are"} hidden. Turn on Show done to see ${hiddenDone === 1 ? "it" : "them"}.`;
+  switch (view.kind) {
+    case "search": {
+      const q = view.query.trim();
+      return {
+        title: `No results for “${q.length > 40 ? `${q.slice(0, 39)}…` : q}”`,
+        hint: hiddenDone ? done : "Search looks through the titles and notes in every list.",
+      };
+    }
+    case "list":
+      return hiddenDone
+        ? { title: "All done here", hint: done }
+        : { title: "This list is empty", hint: "Add a reminder below. Try typing “Pay rent friday 9am !!”." };
+    case "deleted":
+      return { title: "Nothing deleted", hint: "Deleted reminders and lists stay here for 30 days." };
+    case "smart":
+      switch (view.id) {
+        case "today":
+          return { title: "Nothing due today", hint: "Enjoy the free time, or add a reminder for today." };
+        case "scheduled":
+          return { title: "Nothing scheduled", hint: "Reminders with a date show up here, grouped by day." };
+        case "all":
+          return { title: "No reminders yet", hint: "Add one with New reminder or Ctrl+N." };
+        case "flagged":
+          return { title: "No flagged reminders", hint: "Right-click a reminder and choose Flag to keep it here." };
+        case "completed":
+          return { title: "Nothing done yet", hint: "Reminders you tick off are kept here." };
+        case "calendar":
+          return { title: "Nothing on the calendar", hint: "Reminders with a date show up on their day." };
+      }
+  }
 }
 
 /** The Undo toast after ticking a reminder off. */

@@ -108,6 +108,25 @@ export function presetDay(preset: DayPreset, now: Date): Date {
   return new Date(today.getFullYear(), today.getMonth(), today.getDate() + toMonday);
 }
 
+/** How long Snooze in a reminder's menu waits; `tomorrow` means 9:00 am tomorrow. */
+export const SNOOZE_PRESETS = [
+  { label: "10 minutes", minutes: 10 },
+  { label: "1 hour", minutes: 60 },
+  { label: "3 hours", minutes: 180 },
+  { label: "Tomorrow, 9:00 am", minutes: "tomorrow" },
+] as const;
+
+/** When a snooze chosen now ends. */
+export function snoozeUntil(minutes: number | "tomorrow", now: Date): Date {
+  if (minutes === "tomorrow") return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 9, 0);
+  return new Date(now.getTime() + minutes * 60_000);
+}
+
+/** Snooze is offered on unfinished reminders due by the end of today: the ones whose popup is or will soon be up. */
+export function canSnooze(task: Pick<Task, "dueAt" | "completed">, now: Date): boolean {
+  return !task.completed && !!task.dueAt && new Date(task.dueAt) <= endOfDay(now);
+}
+
 /** "Mon 23 Nov": the short date shown beside a preset. */
 export function shortDay(day: Date): string {
   return day.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });

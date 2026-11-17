@@ -118,6 +118,73 @@ fn default_data() -> Value {
     })
 }
 
+/// A local day's 09:00 as an RFC 3339 UTC time, the way a date-only reminder is stored.
+fn nine_am(day: chrono::NaiveDate) -> String {
+    let local = day.and_hms_opt(9, 0, 0).and_then(|t| t.and_local_timezone(Local).earliest());
+    local.map_or_else(|| Utc::now().to_rfc3339(), |t| t.with_timezone(&Utc).to_rfc3339())
+}
+
+/// The data for a brand-new install: the usual empty list plus a Getting started list of
+/// example reminders that show the main features. Recovery from a damaged file never gets these.
+fn first_run_data(now: DateTime<Local>) -> Value {
+    let mut data = default_data();
+    let today = now.date_naive();
+    let created = now.with_timezone(&Utc).to_rfc3339();
+    let examples = [
+        (
+            "Welcome to RemMe! Tick this off when you've read it",
+            "Ticked-off reminders move to Done. For a few seconds, Undo can bring one back.",
+            Some(today),
+            false,
+        ),
+        (
+            "Type a date into a title, like \"Call mom tomorrow 5pm\"",
+            "RemMe reads days, times, repeats (\"every friday\") and priority (!, !! or !!!) from what you type.",
+            Some(today),
+            false,
+        ),
+        (
+            "Right-click a reminder to change its date, priority or list",
+            "You can also click its date or priority. Ctrl+click or Shift+click selects several at once.",
+            None,
+            true,
+        ),
+        (
+            "Press Ctrl+Shift+O for the floating list",
+            "It stays on top of your other windows. Ctrl+Shift+L locks it, so clicks go through to the window behind.",
+            today.succ_opt(),
+            false,
+        ),
+        (
+            "Delete this list when you're done",
+            "Use the ⋯ button beside Getting started in the sidebar. Recently deleted keeps it for 30 days.",
+            None,
+            false,
+        ),
+    ];
+    let tasks: Vec<Value> = examples
+        .iter()
+        .enumerate()
+        .map(|(i, (title, notes, due, flagged))| {
+            json!({
+                "id": format!("welcome-{}", i + 1),
+                "listId": "getting-started",
+                "title": title,
+                "notes": notes,
+                "dueAt": due.map(nine_am),
+                "dueHasTime": false,
+                "flagged": flagged,
+                "createdAt": created,
+            })
+        })
+        .collect();
+    data["lists"].as_array_mut().unwrap().push(
+        json!({ "id": "getting-started", "name": "Getting started", "color": "teal", "icon": "star", "sections": [] }),
+    );
+    data["tasks"] = Value::Array(tasks);
+    data
+}
+
 /// Reads a JSON file. A corrupt file is kept as `<name>.corrupt` so nothing is silently lost.
 fn read_json<T: DeserializeOwned>(path: &Path) -> Option<T> {
     let text = fs::read_to_string(path).ok()?;
@@ -218,7 +285,7 @@ fn load_or_recover(dir: &Path, ui: &mut UiState) -> Value {
         return data;
     }
     if !existed {
-        return default_data();
+        return first_run_data(Local::now());
     }
     let corrupt = path.with_extension("json.corrupt");
     // Valid JSON of the wrong shape is still in place; read_json only moves files it can't parse.
@@ -1351,6 +1418,7 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
 
     fn now() -> DateTime<Utc> {
         DateTime::parse_from_rfc3339("2026-10-27T12:00:00Z").unwrap().with_timezone(&Utc)
@@ -1572,9 +1640,27 @@ mod tests {
     fn a_missing_data_file_is_a_fresh_start_not_a_recovery() {
         let dir = test_dir("fresh");
         let mut ui = UiState::default();
-        load_or_recover(&dir, &mut ui);
+        let data = load_or_recover(&dir, &mut ui);
         assert!(ui.recovery.is_none());
+        // A new install starts with the example reminders.
+        assert_eq!(data["lists"][1]["name"], "Getting started");
+        assert_eq!(data["tasks"].as_array().unwrap().len(), 5);
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn first_run_examples_are_due_today_and_tomorrow_at_nine() {
+        let now = Local.with_ymd_and_hms(2026, 11, 17, 15, 30, 0).unwrap();
+        let data = first_run_data(now);
+        let tasks = data["tasks"].as_array().unwrap();
+        assert!(tasks.iter().all(|t| t["listId"] == "getting-started"));
+        let due = |i: usize| {
+            DateTime::parse_from_rfc3339(tasks[i]["dueAt"].as_str().unwrap()).unwrap().with_timezone(&Local).naive_local()
+        };
+        assert_eq!(due(0), NaiveDateTime::parse_from_str("2026-11-17 09:00", "%Y-%m-%d %H:%M").unwrap());
+        assert_eq!(due(3), NaiveDateTime::parse_from_str("2026-11-18 09:00", "%Y-%m-%d %H:%M").unwrap());
+        assert!(tasks[2]["dueAt"].is_null());
+        assert_eq!(tasks[2]["flagged"], true);
     }
 
     #[test]

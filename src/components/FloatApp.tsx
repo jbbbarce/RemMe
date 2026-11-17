@@ -1,7 +1,7 @@
 import { Add, LockClosed, LockOpen, Subtract, Window } from "../icons";
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { SMART_LISTS, floatViewOf, tasksFor, viewColor } from "../model";
+import { SMART_LISTS, emptyMessage, floatViewOf, tasksFor, viewColor } from "../model";
 import { parseQuickAdd, quickAddSummary } from "../quickAdd";
 import { shortcutParts } from "../shortcut";
 import { setFloat, useFloatState, useNow } from "../store";
@@ -92,7 +92,7 @@ export function FloatApp({ data, update }: Props) {
         <MiniCalendar data={data} now={now} actions={actions} />
       ) : (
       <div className="float-body">
-        {tasks.length === 0 && <p className="empty">All done 🎉</p>}
+        {tasks.length === 0 && <p className="empty">{emptyMessage(view).title}</p>}
         {tasks.map((task) => (
           <div key={task.id} className="drag-row" {...drag(task.id)}>
           <TaskRow

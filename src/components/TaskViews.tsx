@@ -1,6 +1,6 @@
-import { Add, Delete, Grip } from "../icons";
+import { Add, Delete, Grip, LIST_ICON_COMPONENTS, SMART_ICONS, Search } from "../icons";
 import { useState } from "react";
-import { dayGroups, deleteSection, renameSection, upsertList } from "../model";
+import { dayGroups, deleteSection, emptyMessage, renameSection, upsertList } from "../model";
 import { startFocus } from "../pomodoro";
 import type { AppData, ReminderList, Task, View } from "../types";
 import { TaskRow } from "./TaskRow";
@@ -20,6 +20,8 @@ interface ViewProps {
   onSelect(id: string, mode?: "toggle" | "range"): void;
   onInfo(id: string): void;
   update(change: (d: AppData) => AppData): void;
+  /** Finished reminders hidden because Show done is off, for the empty view's hint. */
+  hiddenDone?: number;
 }
 
 interface Group {
@@ -128,8 +130,26 @@ export function ListView(props: ViewProps) {
           )}
         </section>
       ))}
+      {tasks.length === 0 && <EmptyView data={data} view={view} hiddenDone={props.hiddenDone ?? 0} />}
       {canAdd && <AddRow onAdd={() => actions.add()} />}
-      {!canAdd && tasks.length === 0 && <p className="empty">Nothing here.</p>}
+    </div>
+  );
+}
+
+/** An empty view: its icon, what would show up here, and how to get it there. */
+function EmptyView({ data, view, hiddenDone }: { data: AppData; view: View; hiddenDone: number }) {
+  const { title, hint } = emptyMessage(view, hiddenDone);
+  const Icon =
+    view.kind === "smart"
+      ? SMART_ICONS[view.id]
+      : view.kind === "list"
+        ? LIST_ICON_COMPONENTS[data.lists.find((l) => l.id === view.id)?.icon ?? "list"]
+        : Search;
+  return (
+    <div className="empty-view" role="status">
+      <Icon size={36} />
+      <p className="empty-title">{title}</p>
+      <p className="empty-hint">{hint}</p>
     </div>
   );
 }

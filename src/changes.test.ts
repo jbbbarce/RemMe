@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { changeManyMessage, changeMessage, completedMessage, dayGroups, moveTask, normalize, restoreSnapshot, setCompleted, snapshot, updateTask, updateTasks } from "./model";
+import { changeManyMessage, changeMessage, completedMessage, dayGroups, emptyMessage, moveTask, normalize, restoreSnapshot, setCompleted, snapshot, updateTask, updateTasks } from "./model";
 import type { SavedData } from "./model";
+import { canSnooze, snoozeUntil } from "./dates";
 import type { AppData } from "./types";
 
 const now = new Date(2026, 10, 16, 12, 0);
@@ -126,5 +127,45 @@ describe("day groups in Today and Upcoming", () => {
   it("keeps a reminder just ticked off in its group", () => {
     const done = { ...task("late", at(16, 10)), completed: true };
     expect(dayGroups([done], now)[0].title).toBe("Overdue");
+  });
+});
+
+describe("snoozing from the app", () => {
+  it("snoozes for a while or until 9:00 tomorrow", () => {
+    expect(snoozeUntil(10, now)).toEqual(new Date(2026, 10, 16, 12, 10));
+    expect(snoozeUntil("tomorrow", now)).toEqual(new Date(2026, 10, 17, 9, 0));
+  });
+
+  it("is offered on unfinished reminders due by tonight", () => {
+    const due = (d: Date) => ({ dueAt: d.toISOString(), completed: false });
+    expect(canSnooze(due(new Date(2026, 10, 15, 9)), now)).toBe(true);
+    expect(canSnooze(due(new Date(2026, 10, 16, 23)), now)).toBe(true);
+    expect(canSnooze(due(new Date(2026, 10, 17, 9)), now)).toBe(false);
+    expect(canSnooze({ ...due(now), completed: true }, now)).toBe(false);
+    expect(canSnooze({ dueAt: null, completed: false }, now)).toBe(false);
+  });
+
+  it("says when the popup comes back", () => {
+    const until = new Date(2026, 10, 16, 13, 0).toISOString();
+    expect(changeMessage(data(), "a", { snoozedUntil: until }, now)).toMatch(/^Snoozed “Pay rent” until 1:00/);
+    expect(changeMessage(data(), "a", { snoozedUntil: null }, now)).toBe("Stopped snoozing “Pay rent”");
+    expect(changeManyMessage(data(), ["a", "b"], { snoozedUntil: until }, now)).toMatch(/^Snoozed 2 reminders until 1:00/);
+  });
+});
+
+describe("empty views", () => {
+  it("say what would show up and how", () => {
+    expect(emptyMessage({ kind: "smart", id: "today" }).title).toBe("Nothing due today");
+    expect(emptyMessage({ kind: "smart", id: "flagged" }).hint).toContain("choose Flag");
+    expect(emptyMessage({ kind: "list", id: "home" }).title).toBe("This list is empty");
+    expect(emptyMessage({ kind: "search", query: " milk " }).title).toBe("No results for “milk”");
+  });
+
+  it("point to Show done when finished reminders are hidden", () => {
+    expect(emptyMessage({ kind: "list", id: "home" }, 1)).toEqual({
+      title: "All done here",
+      hint: "1 finished reminder is hidden. Turn on Show done to see it.",
+    });
+    expect(emptyMessage({ kind: "search", query: "x" }, 3).hint).toBe("3 finished reminders are hidden. Turn on Show done to see them.");
   });
 });

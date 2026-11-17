@@ -4,17 +4,21 @@ import {
   DAY_PRESETS,
   DAY_PRESET_LABELS,
   NO_DUE,
+  SNOOZE_PRESETS,
   TIME_PRESETS,
+  canSnooze,
   dueAtTime,
   dueOnDay,
   fromInputs,
   presetDay,
   shortDay,
+  snoozeUntil,
   timeLabel,
   toDateInput,
   toTimeInput,
 } from "../dates";
-import { Checkmark, Delete, Flag, Info, Timer } from "../icons";
+import { AlertOff, Checkmark, Delete, Flag, Info, Timer } from "../icons";
+import { activeSnooze } from "../model";
 import { PRIORITY_NAMES } from "../quickAdd";
 import type { Priority, ReminderList, Task } from "../types";
 import { Menu } from "./ui";
@@ -117,6 +121,37 @@ export function TaskContextMenu({ task, lists, now, onChange, onDelete, onInfo, 
             <Flag size={16} />
             {task.flagged ? "Remove flag" : "Flag"}
           </ContextMenu.Item>
+          {canSnooze(task, now) && (
+            <ContextMenu.Sub>
+              <ContextMenu.SubTrigger className="menu-item">
+                <AlertOff size={16} />
+                Snooze
+              </ContextMenu.SubTrigger>
+              <ContextMenu.Portal>
+                <ContextMenu.SubContent className="menu" sideOffset={2} collisionPadding={6}>
+                  <ContextMenu.Label className="menu-label">Popup comes back in</ContextMenu.Label>
+                  {SNOOZE_PRESETS.map((p) => (
+                    <ContextMenu.Item
+                      key={p.label}
+                      className="menu-item"
+                      // The time is read when chosen, not when the menu opened.
+                      onSelect={() => onChange({ snoozedUntil: snoozeUntil(p.minutes, new Date()).toISOString() })}
+                    >
+                      {p.label}
+                    </ContextMenu.Item>
+                  ))}
+                  {(activeSnooze(task, now) || many) && (
+                    <>
+                      <ContextMenu.Separator className="menu-sep" />
+                      <ContextMenu.Item className="menu-item" onSelect={() => onChange({ snoozedUntil: null })}>
+                        Stop snoozing
+                      </ContextMenu.Item>
+                    </>
+                  )}
+                </ContextMenu.SubContent>
+              </ContextMenu.Portal>
+            </ContextMenu.Sub>
+          )}
           {onFocus && !task.completed && !many && (
             <ContextMenu.Item className="menu-item" onSelect={onFocus}>
               <Timer size={16} />

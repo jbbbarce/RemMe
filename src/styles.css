@@ -3557,3 +3557,35 @@ html.acrylic .float {
   color: var(--text);
   font-weight: 600;
 }
+
+/* ---------- Empty views ---------- */
+
+.empty-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 48px auto 24px;
+  max-width: 340px;
+  text-align: center;
+  color: var(--text-3);
+}
+
+.empty-view svg {
+  margin-bottom: 6px;
+  opacity: 0.8;
+}
+
+.empty-view .empty-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.empty-view .empty-hint {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 18px;
+}

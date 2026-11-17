@@ -1,6 +1,6 @@
 # RemMe features
 
-Everything RemMe can do, from the first sticky-note version to 0.14.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
+Everything RemMe can do, from the first sticky-note version to 0.15.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Contents
 
@@ -45,6 +45,7 @@ Everything RemMe can do, from the first sticky-note version to 0.14.0, and when 
 | 0.12.0 | 16 Nov | The right-click menu on reminders, a clickable date and priority, and a preview of typed dates. |
 | 0.13.0 | 16 Nov | Drag to reorder and onto lists, Undo for ticking off and quick changes, the sidebar icon strip, floating list opacity, tray tooltip and Add reminder. |
 | 0.14.0 | 17 Nov | Overdue and day groups, keyboard navigation, multi-select with a selection bar, search highlighting. |
+| 0.15.0 | 17 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu. |
 
 ## Before the rewrite: the WPF sticky notes
 
@@ -77,6 +78,7 @@ What carried over into RemMe: the always-on-top window (now the floating list), 
 - **Habit streaks** (0.3.0): a repeating reminder shows a flame and how many times in a row it was done by its due day. Finishing late, or letting the day pass, starts the count again.
 - **When I open an app** (0.3.0): set an app such as `chrome.exe` (the box suggests apps running now) and you get a notification about the reminder each time that app starts, until it's done.
 - **Snoozed** (0.9.0): a snoozed reminder shows *Snoozed until …*; clear it in its details.
+- **Getting started** (0.15.0): a brand-new install opens with a **Getting started** list of five example reminders: a welcome note due today, typing a date into a title (due today), right-clicking for quick changes (flagged), the floating list shortcut (due tomorrow), and deleting the list when you're done. An install that copies older data, or recovers from a damaged file, doesn't get them.
 
 ## Lists and views
 
@@ -92,6 +94,7 @@ What carried over into RemMe: the always-on-top window (now the floating list), 
 - **Search** (rewrite): the box at the top of the sidebar searches titles and notes in every list. Results are grouped by list.
   - **Highlighting** (0.14.0): the words you searched for are marked in each title and in its notes.
 - **Show done** (rewrite; a switch since 0.11.0): shows finished reminders in a list or search.
+- **Empty views** (0.15.0): an empty view shows its icon, what would appear there and how to get it there, for example *Nothing due today* or *No flagged reminders: right-click a reminder and choose Flag*. A search with no results says where search looks. A list or search whose only matches are finished points to **Show done**. The floating list shows the same heading.
 - **Clear completed** (rewrite; in the **⋯** menu since 0.11.0): moves a view's finished reminders to Recently deleted.
 - **Drag and drop** (0.13.0):
   - In one of your lists, drag a reminder up or down to change its order. A grip shows in the left margin, and a line shows where it will land.
@@ -107,6 +110,7 @@ All of these came in 0.12.0 and offer Undo since 0.13.0.
 - **Right-click a reminder** for:
   - Date: Today, Tomorrow, Next week (the coming Monday), each with its date, or No date. A reminder with a time keeps it.
   - Priority, Move to (another list), Flag or Remove flag
+  - Snooze (0.15.0), on reminders due today or overdue: 10 minutes, 1 hour, 3 hours or tomorrow at 9:00 am, and **Stop snoozing**. As with the popup's Snooze, the due time stays and only the popup waits. On a selection it snoozes them all.
   - Focus on this (starts the timer), Details and Delete
 
   Right-clicking inside a title you're typing gives the usual cut, copy and paste instead.
@@ -155,6 +159,7 @@ From 0.6.0, in the sidebar.
 ## Notifications
 
 - **Due reminders** (rewrite): a Windows notification appears when a reminder is due. RemMe checks every 15 seconds while running, and overdue reminders notify when it starts. When more than 3 are due at once, the rest are summed up in one popup.
+- **Snooze from the app** (0.15.0): see [Changing reminders quickly](#changing-reminders-quickly).
 - **Snooze and Done** (0.9.0): popups have **Snooze 10 min**, **Snooze 1 hour** and **Done**. Snoozing keeps the due time and only brings the popup back later. Done is the same as ticking it off. Click the popup itself to open the reminder's details.
 - **Popups that stay** (0.9.0): reminder popups stay on screen until you respond, because Windows only passes on a button press while the popup shows. Turn it off in **Settings → Notifications**.
 - **Nag** and **When I open** popups: see [Reminders](#reminders). "You opened <app>" popups have a **Done** button.
@@ -264,12 +269,13 @@ These were built and tested by simulated input, but not yet seen working on a re
 - How Mica and Acrylic look on screen, and tooltips appearing on hover.
 - Typing into the date and time fields by hand, and opening the row menu from the keyboard (Shift+F10).
 - Screen readers.
+- The Getting started list on a real new install: it was checked with the data file removed, not from the installer.
+- Opening the Snooze submenu with a real mouse.
 
 ## Planned
 
 Not started; each is done only when asked for.
 
-- **Follow-up items 10–12**: friendlier empty screens, example reminders on first run, and snooze inside the app.
 - **Screen-by-screen redesigns**:
   - the sidebar's verse and timer as one-line bars
   - a simpler details panel with themed date and time pickers

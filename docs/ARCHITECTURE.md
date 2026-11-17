@@ -19,10 +19,11 @@ The developer side of RemMe: the stack, how the pieces fit, and where each featu
 ## History
 
 - **26 Oct 2026:** a .NET WPF app (C#) of always-on-top sticky notes, with an xUnit test project. It was built in 9 steps; see the git history before commit `0ddbfac`.
+- **First run:** a missing data file means a new install; `load_or_recover` then returns `first_run_data` (the usual list plus Getting started). A damaged file with no backup still starts empty. The old `com.reminders.app` folder is copied first if it exists, so upgraders never get the examples.
 - **27 Oct 2026, `0ddbfac`:** rewritten as a Tauri 2 + React + TypeScript app, keeping only the ideas (a floating window, tray, reminders, start with Windows). The WPF code was removed.
 - **4 Nov 2026:** renamed from Reminders to RemMe. The app id changed from `com.reminders.app` to `com.remme.app`, and the first start copies data from the old folder (`copy_old_data` in `lib.rs`).
 
-[PLAN.md](../PLAN.md) lists the 22 steps since the rewrite.
+[PLAN.md](../PLAN.md) lists the 23 steps since the rewrite.
 
 ## Stack
 
@@ -242,14 +243,17 @@ Everything is in `src-tauri/src/`:
 | Float opacity | 0.13.0 | `Settings.floatOpacity`, `FloatApp.tsx` |
 | Tray tooltip, Add reminder | 0.13.0 | `set_tray_status`, the tray menu in `lib.rs`; `new-reminder` in `MainApp.tsx` |
 | Day groups | 0.14.0 | `dayGroups`, `dayGroupTitle` in `model.ts`; `TaskViews.tsx` |
+| Empty views | 0.15.0 | `emptyMessage` in `model.ts`; `EmptyView` in `TaskViews.tsx` |
+| Getting started examples | 0.15.0 | `first_run_data` in `lib.rs`, used by `load_or_recover` only when no data file exists |
+| Snooze in the menu | 0.15.0 | `SNOOZE_PRESETS`, `snoozeUntil`, `canSnooze` in `dates.ts`; `TaskContextMenu`; `snoozedUntil` wording in `changeMessage` |
 | Keyboard navigation, multi-select | 0.14.0 | `selection.ts`; the key handler and selection bar in `MainApp.tsx`; `toggleMany`, `quickMany`, `removeMany`; `updateTasks`, `changeManyMessage` in `model.ts` |
 
 ## Tests
 
 | Command | What it covers |
 |---|---|
-| `pnpm test` (Vitest, 106 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts` |
-| `cargo test --manifest-path src-tauri/Cargo.toml` (31 tests) | Due-reminder detection, nagging and snooze; popup clicks; app triggers; copying data from the old folder; recovery from a damaged file; backup naming, pruning and the second folder; shortcut parsing; title bar colours; the Pomodoro state machine |
+| `pnpm test` (Vitest, 111 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts` |
+| `cargo test --manifest-path src-tauri/Cargo.toml` (32 tests) | Due-reminder detection, nagging and snooze; popup clicks; app triggers; copying data from the old folder; first-run examples; recovery from a damaged file; backup naming, pruning and the second folder; shortcut parsing; title bar colours; the Pomodoro state machine |
 
 Pure logic sits in `model.ts`, `dates.ts`, `quickAdd.ts`, `calendar.ts` and `selection.ts` so it can be tested without React. UI behaviour is checked by running the dev build and scripting it through WebView2's remote debugging port (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9333" pnpm tauri dev`), against a backed-up and then restored data file.
 

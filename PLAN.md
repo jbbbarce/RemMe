@@ -23,4 +23,5 @@ The first version (steps 1–9 in git history before the `tauri-rewrite` branch)
 - [x] 19. UI redesign, the base: Fluent 2 structure for all themes, Fluent icons, Radix menus and dialogs, accessibility, Compact / Comfortable switch. Spec: `.scratch/ui-redesign/spec.md`
 - [x] 20. Quick changes: a right-click menu on reminders, a clickable date and priority on each row, and a preview of what a typed date or priority will set. Spec: `.scratch/ui-redesign/spec.md`
 - [x] 21. Drag to reorder and onto sidebar lists, Undo for ticking off and quick changes, a sidebar icon rail for narrow windows, floating list opacity, tray tooltip with today's count and Add reminder. Spec: `.scratch/ui-redesign/spec.md`
+- [x] 23. Friendlier empty views, a Getting started list of example reminders on first run, Snooze in the reminder menu. Spec: `.scratch/ui-redesign/spec.md`
 - [x] 22. Overdue and day groups in Today and Upcoming, keyboard navigation of the list, multi-select with a selection bar, search highlighting. Spec: `.scratch/ui-redesign/spec.md`
