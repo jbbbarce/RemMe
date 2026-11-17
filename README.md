@@ -6,6 +6,8 @@ Built with [Tauri 2](https://tauri.app), React and TypeScript.
 
 ## Features
 
+For every feature with the version it arrived in, a shortcuts table and the app's history, see [docs/FEATURES.md](docs/FEATURES.md). How it's built is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 - **Themes:** pick one in **Settings** (gear icon). It applies at once to both windows. All four share one Windows 11-style layout (Segoe UI, the same control sizes and corners); a theme changes colours and a few details.
   - **Windows Fluent** (default): Windows colours and your Windows accent colour. Follows Windows light or dark mode. On Windows 11 the main window has the see-through Mica background and the floating list is see-through Acrylic.
   - **Sharp dark pro:** near-black, with an indigo accent.
@@ -135,6 +137,7 @@ One-time setup: the signing key lives at `%USERPROFILE%\.tauri\remme.key` and in
 - `src/`: React UI. `icons.tsx` is the one place icons come from, `components/ui.tsx` has the shared dialog, menu, drop-down and tooltip, `model.ts` holds data rules (smart lists, sections, sorting), `store.ts` loads, saves and syncs data between the two windows, and `components/` has the screens.
 - `src-tauri/src/lib.rs`: saving files, reminder notifications, global shortcuts, the tray icon and the floating window's lock.
 - `src-tauri/tauri.conf.json`: window definitions (`main` and `float`).
+- `docs/`: [FEATURES.md](docs/FEATURES.md) (what RemMe does, release by release) and [ARCHITECTURE.md](docs/ARCHITECTURE.md) (how it is built).
 
 ## Credits
 
