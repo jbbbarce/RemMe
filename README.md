@@ -23,7 +23,13 @@ For every feature with the version it arrived in, a shortcuts table and the app'
   - In the floating list, pick **Calendar** from its list picker for a small month view with the chosen day's reminders.
 - **Your own lists,** each with a color and an icon. Add one with **+** beside **Lists**. To edit or delete a list, use its **⋯** button, or double-click or right-click it.
 - **List and board layouts.** In a list's board view, sections are columns (for example one per person). Drag cards between columns, add sections at the right, and rename or delete them from the column header.
-- **Reminders** have a title, notes, a date with optional time, a flag, a priority (shown as a **Low**, **Medium** or **High** chip), a list and a section. Click **ⓘ** on a reminder to open its details.
+- **Reminders** have a title, notes, a date with optional time, a flag, a priority (shown as a **Low**, **Medium** or **High** chip), a list and a section. Click **ⓘ** on a reminder to open its **details panel**:
+  - A large title with a checkbox to tick it off, and notes under it.
+  - **When:** Today, Tomorrow, Next week or **Pick…** (a month calendar); No time, 9:00 am, Noon, 6:00 pm or any time; and Repeat.
+  - **Alerts:** Nag, the snooze (with **Stop snoozing**), and *Remind me when I open an app*.
+  - **Subtasks**, and **Organise:** list, section, priority and flag.
+  - At the bottom: when it was created and done, its focus sessions and on-time streak, **Focus on this** and **Delete**.
+  - Clicked changes there offer Undo; typing doesn't. Drag the panel's left edge to resize it (double-click the edge to reset). **Esc** closes it. In a window narrower than 760 px it floats over the list.
 - **Quick changes without opening details:**
   - **Right-click a reminder** to set its date (Today, Tomorrow, Next week, No date), priority or list, flag it, start a focus session on it, open its details or delete it. Right-clicking inside a title you are typing gives the usual cut, copy and paste.
   - **Click a reminder's date** to change it: Today, Tomorrow, Next week or any date, and No time, 9:00 am, Noon, 6:00 pm or any time. **Remove date** takes it off.
@@ -50,7 +56,7 @@ For every feature with the version it arrived in, a shortcuts table and the app'
   - In the floating list, drag the line above the verse to make it taller or shorter (it scrolls if it doesn't fit); double-click that line to fit the verse again.
   - The **–** button minimizes the verse to a bar with its reference; click the bar to bring it back. Each window minimizes on its own, and the next day's verse opens again by itself.
 - **Habit streaks:** a repeating reminder shows a flame and how many times in a row it was done by its due day. Finishing one late, or letting its day pass, starts the count over.
-- **App-triggered reminders:** set **When I open** in a reminder's details to an app, such as `chrome.exe` (the box suggests apps that are running now). Each time that app starts, you get a notification about the reminder until it's done. Apps already running when RemMe starts don't count.
+- **App-triggered reminders:** set **Remind me when I open an app** in a reminder's details to an app, such as `chrome.exe` (the box suggests apps that are running now). Each time that app starts, you get a notification about the reminder until it's done. Apps already running when RemMe starts don't count.
 - **Notifications:** a Windows notification appears when a reminder is due. Due checks run every 15 seconds while the app is running, and overdue reminders notify at startup. A due reminder also brings up the floating list.
   - **Snooze from the app:** right-click a reminder due today or overdue and choose **Snooze**: 10 minutes, 1 hour, 3 hours or tomorrow at 9:00 am. Like the popup's Snooze, the due time stays; only the popup waits. **Stop snoozing** ends it. Undo works here too.
   - The popup has **Snooze 10 min**, **Snooze 1 hour** and **Done**. Snoozing keeps the due time and only brings the popup back later; the reminder shows *Snoozed until …* (clear it in its details). Done is the same as ticking it off.

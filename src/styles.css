@@ -1543,15 +1543,6 @@ kbd {
 }
 
 @media (max-width: 860px) {
-  .inspector {
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 5;
-    box-shadow: var(--shadow);
-  }
-
   .sidebar {
     width: 230px;
   }
@@ -3588,4 +3579,232 @@ html.acrylic .float {
   color: var(--text-2);
   font-size: 13px;
   line-height: 18px;
+}
+
+/* ---------- Details panel (redesign) ---------- */
+
+.inspector {
+  position: relative;
+  min-width: 280px;
+  max-width: 520px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.insp-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 7px;
+  z-index: 2;
+  cursor: col-resize;
+}
+
+.insp-resize:hover,
+.insp-resize:focus-visible {
+  outline: none;
+  background: linear-gradient(to right, transparent 3px, var(--ui) 3px, var(--ui) 5px, transparent 5px);
+}
+
+.insp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 8px 16px;
+}
+
+.insp-head h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.insp-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-right: auto;
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.insp-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 16px 16px;
+}
+
+.insp-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.insp-title-row .check {
+  margin-top: 3px;
+}
+
+.insp-title,
+.insp-notes {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--text);
+  user-select: text;
+}
+
+.insp-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.insp-title.done {
+  color: var(--text-2);
+}
+
+.insp-notes {
+  display: block;
+  margin: 6px 0 4px 30px;
+  width: calc(100% - 30px);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.insp-title::placeholder,
+.insp-notes::placeholder {
+  color: var(--text-3);
+}
+
+.insp-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.insp-group h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.insp-count {
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+.insp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+  font-size: 13px;
+}
+
+.insp-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+}
+
+.insp-row .segmented button {
+  width: auto;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.insp-time {
+  width: auto;
+  min-height: 28px;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+
+.insp-app {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.insp-hint {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.insp-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.insp-info {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.insp-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.insp-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.insp-actions .danger-text {
+  margin-left: auto;
+}
+
+.month-pop {
+  width: 252px;
+  padding: 8px;
+}
+
+.month-pop:focus {
+  outline: none;
+}
+
+/* Narrow windows: the panel floats over the list instead of squeezing it. */
+@media (max-width: 759px) {
+  .inspector {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 5;
+    max-width: calc(100% - 60px);
+    box-shadow: var(--shadow);
+  }
 }

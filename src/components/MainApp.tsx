@@ -571,6 +571,8 @@ export function MainApp({ data, update, saveError }: Props) {
           task={inspected}
           now={now}
           onChange={(patch) => actions.change(inspected.id, patch)}
+          onQuickChange={(patch) => actions.quick(inspected.id, patch)}
+          onToggle={(done) => actions.toggle(inspected, done)}
           onDelete={() => {
             actions.remove(inspected.id);
             setInspectId(null);

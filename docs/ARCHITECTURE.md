@@ -23,7 +23,7 @@ The developer side of RemMe: the stack, how the pieces fit, and where each featu
 - **27 Oct 2026, `0ddbfac`:** rewritten as a Tauri 2 + React + TypeScript app, keeping only the ideas (a floating window, tray, reminders, start with Windows). The WPF code was removed.
 - **4 Nov 2026:** renamed from Reminders to RemMe. The app id changed from `com.reminders.app` to `com.remme.app`, and the first start copies data from the old folder (`copy_old_data` in `lib.rs`).
 
-[PLAN.md](../PLAN.md) lists the 23 steps since the rewrite.
+[PLAN.md](../PLAN.md) lists the 24 steps since the rewrite.
 
 ## Stack
 
@@ -196,7 +196,7 @@ Everything is in `src-tauri/src/`:
 ## Shared mechanisms
 
 - **Changing reminders** goes through `useTaskActions` (`useTaskActions.ts`):
-  - `change` is for plain edits, such as typing in details.
+  - `change` is for typing (the title, notes, subtasks and app box in the details panel). The panel's clicked controls use `quick`.
   - `quick` and `quickMany` are for menu, button, drag and selection-bar changes, and offer Undo.
   - `toggle` and `toggleMany` tick reminders off. A just-ticked reminder "lingers" for 1.2 s.
   - `move` handles drag reordering.
@@ -218,7 +218,7 @@ Everything is in `src-tauri/src/`:
 | Feature | Version | Main code |
 |---|---|---|
 | Lists, smart lists, sections, board | Rewrite | `model.ts` (`tasksFor`, sections), `TaskViews.tsx`, `Sidebar.tsx` |
-| Details panel | Rewrite | `Inspector.tsx` |
+| Details panel | Rewrite; redesigned 0.15.0 | `Inspector.tsx` (`WhenControls`, `MonthPicker`, the resizable edge, `remme.inspector` width in `localStorage`); `detailsInfo` and the repeat and nag wording in `changeMessage` (`model.ts`) |
 | Search | Rewrite; marks 0.14.0 | `tasksFor` search branch; `highlightParts` in `selection.ts`, `TaskRow.tsx` |
 | Floating list, lock, shortcuts | Rewrite | `FloatApp.tsx`; `set_float_locked`, `register_shortcuts` in `lib.rs`; `shortcut.ts` |
 | Notifications | Rewrite; buttons 0.9.0 | `check_reminders`, `show_popup`, `popup_action` in `lib.rs`; `popup-action` listener in `MainApp.tsx` |
@@ -252,7 +252,7 @@ Everything is in `src-tauri/src/`:
 
 | Command | What it covers |
 |---|---|
-| `pnpm test` (Vitest, 111 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts` |
+| `pnpm test` (Vitest, 113 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts` |
 | `cargo test --manifest-path src-tauri/Cargo.toml` (32 tests) | Due-reminder detection, nagging and snooze; popup clicks; app triggers; copying data from the old folder; first-run examples; recovery from a damaged file; backup naming, pruning and the second folder; shortcut parsing; title bar colours; the Pomodoro state machine |
 
 Pure logic sits in `model.ts`, `dates.ts`, `quickAdd.ts`, `calendar.ts` and `selection.ts` so it can be tested without React. UI behaviour is checked by running the dev build and scripting it through WebView2's remote debugging port (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9333" pnpm tauri dev`), against a backed-up and then restored data file.

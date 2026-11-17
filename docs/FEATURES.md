@@ -45,7 +45,7 @@ Everything RemMe can do, from the first sticky-note version to 0.15.0, and when 
 | 0.12.0 | 16 Nov | The right-click menu on reminders, a clickable date and priority, and a preview of typed dates. |
 | 0.13.0 | 16 Nov | Drag to reorder and onto lists, Undo for ticking off and quick changes, the sidebar icon strip, floating list opacity, tray tooltip and Add reminder. |
 | 0.14.0 | 17 Nov | Overdue and day groups, keyboard navigation, multi-select with a selection bar, search highlighting. |
-| 0.15.0 | 17 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu. |
+| 0.15.0 | 17 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu, and a redesigned details panel. |
 
 ## Before the rewrite: the WPF sticky notes
 
@@ -65,6 +65,16 @@ What carried over into RemMe: the always-on-top window (now the floating list), 
 ## Reminders
 
 - **The basics** (rewrite): a reminder has a title, notes, a date with or without a time, a flag, a priority, a list and a section. Tick it off with its checkbox. A just-finished reminder stays in place for a moment before it leaves the list. Click **ⓘ** to open its **details** panel, where everything can be changed. A reminder whose title you leave empty is removed.
+- **The details panel** (rewrite; redesigned in 0.15.0):
+  - **Top:** a large title that grows to several lines, with a checkbox to tick the reminder off. Notes sit under it in smaller, lighter text.
+  - **When:** the date with **×** to remove it, then Today, Tomorrow, Next week and **Pick…**, a month calendar that starts the week the way your region does. For a dated reminder there's also the time (No time, 9:00 am, Noon, 6:00 pm, or a time field) and Repeat.
+  - **Alerts:** Nag and the snooze status (with **Stop snoozing**) for a dated reminder, and **Remind me when I open an app** with a one-line explanation.
+  - **Subtasks**, with a done count.
+  - **Organise:** List, Section, Priority (None / Low / Medium / High) and Flagged.
+  - **Footer**, always visible: when it was created and done, focus sessions and the on-time streak, then **Focus on this** and **Delete**.
+  - Clicked changes offer Undo, the same as the right-click menu; typing in the title, notes, subtasks or app box doesn't.
+  - Drag its left edge to make it 280–520 px wide; RemMe remembers the width, and double-clicking the edge resets it. With the edge focused, the arrow keys resize it.
+  - **Esc** closes it. In a window narrower than 760 px it floats over the list instead of squeezing it.
 - **Priority** (rewrite; chips in 0.11.0): Low, Medium or High, shown as a small coloured chip beside the date.
 - **Typing dates into the title** (0.3.0): type `Call mom tomorrow 5pm !!` and it becomes "Call mom", due tomorrow at 5:00 PM, Medium priority, when you finish typing. It understands:
   - days: today, tonight, tomorrow, weekdays (`friday`, `next mon`), dates (`oct 30`, `30 oct`), `in 3 days`
@@ -76,7 +86,7 @@ What carried over into RemMe: the always-on-top window (now the floating list), 
 - **Subtasks** (0.3.0): a checklist in the details panel. The row shows how many are done; the next repeat starts with them unchecked.
 - **Nag mode** (0.3.0): the notification repeats every 5, 10, 15, 30 or 60 minutes until the reminder is ticked off.
 - **Habit streaks** (0.3.0): a repeating reminder shows a flame and how many times in a row it was done by its due day. Finishing late, or letting the day pass, starts the count again.
-- **When I open an app** (0.3.0): set an app such as `chrome.exe` (the box suggests apps running now) and you get a notification about the reminder each time that app starts, until it's done.
+- **When I open an app** (0.3.0; "Remind me when I open an app" since 0.15.0): set an app such as `chrome.exe` (the box suggests apps running now) and you get a notification about the reminder each time that app starts, until it's done.
 - **Snoozed** (0.9.0): a snoozed reminder shows *Snoozed until …*; clear it in its details.
 - **Getting started** (0.15.0): a brand-new install opens with a **Getting started** list of five example reminders: a welcome note due today, typing a date into a title (due today), right-clicking for quick changes (flagged), the floating list shortcut (due tomorrow), and deleting the list when you're done. An install that copies older data, or recovers from a damaged file, doesn't get them.
 
@@ -245,6 +255,8 @@ From 0.5.0.
 | A list | **Delete** | Delete the selected reminders | 0.14.0 |
 | A list | **Ctrl+I** | Open the selected reminder's details | 0.14.0 |
 | A list | **Esc** | Clear the selection | 0.14.0 |
+| Details panel | **Esc** | Close the panel (outside a text box) | 0.15.0 |
+| Details panel edge | **←** / **→** | Make the panel wider or narrower | 0.15.0 |
 | Menus and dialogs | **Esc** | Close | 0.11.0 |
 
 The three global shortcuts can be changed in **Settings**.
@@ -271,6 +283,7 @@ These were built and tested by simulated input, but not yet seen working on a re
 - Screen readers.
 - The Getting started list on a real new install: it was checked with the data file removed, not from the installer.
 - Opening the Snooze submenu with a real mouse.
+- Dragging the details panel's edge with a real mouse, and the panel in light themes.
 
 ## Planned
 
@@ -278,7 +291,6 @@ Not started; each is done only when asked for.
 
 - **Screen-by-screen redesigns**:
   - the sidebar's verse and timer as one-line bars
-  - a simpler details panel with themed date and time pickers
   - the calendar
   - Settings as a two-pane page
   - board columns and menus

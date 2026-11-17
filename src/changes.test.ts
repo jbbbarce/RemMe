@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeManyMessage, changeMessage, completedMessage, dayGroups, emptyMessage, moveTask, normalize, restoreSnapshot, setCompleted, snapshot, updateTask, updateTasks } from "./model";
+import { changeManyMessage, changeMessage, completedMessage, dayGroups, detailsInfo, emptyMessage, moveTask, normalize, restoreSnapshot, setCompleted, snapshot, updateTask, updateTasks } from "./model";
 import type { SavedData } from "./model";
 import { canSnooze, snoozeUntil } from "./dates";
 import type { AppData } from "./types";
@@ -167,5 +167,24 @@ describe("empty views", () => {
       hint: "1 finished reminder is hidden. Turn on Show done to see it.",
     });
     expect(emptyMessage({ kind: "search", query: "x" }, 3).hint).toBe("3 finished reminders are hidden. Turn on Show done to see them.");
+  });
+});
+
+describe("the details panel", () => {
+  it("words Undo for repeat and nag changes", () => {
+    expect(changeMessage(data(), "d", { repeat: null }, now)).toBe("“Water plants” no longer repeats");
+    expect(changeMessage(data(), "a", { repeat: "monthly" }, now)).toBe("“Pay rent” repeats monthly");
+    expect(changeMessage(data(), "a", { nagMinutes: 10 }, now)).toBe("Nagging about “Pay rent” every 10 min");
+    expect(changeMessage(data(), "a", { nagMinutes: 60 }, now)).toBe("Nagging about “Pay rent” every hour");
+  });
+
+  it("sums up the reminder at the bottom", () => {
+    const task = { ...data().tasks[0], createdAt: new Date(2026, 10, 12).toISOString() };
+    expect(detailsInfo(task, now)).toEqual([`Created ${new Date(2026, 10, 12).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`]);
+    const busy = { ...task, pomodoros: 3, completed: true, completedAt: now.toISOString() };
+    expect(detailsInfo(busy, now).slice(1)).toEqual([
+      `Done ${now.toLocaleDateString(undefined, { day: "numeric", month: "short" })}`,
+      "3 focus sessions",
+    ]);
   });
 });

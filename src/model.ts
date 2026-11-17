@@ -1,4 +1,4 @@
-import { doneOnTime, dueOnDay, endOfDay, formatDue, isOverdue, nextDue, startOfDay } from "./dates";
+import { REPEAT_LABELS, currentStreak, doneOnTime, dueOnDay, endOfDay, formatDue, isOverdue, nextDue, startOfDay } from "./dates";
 import {
   DENSITIES,
   LIST_COLORS,
@@ -530,6 +530,14 @@ export function changeMessage(data: AppData, id: string, patch: Partial<Task>, n
   if (patch.flagged !== undefined && patch.flagged !== task.flagged) {
     return `${patch.flagged ? "Flagged" : "Unflagged"} ${name}`;
   }
+  if (patch.repeat !== undefined && patch.repeat !== task.repeat) {
+    return patch.repeat ? `${name} repeats ${REPEAT_LABELS[patch.repeat].toLowerCase()}` : `${name} no longer repeats`;
+  }
+  if (patch.nagMinutes !== undefined && patch.nagMinutes !== task.nagMinutes) {
+    return patch.nagMinutes
+      ? `Nagging about ${name} every ${patch.nagMinutes === 60 ? "hour" : `${patch.nagMinutes} min`}`
+      : `Stopped nagging about ${name}`;
+  }
   if (patch.snoozedUntil !== undefined) {
     return patch.snoozedUntil ? `Snoozed ${name} until ${snoozeTime(new Date(patch.snoozedUntil), now)}` : `Stopped snoozing ${name}`;
   }
@@ -567,6 +575,23 @@ export function changeManyMessage(data: AppData, ids: readonly string[], patch: 
     return patch.snoozedUntil ? `Snoozed ${n} until ${snoozeTime(new Date(patch.snoozedUntil), now)}` : `Stopped snoozing ${n}`;
   }
   return `Changed ${n}`;
+}
+
+/**
+ * The small line at the bottom of the details panel: when the reminder was made and finished,
+ * its focus sessions and its on-time streak, whichever apply.
+ */
+export function detailsInfo(task: Task, now: Date): string[] {
+  const day = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: d.getFullYear() === now.getFullYear() ? undefined : "numeric" });
+  };
+  const info = [`Created ${day(task.createdAt)}`];
+  if (task.completed && task.completedAt) info.push(`Done ${day(task.completedAt)}`);
+  if (task.pomodoros > 0) info.push(plural(task.pomodoros, "focus session"));
+  const streak = currentStreak(task, now);
+  if (streak > 0) info.push(`On time ${streak} ${streak === 1 ? "time" : "times"} in a row`);
+  return info;
 }
 
 /** The Undo toast after ticking several reminders off at once. */
