@@ -1,4 +1,5 @@
-import { Pause, Play, Reset, Skip, Timer } from "../icons";
+import { ChevronDown, ChevronUp, Pause, Play, Reset, Skip, Timer } from "../icons";
+import { useState } from "react";
 import { PHASE_NAMES, formatClock, resetTimer, skipTimer, toggleTimer, usePomodoro } from "../pomodoro";
 import type { AppData } from "../types";
 
@@ -29,20 +30,73 @@ function useTimerView(data: AppData) {
   return { timer, idle, left, progress, task };
 }
 
-/** The timer at the bottom of the main window's sidebar. */
+const OPEN_KEY = "remme.timer.open";
+
+function readOpen(): boolean {
+  try {
+    return localStorage.getItem(OPEN_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The timer at the bottom of the main window's sidebar: a one-line bar with the phase, the time
+ * left and Start or Pause, which expands to the full panel. Collapsed by default.
+ */
 export function PomodoroPanel({ data }: { data: AppData }) {
   const { timer, idle, left, progress, task } = useTimerView(data);
+  const [open, setOpenState] = useState(readOpen);
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    try {
+      localStorage.setItem(OPEN_KEY, String(next));
+    } catch {
+      // Remembering this is a convenience only.
+    }
+  };
   const label =
     timer.phase === "focus" || idle ? `${PHASE_NAMES.focus} ${Math.min(timer.inSet + 1, 4)} of 4` : PHASE_NAMES[timer.phase];
 
+  if (!open) {
+    return (
+      <div className={`side-strip timer-strip ${timer.phase}`}>
+        <button
+          className="timer-strip-open"
+          aria-expanded={false}
+          aria-label={`Focus timer: ${idle ? "not started" : PHASE_NAMES[timer.phase]}, ${formatClock(left)}. Show the timer`}
+          title={task ? `On: ${task.title || "Untitled"}` : "Show the timer"}
+          onClick={() => setOpen(true)}
+        >
+          <Ring size={16} progress={progress} />
+          <span className="side-strip-text">
+            {idle ? "Focus timer" : PHASE_NAMES[timer.phase]} <b className="timer-strip-clock">{formatClock(left)}</b>
+          </span>
+          <ChevronUp size={13} />
+        </button>
+        <button
+          className="icon-btn"
+          aria-label={timer.running ? "Pause" : idle ? "Start a focus session" : "Resume"}
+          title={`${timer.running ? "Pause" : idle ? "Start" : "Resume"} (${data.settings.pomodoroShortcut})`}
+          onClick={toggleTimer}
+        >
+          {timer.running ? <Pause size={14} /> : <Play size={14} />}
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <section className={`timer-panel ${timer.phase}`} aria-label="Pomodoro timer">
+    <section className={`timer-panel ${timer.phase}`} aria-label="Focus timer">
       <div className="timer-top">
         <Ring size={44} progress={progress} />
         <div className="timer-read">
           <span className="timer-phase">{label}</span>
           <span className="timer-clock">{formatClock(left)}</span>
         </div>
+        <button className="icon-btn timer-collapse" aria-label="Collapse the timer" title="Collapse" aria-expanded onClick={() => setOpen(false)}>
+          <ChevronDown size={13} />
+        </button>
       </div>
       {task && <span className="timer-task">On: {task.title || "Untitled"}</span>}
       <div className="timer-actions">
@@ -65,6 +119,23 @@ export function PomodoroPanel({ data }: { data: AppData }) {
         <Timer size={12} /> {timer.today} today
       </span>
     </section>
+  );
+}
+
+/** The timer in the sidebar's icon rail: its ring, which starts, pauses or resumes. */
+export function PomodoroRailButton({ data }: { data: AppData }) {
+  const { timer, idle, left, progress } = useTimerView(data);
+  const name = idle ? "Start a focus session" : `${PHASE_NAMES[timer.phase]}, ${timer.running ? "running" : "paused"}`;
+  return (
+    <button
+      className={`icon-btn timer-rail ${timer.phase}${timer.running ? " running" : ""}`}
+      aria-label={`${name}. ${formatClock(left)} left.`}
+      title={`${name}: ${formatClock(left)} (${data.settings.pomodoroShortcut})`}
+      onClick={toggleTimer}
+    >
+      <Ring size={22} progress={progress} />
+      <span className="timer-rail-icon">{timer.running ? <Pause size={10} /> : <Play size={10} />}</span>
+    </button>
   );
 }
 

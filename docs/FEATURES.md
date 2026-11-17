@@ -45,7 +45,7 @@ Everything RemMe can do, from the first sticky-note version to 0.15.0, and when 
 | 0.12.0 | 16 Nov | The right-click menu on reminders, a clickable date and priority, and a preview of typed dates. |
 | 0.13.0 | 16 Nov | Drag to reorder and onto lists, Undo for ticking off and quick changes, the sidebar icon strip, floating list opacity, tray tooltip and Add reminder. |
 | 0.14.0 | 17 Nov | Overdue and day groups, keyboard navigation, multi-select with a selection bar, search highlighting. |
-| 0.15.0 | 17 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu, a redesigned details panel, and Settings as a two-pane page. |
+| 0.15.0 | 18 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu, a redesigned details panel, Settings as a two-pane page, and the sidebar's verse and timer as one-line bars. |
 
 ## Before the rewrite: the WPF sticky notes
 
@@ -179,7 +179,8 @@ From 0.6.0, in the sidebar.
 From 0.4.0.
 
 - 25-minute focus sessions with 5-minute breaks, and a 15-minute long break after every fourth.
-- In the sidebar panel and the floating list's header. Start a plain session, or press the timer button on a reminder (or **Focus on this**) to focus on that reminder.
+- In the sidebar and the floating list's header. Start a plain session, or press the timer button on a reminder (or **Focus on this**) to focus on that reminder.
+- **In the sidebar** (a one-line bar since 0.15.0): a progress ring, the phase and the time left, and a Start/Pause button. Click the bar for the full timer with the reminder it's on, Skip, Reset and today's count; the chevron collapses it. The sidebar remembers which way it was. In the narrow icon strip it's a ring button that starts or pauses, with the time in its tooltip.
 - Breaks start by themselves; the next focus session waits for you. A notification and a quiet chime mark each end.
 - **Ctrl+Shift+P** starts or pauses it from any app, even while the floating list is locked.
 - Each reminder counts its finished sessions, and the timer shows today's total.
@@ -191,9 +192,8 @@ From 0.7.0.
 
 - A Bible verse from the World English Bible (British Edition, with the deuterocanonical books), built into the app, changing at midnight.
 - In the sidebar above the timer and at the bottom of the floating list. Turn it off in **Settings → Verse of the day**.
-- Click the verse to copy it with its reference. In the sidebar, the arrow switches between the whole verse and 2 lines.
-- In the floating list, drag the line above the verse to resize it; double-click that line to fit the verse again.
-- **–** minimizes it to a bar with the reference; click the bar to bring it back. Each window minimizes on its own, and the next day's verse opens again.
+- **In the sidebar** (a one-line bar since 0.15.0): the reference and the start of the verse, with all of it in the tooltip. Click the bar to show the whole verse; click the verse to copy it with its reference; the chevron collapses it. It starts collapsed and stays the way you leave it, even when a new verse arrives. The icon strip hides it.
+- **In the floating list**: drag the line above the verse to resize it; double-click that line to fit the verse again. Click it to copy. **–** minimizes it to a bar with the reference; click the bar to bring it back. The next day's verse opens again.
 
 ## Look and feel
 
@@ -290,13 +290,13 @@ These were built and tested by simulated input, but not yet seen working on a re
 - Opening the Snooze submenu with a real mouse.
 - Dragging the details panel's edge with a real mouse, and the panel in light themes.
 - Recording a new shortcut in the redesigned Settings with real key presses.
+- The sidebar's bars in light themes, and the rail's timer button with a real mouse.
 
 ## Planned
 
 Not started; each is done only when asked for.
 
 - **Screen-by-screen redesigns**:
-  - the sidebar's verse and timer as one-line bars
   - the calendar
   - board columns and menus
   - the list dialog's colour and icon grids

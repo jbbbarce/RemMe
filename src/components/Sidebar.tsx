@@ -2,7 +2,7 @@ import { Fragment, useState } from "react";
 import { Add, Delete, Dismiss, LIST_ICON_COMPONENTS, More, SMART_ICONS, Search } from "../icons";
 import { SMART_LISTS, smartCount } from "../model";
 import type { AppData, ReminderList, View } from "../types";
-import { PomodoroPanel } from "./Pomodoro";
+import { PomodoroPanel, PomodoroRailButton } from "./Pomodoro";
 import { Menu, Tip } from "./ui";
 import { TASK_DRAG, carriesTask } from "./useRowDrag";
 import { VerseCard } from "./Verse";
@@ -168,8 +168,11 @@ export function Sidebar(props: Props) {
       </button>
       </Named>
 
-      {data.settings.verseOfDay && <VerseCard now={now} />}
-      <PomodoroPanel data={data} />
+      {/* The verse and the timer sit at the bottom as one-line bars; the rail keeps only the timer's ring. */}
+      <div className="side-bottom">
+        {!rail && data.settings.verseOfDay && <VerseCard now={now} />}
+        {rail ? <PomodoroRailButton data={data} /> : <PomodoroPanel data={data} />}
+      </div>
     </aside>
   );
 }

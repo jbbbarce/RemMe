@@ -85,35 +85,40 @@ function MinimizedBar({ verse, onRestore }: { verse: Verse; onRestore(): void })
   );
 }
 
-/** The verse of the day in the main window's sidebar, above the Pomodoro timer. */
+/**
+ * The verse of the day in the main window's sidebar, above the timer: a one-line bar with the
+ * reference and the start of the verse, which expands to the whole verse. Collapsed by default.
+ */
 export function VerseCard({ now }: { now: Date }) {
   const verse = verseFor(now);
-  const [minimized, setMinimized] = useMinimized("remme.verse.main.minimizedOn", now);
-  const [short, setShort] = useLocal("remme.verse.main.short", false);
+  const [open, setOpen] = useLocal("remme.verse.main.open", false);
 
-  if (minimized) {
+  if (!open) {
     return (
-      <section className="verse-card minimized" aria-label="Verse of the day">
-        <MinimizedBar verse={verse} onRestore={() => setMinimized(false)} />
-      </section>
+      <button
+        className="side-strip verse-strip"
+        aria-expanded={false}
+        aria-label={`Verse of the day, ${verse.ref}. Show the whole verse`}
+        title={`${verse.text} (${verse.ref})`}
+        onClick={() => setOpen(true)}
+      >
+        <BookOpen size={14} />
+        <span className="side-strip-text">
+          <b>{verse.ref}</b> · {verse.text}
+        </span>
+        <ChevronUp size={13} />
+      </button>
     );
   }
   return (
     <section className="verse-card" aria-label="Verse of the day">
       <div className="verse-head">
         <span className="verse-label">Verse of the day</span>
-        <button
-          className="icon-btn"
-          title={short ? "Show the whole verse" : "Show 2 lines"}
-          onClick={() => setShort(!short)}
-        >
-          {short ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
-        </button>
-        <button className="icon-btn" title="Minimize the verse" onClick={() => setMinimized(true)}>
-          <Subtract size={13} />
+        <button className="icon-btn" aria-label="Collapse the verse" title="Collapse" aria-expanded onClick={() => setOpen(false)}>
+          <ChevronDown size={13} />
         </button>
       </div>
-      <VerseText verse={verse} clamp={short} onExpand={() => setShort(false)} />
+      <VerseText verse={verse} />
     </section>
   );
 }

@@ -3982,3 +3982,114 @@ html.acrylic .float {
     width: 140px;
   }
 }
+
+/* ---------- Sidebar: the verse and timer as one-line bars ---------- */
+
+.side-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.side-bottom .verse-card,
+.side-bottom .timer-panel {
+  margin: 0;
+}
+
+.side-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12px;
+  text-align: left;
+}
+
+button.side-strip:hover,
+.timer-strip-open:hover {
+  color: var(--text);
+}
+
+.side-strip-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.side-strip-text b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.timer-strip {
+  padding: 0 2px 0 0;
+}
+
+.timer-strip-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 4px 0 10px;
+  color: inherit;
+  text-align: left;
+}
+
+.timer-strip-clock {
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-strip.focus .timer-strip-clock {
+  color: var(--ui);
+}
+
+.timer-strip.shortBreak .timer-ring-fill,
+.timer-strip.longBreak .timer-ring-fill,
+.timer-rail.shortBreak .timer-ring-fill,
+.timer-rail.longBreak .timer-ring-fill {
+  stroke: var(--c-green);
+}
+
+.timer-top {
+  position: relative;
+}
+
+.timer-collapse {
+  margin-left: auto;
+  align-self: flex-start;
+}
+
+.verse-head .icon-btn {
+  margin-left: auto;
+}
+
+/* The rail keeps the timer's ring, with a play or pause mark in its middle. */
+.timer-rail {
+  position: relative;
+  align-self: center;
+  width: 36px;
+  height: 36px;
+}
+
+.timer-rail-icon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.sidebar.rail .side-bottom {
+  align-items: center;
+}

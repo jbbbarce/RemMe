@@ -46,16 +46,15 @@ For every feature with the version it arrived in, a shortcuts table and the app'
 - **Subtasks:** add a checklist in a reminder's details. The row shows how many are done, and the next repeat starts with them all unchecked.
 - **Nag mode:** set **Nag** in a reminder's details and its notification repeats every 5, 10, 15, 30 or 60 minutes until you check it off.
 - **Pomodoro timer:** 25-minute focus sessions with 5-minute breaks, and a 15-minute long break after every fourth. The timer is at the bottom of the sidebar and in the floating list's header.
+  - In the sidebar it's a one-line bar with the phase, the time left and a Start/Pause button. Click the bar for the full timer (the reminder it's on, Skip, Reset and today's count); its chevron collapses it again. In the narrow icon strip it's a ring button that starts or pauses.
   - Start a plain session there, or press the timer button on a reminder (or **Focus on this** in its details) to focus on that reminder.
   - Breaks start by themselves; the next focus session waits for you. A notification and a quiet chime mark the end of each session.
   - **Ctrl+Shift+P** starts or pauses the timer from any app, even while the floating list is locked.
   - Each reminder counts its finished sessions, and the timer shows today's total.
   - Change the lengths and the chime in **Settings → Focus timer**, and the shortcut in **Settings → Shortcuts**. The timer resets if you quit RemMe.
 - **Verse of the day:** a Bible verse from the World English Bible (British Edition, with the deuterocanonical books) that changes at midnight. It's in the sidebar above the timer and at the bottom of the floating list. Turn it off in **Settings → Verse of the day**.
-  - Click the verse to copy it with its reference.
-  - In the sidebar, the arrow switches between the whole verse and 2 lines.
-  - In the floating list, drag the line above the verse to make it taller or shorter (it scrolls if it doesn't fit); double-click that line to fit the verse again.
-  - The **–** button minimizes the verse to a bar with its reference; click the bar to bring it back. Each window minimizes on its own, and the next day's verse opens again by itself.
+  - In the sidebar it's a one-line bar with the reference and the start of the verse (hover for all of it). Click the bar to show the whole verse, and click the verse to copy it with its reference. The chevron collapses it again. The sidebar remembers whether the verse and timer are expanded.
+  - In the floating list, drag the line above the verse to make it taller or shorter (it scrolls if it doesn't fit); double-click that line to fit the verse again. Click the verse to copy it. Its **–** button minimizes it to a bar with the reference; click the bar to bring it back. The next day's verse opens again by itself.
 - **Habit streaks:** a repeating reminder shows a flame and how many times in a row it was done by its due day. Finishing one late, or letting its day pass, starts the count over.
 - **App-triggered reminders:** set **Remind me when I open an app** in a reminder's details to an app, such as `chrome.exe` (the box suggests apps that are running now). Each time that app starts, you get a notification about the reminder until it's done. Apps already running when RemMe starts don't count.
 - **Notifications:** a Windows notification appears when a reminder is due. Due checks run every 15 seconds while the app is running, and overdue reminders notify at startup. A due reminder also brings up the floating list.
