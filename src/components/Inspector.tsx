@@ -3,7 +3,7 @@ import { Dropdown } from "./ui";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Popover } from "radix-ui";
 import { invoke } from "@tauri-apps/api/core";
-import { activeSnooze, detailsInfo, newId, snoozeLabel } from "../model";
+import { NO_SECTION, activeSnooze, detailsInfo, newId, snoozeLabel } from "../model";
 import { startFocus } from "../pomodoro";
 import {
   DAY_PRESETS,
@@ -252,7 +252,7 @@ export function Inspector({ data, task, now, onChange, onQuickChange, onToggle, 
                 label="Section"
                 value={task.section ?? ""}
                 onChange={(v) => onQuickChange({ section: v || null })}
-                options={[{ value: "", label: "Others" }, ...list.sections.map((s) => ({ value: s, label: s }))]}
+                options={[{ value: "", label: NO_SECTION }, ...list.sections.map((s) => ({ value: s, label: s }))]}
               />
             </div>
           )}

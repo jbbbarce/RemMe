@@ -518,7 +518,7 @@ export function changeMessage(data: AppData, id: string, patch: Partial<Task>, n
     return `Moved ${name} to ${data.lists.find((l) => l.id === patch.listId)?.name ?? "another list"}`;
   }
   if (patch.section !== undefined && patch.section !== task.section) {
-    return `Moved ${name} to ${patch.section ?? "Others"}`;
+    return `Moved ${name} to ${patch.section ?? NO_SECTION}`;
   }
   if (patch.dueAt !== undefined && (patch.dueAt !== task.dueAt || patch.dueHasTime !== task.dueHasTime)) {
     if (!patch.dueAt) return `Removed the date from ${name}`;
@@ -706,7 +706,34 @@ export function renameSection(data: AppData, listId: string, from: string, to: s
   };
 }
 
-/** Removes a section; its tasks move to "Others". */
+/** The name for reminders in a list with sections that are in none of them. */
+export const NO_SECTION = "No section";
+
+/** Moves a section one place left (-1) or right (+1) among its list's board columns. */
+export function moveSection(data: AppData, listId: string, name: string, by: -1 | 1): AppData {
+  const list = data.lists.find((l) => l.id === listId);
+  const i = list?.sections.indexOf(name) ?? -1;
+  const j = i + by;
+  if (!list || i < 0 || j < 0 || j >= list.sections.length) return data;
+  const sections = [...list.sections];
+  [sections[i], sections[j]] = [sections[j], sections[i]];
+  return { ...data, lists: data.lists.map((l) => (l.id === listId ? { ...l, sections } : l)) };
+}
+
+/**
+ * Undo for deleting a section: puts the list's sections back as they were and moves the reminders
+ * that were in it back. Reminders that moved elsewhere since are left alone.
+ */
+export function restoreSection(data: AppData, listId: string, sections: string[], name: string, taskIds: readonly string[]): AppData {
+  const ids = new Set(taskIds);
+  return {
+    ...data,
+    lists: data.lists.map((l) => (l.id === listId ? { ...l, sections } : l)),
+    tasks: data.tasks.map((t) => (ids.has(t.id) && t.listId === listId && t.section === null ? { ...t, section: name } : t)),
+  };
+}
+
+/** Removes a section; its tasks move to No section. */
 export function deleteSection(data: AppData, listId: string, name: string): AppData {
   return {
     ...data,

@@ -13,7 +13,7 @@ export interface ReminderList {
   name: string;
   color: ListColor;
   icon: ListIcon;
-  /** Board columns, in order. Tasks without a section go in the first "Others" column. */
+  /** Board columns, in order. Tasks without a section go in the first "No section" column. */
   sections: string[];
 }
 

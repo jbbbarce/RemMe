@@ -26,6 +26,7 @@ import {
   DeleteRegular,
   DismissRegular,
   DumbbellRegular,
+  EditRegular,
   FireRegular,
   FlagFilled,
   FlagRegular,
@@ -92,6 +93,7 @@ export const ChevronRight = sized(ChevronRightRegular);
 export const ChevronUp = sized(ChevronUpRegular);
 export const Delete = sized(DeleteRegular);
 export const Dismiss = sized(DismissRegular);
+export const Edit = sized(EditRegular);
 export const Download = sized(ArrowDownloadRegular);
 export const Fire = sized(FireRegular);
 export const Flag = sized(FlagRegular);

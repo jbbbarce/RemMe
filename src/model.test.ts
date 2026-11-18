@@ -10,8 +10,7 @@ import {
   setCompleted,
   smartCount,
   tasksFor,
-  updateTask,
-} from "./model";
+  updateTask, moveSection, restoreSection } from "./model";
 import { shortcutFromEvent } from "./shortcut";
 import { isDarkColor, readableAccent } from "./theme";
 import type { Task } from "./types";
@@ -114,8 +113,19 @@ describe("lists and sections", () => {
     expect(renameSection(base, "a", "Danny", "Ashley")).toBe(base);
   });
 
-  it("moves tasks to Others when a section is deleted", () => {
-    expect(deleteSection(base, "a", "Danny").tasks[0].section).toBeNull();
+  it("moves tasks to No section when a section is deleted, and Undo puts them back", () => {
+    const d = deleteSection(base, "a", "Danny");
+    expect(d.tasks[0].section).toBeNull();
+    const back = restoreSection(d, "a", ["Danny", "Ashley"], "Danny", [base.tasks[0].id]);
+    expect(back.lists[0].sections).toEqual(["Danny", "Ashley"]);
+    expect(back.tasks[0].section).toBe("Danny");
+  });
+
+  it("moves a section left or right, and not past the ends", () => {
+    expect(moveSection(base, "a", "Ashley", -1).lists[0].sections).toEqual(["Ashley", "Danny"]);
+    expect(moveSection(base, "a", "Danny", 1).lists[0].sections).toEqual(["Ashley", "Danny"]);
+    expect(moveSection(base, "a", "Danny", -1)).toBe(base);
+    expect(moveSection(base, "a", "Ashley", 1)).toBe(base);
   });
 
   it("deletes a list with its tasks and resets the floating view", () => {

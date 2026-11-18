@@ -24,8 +24,8 @@ For every feature with the version it arrived in, a shortcuts table and the app'
   - In **Month**, titles wrap to two lines with the time under them, and a busy day shows **+N more** (fewer chips on a short window, so it always fits). Days from the previous and next month are dimmed.
   - Overdue reminders stay on their day, in red. **Show done**, **Show repeats** and **No date** are toggle buttons above the calendar, and RemMe remembers each one.
   - In the floating list, pick **Calendar** from its list picker for a small month view with the chosen day's reminders.
-- **Your own lists,** each with a color and an icon. Add one with **+** beside **Lists**. To edit or delete a list, use its **⋯** button, or double-click or right-click it.
-- **List and board layouts.** In a list's board view, sections are columns (for example one per person). Drag cards between columns, add sections at the right, and rename or delete them from the column header.
+- **Your own lists,** each with a color and an icon. Add one with **+** beside **Lists**. To edit or delete a list, use its **⋯** button, or double-click or right-click it. The **New list** / **Edit list** dialog has a Name box, a row of colours and a grid of icons.
+- **List and board layouts.** In a list's board view, sections are columns (for example one per person). Columns share the window's width. Drag cards between columns, and use **+ Add reminder** at the bottom of a column or **+ Add section** at the right. Each section's **⋯** menu can **Rename** it (or double-click its name), **Move left**, **Move right** or **Delete section**; its reminders then move to **No section**, and Undo brings the section back.
 - **Reminders** have a title, notes, a date with optional time, a flag, a priority (shown as a **Low**, **Medium** or **High** chip), a list and a section. Click **ⓘ** on a reminder to open its **details panel**:
   - A large title with a checkbox to tick it off, and notes under it.
   - **When:** Today, Tomorrow, Next week or **Pick…** (a month calendar); No time, 9:00 am, Noon, 6:00 pm or any time; and Repeat.

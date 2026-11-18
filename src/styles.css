@@ -4181,3 +4181,118 @@ button.side-strip:hover,
 .verse-panel.minimized .verse-bar {
   min-height: 30px;
 }
+
+/* ---------- Board: shared widths, section menus, quiet add rows ---------- */
+
+.board .column {
+  flex: 1 1 260px;
+  width: auto;
+  min-width: 220px;
+  max-width: 360px;
+}
+
+.section-title {
+  gap: 2px;
+  min-width: 0;
+}
+
+.section-title h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-head);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.section-title .icon-btn {
+  opacity: 0.6;
+}
+
+.column-head:hover .section-title .icon-btn,
+.section-title .icon-btn:focus-visible,
+.section-title .icon-btn[data-state="open"] {
+  opacity: 1;
+}
+
+.add-card {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.add-card:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.new-section input {
+  width: 100%;
+  border-style: solid;
+  border-color: var(--ui);
+}
+
+/* ---------- List dialog: labelled fields and even grids ---------- */
+
+.list-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.list-modal .name-field {
+  text-align: left;
+}
+
+.list-modal .swatches {
+  display: grid;
+  grid-template-columns: repeat(11, 26px);
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.list-modal .swatch {
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+
+.list-modal .swatch.on {
+  outline: 2px solid var(--ui);
+  outline-offset: 2px;
+}
+
+.list-modal .icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  justify-items: center;
+  gap: 8px;
+}
+
+.list-modal .icon-choice.on {
+  outline: 2px solid var(--ui);
+  outline-offset: 2px;
+  background: var(--selected);
+  color: var(--ui);
+}
+
+/* The view around the board is a flex row too; let the board fill it so columns can share the width. */
+.view-body > .board {
+  flex: 1 0 auto;
+}
+
+/* Every column header is the same height, with or without a ⋯ menu. */
+.column-head {
+  min-height: 32px;
+}

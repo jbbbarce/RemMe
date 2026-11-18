@@ -64,7 +64,7 @@ describe("undo toast wording", () => {
   it("names what a quick change did", () => {
     const d = data();
     expect(changeMessage(d, "a", { listId: "school", section: null }, now)).toBe("Moved “Pay rent” to School");
-    expect(changeMessage(d, "c", { section: null }, now)).toBe("Moved “Revise” to Others");
+    expect(changeMessage(d, "c", { section: null }, now)).toBe("Moved “Revise” to No section");
     expect(changeMessage(d, "a", { dueAt: new Date(2026, 10, 17, 9).toISOString(), dueHasTime: false }, now)).toBe("“Pay rent” is due Tomorrow");
     expect(changeMessage(d, "d", { dueAt: null, dueHasTime: false, repeat: null, nagMinutes: null }, now)).toBe("Removed the date from “Water plants”");
     expect(changeMessage(d, "a", { priority: 3 }, now)).toBe("Set “Pay rent” to High priority");

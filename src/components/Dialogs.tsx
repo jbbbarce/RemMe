@@ -5,6 +5,7 @@ import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import {
   Alert,
   BookOpen,
+  Checkmark,
   FloatingList,
   History,
   Info,
@@ -39,43 +40,60 @@ export function ListDialog({ list, isNew, canDelete, taskCount, onSave, onDelete
   const save = () => draft.name.trim() && onSave({ ...draft, name: draft.name.trim() });
 
   return (
-    <Modal title={isNew ? "New List" : "List Info"} onClose={onClose}>
+    <Modal title={isNew ? "New list" : "Edit list"} className="list-modal" onClose={onClose}>
       <div className="list-preview">
         <ListBadge icon={draft.icon} color={draft.color} size={64} />
       </div>
-      <input
-        className="field name-field"
-        autoFocus
-        value={draft.name}
-        placeholder="List Name"
-        onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-        onKeyDown={(e) => e.key === "Enter" && save()}
-      />
-      <div className="swatches">
-        {LIST_COLORS.map((color) => (
-          <button
-            key={color}
-            className={`swatch${draft.color === color ? " on" : ""}`}
-            style={{ background: `var(--c-${color})` }}
-            aria-label={color}
-            onClick={() => setDraft({ ...draft, color })}
-          />
-        ))}
-      </div>
-      <div className="icon-grid">
-        {LIST_ICONS.map((icon) => {
-          const Icon = LIST_ICON_COMPONENTS[icon];
-          return (
+      <label className="list-field">
+        <span className="settings-label">Name</span>
+        <input
+          className="field name-field"
+          autoFocus
+          value={draft.name}
+          placeholder="List name"
+          onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+        />
+      </label>
+      <div className="list-field">
+        <span className="settings-label" id="list-colour">Colour</span>
+        <div className="swatches" role="radiogroup" aria-labelledby="list-colour">
+          {LIST_COLORS.map((color) => (
             <button
-              key={icon}
-              className={`icon-choice${draft.icon === icon ? " on" : ""}`}
-              aria-label={icon}
-              onClick={() => setDraft({ ...draft, icon })}
+              key={color}
+              role="radio"
+              aria-checked={draft.color === color}
+              className={`swatch${draft.color === color ? " on" : ""}`}
+              style={{ background: `var(--c-${color})` }}
+              aria-label={nameOf(color)}
+              title={nameOf(color)}
+              onClick={() => setDraft({ ...draft, color })}
             >
-              <Icon size={18} />
+              {draft.color === color && <Checkmark size={14} />}
             </button>
-          );
-        })}
+          ))}
+        </div>
+      </div>
+      <div className="list-field">
+        <span className="settings-label" id="list-icon">Icon</span>
+        <div className="icon-grid" role="radiogroup" aria-labelledby="list-icon">
+          {LIST_ICONS.map((icon) => {
+            const Icon = LIST_ICON_COMPONENTS[icon];
+            return (
+              <button
+                key={icon}
+                role="radio"
+                aria-checked={draft.icon === icon}
+                className={`icon-choice${draft.icon === icon ? " on" : ""}`}
+                aria-label={nameOf(icon)}
+                title={nameOf(icon)}
+                onClick={() => setDraft({ ...draft, icon })}
+              >
+                <Icon size={18} />
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div className="modal-actions">
         {!isNew && canDelete && (
@@ -94,6 +112,11 @@ export function ListDialog({ list, isNew, canDelete, taskCount, onSave, onDelete
       </div>
     </Modal>
   );
+}
+
+/** "gray" → "Gray": the readable name of a colour or icon. */
+function nameOf(id: string): string {
+  return id.charAt(0).toUpperCase() + id.slice(1);
 }
 
 interface SettingsProps {

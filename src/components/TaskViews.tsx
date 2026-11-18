@@ -1,11 +1,13 @@
-import { Add, Delete, Grip, LIST_ICON_COMPONENTS, SMART_ICONS, Search } from "../icons";
+import { Add, ChevronLeft, ChevronRight, Delete, Edit, Grip, LIST_ICON_COMPONENTS, More, SMART_ICONS, Search } from "../icons";
 import { useState } from "react";
-import { dayGroups, deleteSection, emptyMessage, renameSection, upsertList } from "../model";
+import { NO_SECTION, dayGroups, deleteSection, emptyMessage, moveSection, renameSection, restoreSection, upsertList } from "../model";
 import { startFocus } from "../pomodoro";
 import type { AppData, ReminderList, Task, View } from "../types";
 import { TaskRow } from "./TaskRow";
 import { TASK_DRAG, useRowDrag } from "./useRowDrag";
 import type { useTaskActions } from "./useTaskActions";
+import type { UndoState } from "./Undo";
+import { Menu } from "./ui";
 
 type Actions = ReturnType<typeof useTaskActions>;
 
@@ -22,6 +24,8 @@ interface ViewProps {
   update(change: (d: AppData) => AppData): void;
   /** Finished reminders hidden because Show done is off, for the empty view's hint. */
   hiddenDone?: number;
+  /** For Undo after deleting a board section. */
+  undo?: UndoState;
 }
 
 interface Group {
@@ -59,7 +63,7 @@ function groupTasks(data: AppData, view: View, tasks: Task[], now: Date): Group[
     const list = data.lists.find((l) => l.id === view.id);
     const sections = list?.sections ?? [];
     const groups: Group[] = [
-      { key: "", title: sections.length ? "Others" : null, tasks: tasks.filter((t) => !t.section || !sections.includes(t.section)) },
+      { key: "", title: sections.length ? NO_SECTION : null, tasks: tasks.filter((t) => !t.section || !sections.includes(t.section)) },
       ...sections.map((s) => ({ key: s, title: s, tasks: tasks.filter((t) => t.section === s) })),
     ];
     return groups.filter((g, i) => i === 0 || g.tasks.length > 0);
@@ -174,11 +178,11 @@ interface Column {
 }
 
 export function BoardView(props: ViewProps) {
-  const { data, view, tasks, now, actions, onInfo, update } = props;
+  const { data, view, tasks, now, actions, onInfo, update, undo } = props;
   const [dragOver, setDragOver] = useState<string | null>(null);
   // Dropping a card on another card puts it there, in that card's column.
   const cardDrag = useRowDrag(actions.move);
-  const [newSection, setNewSection] = useState("");
+  const [newSection, setNewSection] = useState<string | null>(null);
   const list = view.kind === "list" ? data.lists.find((l) => l.id === view.id) : undefined;
   const listOf = (t: Task) => data.lists.find((l) => l.id === t.listId);
 
@@ -187,7 +191,7 @@ export function BoardView(props: ViewProps) {
     columns = [
       {
         key: "",
-        title: "Others",
+        title: NO_SECTION,
         color: list.color,
         tasks: tasks.filter((t) => !t.section || !list.sections.includes(t.section)),
         patch: { section: null },
@@ -213,10 +217,10 @@ export function BoardView(props: ViewProps) {
   const canAdd = view.kind !== "search" && !(view.kind === "smart" && view.id === "completed");
 
   const addSection = (current: ReminderList) => {
-    const name = newSection.trim();
+    const name = (newSection ?? "").trim();
+    setNewSection(null);
     if (!name || current.sections.includes(name)) return;
     update((d) => upsertList(d, { ...current, sections: [...current.sections, name] }));
-    setNewSection("");
   };
 
   return (
@@ -239,7 +243,7 @@ export function BoardView(props: ViewProps) {
         >
           <header className="column-head">
             {col.section && list ? (
-              <SectionTitle list={list} name={col.section} update={update} />
+              <SectionHeader list={list} name={col.section} data={data} update={update} undo={undo} />
             ) : (
               <h3 style={{ color: list ? undefined : `var(--c-${col.color})` }}>{col.title}</h3>
             )}
@@ -271,47 +275,117 @@ export function BoardView(props: ViewProps) {
           {canAdd && (
             <button className="add-card" onClick={() => actions.add(col.tasks.at(-1)?.id, { ...col.patch })}>
               <Add size={15} />
+              Add reminder
             </button>
           )}
         </div>
       ))}
       {list && (
         <div className="column new-section">
-          <input
-            value={newSection}
-            placeholder="Add Section"
-            onChange={(e) => setNewSection(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addSection(list)}
-            onBlur={() => addSection(list)}
-          />
+          {newSection === null ? (
+            <button className="add-card" onClick={() => setNewSection("")}>
+              <Add size={15} />
+              Add section
+            </button>
+          ) : (
+            <input
+              autoFocus
+              value={newSection}
+              placeholder="Section name"
+              aria-label="New section name"
+              onChange={(e) => setNewSection(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addSection(list);
+                if (e.key === "Escape") setNewSection(null);
+              }}
+              onBlur={() => addSection(list)}
+            />
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function SectionTitle({ list, name, update }: { list: ReminderList; name: string; update: ViewProps["update"] }) {
+/** A section column's name, with a ⋯ menu to rename, move or delete it. Double-click the name to rename. */
+function SectionHeader({
+  list,
+  name,
+  data,
+  update,
+  undo,
+}: {
+  list: ReminderList;
+  name: string;
+  data: AppData;
+  update: ViewProps["update"];
+  undo?: UndoState;
+}) {
+  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
+  const index = list.sections.indexOf(name);
+
+  const finish = () => {
+    const next = draft.trim();
+    if (next && next !== name) update((d) => renameSection(d, list.id, name, next));
+    else setDraft(name);
+    setEditing(false);
+  };
+
+  const remove = () => {
+    // Undo puts the section and its reminders back.
+    const sections = list.sections;
+    const ids = data.tasks.filter((t) => t.listId === list.id && t.section === name).map((t) => t.id);
+    update((d) => deleteSection(d, list.id, name));
+    undo?.show(`Deleted section “${name}”`, (d) => restoreSection(d, list.id, sections, name, ids));
+  };
+
   return (
     <div className="section-title">
-      <input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          const next = draft.trim();
-          if (next && next !== name) update((d) => renameSection(d, list.id, name, next));
-          else setDraft(name);
-        }}
-        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          aria-label="Section name"
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={finish}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+            if (e.key === "Escape") {
+              setDraft(name);
+              setEditing(false);
+            }
+          }}
+        />
+      ) : (
+        <h3 onDoubleClick={() => setEditing(true)} title="Double-click to rename">
+          {name}
+        </h3>
+      )}
+      <Menu
+        align="end"
+        trigger={
+          <button className="icon-btn" aria-label={`Section ${name} options`}>
+            <More size={15} />
+          </button>
+        }
+        items={[
+          { label: "Rename", icon: <Edit size={16} />, onSelect: () => window.setTimeout(() => setEditing(true), 0) },
+          {
+            label: "Move left",
+            icon: <ChevronLeft size={16} />,
+            disabled: index <= 0,
+            onSelect: () => update((d) => moveSection(d, list.id, name, -1)),
+          },
+          {
+            label: "Move right",
+            icon: <ChevronRight size={16} />,
+            disabled: index >= list.sections.length - 1,
+            onSelect: () => update((d) => moveSection(d, list.id, name, 1)),
+          },
+          { label: "Delete section", icon: <Delete size={16} />, danger: true, separated: true, onSelect: remove },
+        ]}
       />
-      <button
-        className="icon-btn"
-        aria-label={`Delete section ${name}`}
-        title="Delete section (its reminders move to Others)"
-        onClick={() => update((d) => deleteSection(d, list.id, name))}
-      >
-        <Delete size={13} />
-      </button>
     </div>
   );
 }

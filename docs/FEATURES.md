@@ -46,7 +46,7 @@ Everything RemMe can do, from the first sticky-note version to 0.16.0, and when 
 | 0.13.0 | 16 Nov | Drag to reorder and onto lists, Undo for ticking off and quick changes, the sidebar icon strip, floating list opacity, tray tooltip and Add reminder. |
 | 0.14.0 | 17 Nov | Overdue and day groups, keyboard navigation, multi-select with a selection bar, search highlighting. |
 | 0.15.0 | 18 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu, a redesigned details panel, Settings as a two-pane page, and the sidebar's verse and timer as one-line bars. |
-| 0.16.0 | 18 Nov | The calendar's repeats as small counts, wrapping titles, dimmed other months and labelled toggles; the floating list's verse as a one-line bar. |
+| 0.16.0 | 18 Nov | The calendar's repeats as small counts, wrapping titles, dimmed other months and labelled toggles; the floating list's verse as a one-line bar; board columns that share the width with a ⋯ menu per section; the list dialog's labelled fields and even grids. |
 
 ## Before the rewrite: the WPF sticky notes
 
@@ -99,8 +99,11 @@ What carried over into RemMe: the always-on-top window (now the floating list), 
   - **Upcoming** groups by day: Overdue, Today, Tomorrow, each weekday of the coming week, *Later this month*, then each month.
   - Rows in these two views show their list's name.
 - **Your own lists** (rewrite): each has a name, one of 11 colours and one of 12 icons. Add one with **+** beside **Lists** (0.11.0). Edit or delete a list from its **⋯** button, or by double-clicking or right-clicking it.
+  - **The list dialog** (0.16.0): titled **New list** or **Edit list**, with a labelled **Name** box, the 11 colours in one row under **Colour** and the 12 icons in a 6 × 2 grid under **Icon**. The chosen ones have an accent ring (and a check on the colour). Each has a readable name for screen readers.
 - **List and board layouts** (rewrite): switch with **List** / **Board** at the top.
-  - In a list, **sections** group reminders; on the board they are columns (for example one per person). Add sections at the right of the board, and rename or delete them from the column header. Reminders in a deleted section move to *Others*.
+  - In a list, **sections** group reminders; on the board they are columns (for example one per person). Reminders in no section are under **No section** (called *Others* before 0.16.0).
+  - **Board columns** (0.16.0) share the window's width, 220–360 px each, and scroll sideways when they don't fit. Each column ends with a quiet **+ Add reminder** row, and **+ Add section** at the right opens a name box (Enter adds it, Esc cancels).
+  - **Section menu** (0.16.0): each section's **⋯** has **Rename** (or double-click the name), **Move left**, **Move right** and **Delete section**. Deleting moves its reminders to No section and offers Undo.
   - On the board, drag cards between columns.
 - **Search** (rewrite): the box at the top of the sidebar searches titles and notes in every list. Results are grouped by list.
   - **Highlighting** (0.14.0): the words you searched for are marked in each title and in its notes.
@@ -296,12 +299,11 @@ These were built and tested by simulated input, but not yet seen working on a re
 - Recording a new shortcut in the redesigned Settings with real key presses.
 - The sidebar's bars in light themes, and the rail's timer button with a real mouse.
 - The calendar's ↻ tooltip with a real mouse, and how many chips fit in a month cell on other window sizes.
+- Dragging cards between the new shared-width board columns with a real mouse.
 
 ## Planned
 
 Not started; each is done only when asked for.
 
 - **Screen-by-screen redesigns**:
-  - board columns and menus
-  - the list dialog's colour and icon grids
   - removing old CSS the redesign replaced

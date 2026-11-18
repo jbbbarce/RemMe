@@ -349,6 +349,7 @@ export function MainApp({ data, update, saveError }: Props) {
     actions,
     selectedIds,
     hiddenDone: showCompleted || view.kind === "smart" ? 0 : completedCount,
+    undo,
     onSelect: select,
     onInfo: (id: string) => {
       select(id);
