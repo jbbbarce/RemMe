@@ -1,6 +1,6 @@
 # RemMe features
 
-Everything RemMe can do, from the first sticky-note version to 0.15.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
+Everything RemMe can do, from the first sticky-note version to 0.16.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Contents
 
@@ -46,6 +46,7 @@ Everything RemMe can do, from the first sticky-note version to 0.15.0, and when 
 | 0.13.0 | 16 Nov | Drag to reorder and onto lists, Undo for ticking off and quick changes, the sidebar icon strip, floating list opacity, tray tooltip and Add reminder. |
 | 0.14.0 | 17 Nov | Overdue and day groups, keyboard navigation, multi-select with a selection bar, search highlighting. |
 | 0.15.0 | 18 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu, a redesigned details panel, Settings as a two-pane page, and the sidebar's verse and timer as one-line bars. |
+| 0.16.0 | 18 Nov | The calendar's repeats as small counts, wrapping titles, dimmed other months and labelled toggles; the floating list's verse as a one-line bar. |
 
 ## Before the rewrite: the WPF sticky notes
 
@@ -154,7 +155,10 @@ From 0.6.0, in the sidebar.
 - Click an empty part of a day to type a reminder there. `Call mom 5pm` sets the time on that day; a typed date such as `tomorrow` wins.
 - Click a reminder to open its details, or tick it done in place.
 - Drag a reminder to another day; its time stays. Drag it onto the **No date** column to remove its date, or from there onto a day to give it one. Since 0.13.0 a drag offers Undo.
-- A repeating reminder's later dates show faded. Overdue reminders stay on their day, in red. **Show done** shows finished ones.
+- **Repeats** (0.16.0): a repeating reminder shows in full only on its next date. Its later dates in view become a small **↻** count in the day's corner; hover it to see which reminders repeat there. **Show repeats** shows them all in full, faded, as before 0.16.0.
+- **Titles** (0.16.0): in **Month**, titles wrap to two lines with the time on a small line under them. A busy day shows up to three reminders, fewer on a short window so **+N more** always fits; **+N more** opens the day's full list. **Week** keeps the time beside the title and lets titles wrap.
+- **Other months** (0.16.0): the previous and next month's days are dimmed, with lighter numbers and faded reminders. They still take drops.
+- **Toggles** (0.16.0): **Show done**, **Show repeats** and **No date** are labelled buttons above the calendar, lit while on, and each is remembered. Overdue reminders stay on their day, in red.
 - **Mini calendar**: in the floating list, pick **Calendar** from its list picker for a small month with the chosen day's reminders.
 
 ## Floating list
@@ -193,7 +197,7 @@ From 0.7.0.
 - A Bible verse from the World English Bible (British Edition, with the deuterocanonical books), built into the app, changing at midnight.
 - In the sidebar above the timer and at the bottom of the floating list. Turn it off in **Settings → Verse of the day**.
 - **In the sidebar** (a one-line bar since 0.15.0): the reference and the start of the verse, with all of it in the tooltip. Click the bar to show the whole verse; click the verse to copy it with its reference; the chevron collapses it. It starts collapsed and stays the way you leave it, even when a new verse arrives. The icon strip hides it.
-- **In the floating list**: drag the line above the verse to resize it; double-click that line to fit the verse again. Click it to copy. **–** minimizes it to a bar with the reference; click the bar to bring it back. The next day's verse opens again.
+- **In the floating list** (a one-line bar since 0.16.0): the reference and the start of the verse, like the sidebar. Click the bar to expand it; the chevron collapses it, and it stays the way you leave it. Expanded, drag the line above the verse to resize it, double-click that line to fit the verse, and click the verse to copy it.
 
 ## Look and feel
 
@@ -291,14 +295,13 @@ These were built and tested by simulated input, but not yet seen working on a re
 - Dragging the details panel's edge with a real mouse, and the panel in light themes.
 - Recording a new shortcut in the redesigned Settings with real key presses.
 - The sidebar's bars in light themes, and the rail's timer button with a real mouse.
+- The calendar's ↻ tooltip with a real mouse, and how many chips fit in a month cell on other window sizes.
 
 ## Planned
 
 Not started; each is done only when asked for.
 
 - **Screen-by-screen redesigns**:
-  - the calendar
   - board columns and menus
   - the list dialog's colour and icon grids
-  - the floating list's verse default
   - removing old CSS the redesign replaced

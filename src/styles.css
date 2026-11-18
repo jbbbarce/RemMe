@@ -4093,3 +4093,91 @@ button.side-strip:hover,
 .sidebar.rail .side-bottom {
   align-items: center;
 }
+
+/* ---------- Calendar: repeats as marks, wrapping titles, dim other months, labelled toggles ---------- */
+
+.cal-toggles {
+  display: flex;
+  gap: 4px;
+}
+
+.cal-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.cal-day-head .cal-date {
+  align-self: auto;
+}
+
+.cal-repeats {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: auto;
+  padding: 0 5px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--hover);
+  color: var(--text-2);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
+/* Month: the title gets the width and wraps to two lines; the time sits under it. */
+.cal-chip.stacked {
+  align-items: flex-start;
+}
+
+.cal-chip.stacked .check {
+  margin-top: 2px;
+}
+
+.cal-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cal-chip.stacked .cal-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 15px;
+}
+
+.cal-chip.stacked .cal-time {
+  font-size: 10.5px;
+  line-height: 13px;
+}
+
+/* Week: titles wrap freely beside the time. */
+.cal-grid.week .cal-chip .cal-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Days from the previous and next month are dimmed but still take drops. */
+.cal-day.outside {
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+}
+
+.cal-day.outside .cal-date {
+  color: var(--text-3);
+  opacity: 1;
+}
+
+.cal-day.outside .cal-chip,
+.cal-day.outside .cal-repeats {
+  opacity: 0.5;
+}
+
+/* Floating list: the collapsed verse is one line with the start of the verse. */
+.verse-panel.minimized .verse-bar {
+  min-height: 30px;
+}

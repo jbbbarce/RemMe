@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayKey, itemsByDay, monthGrid, moveToDay, shiftAnchor, undated, weekDays, weekStartDay } from "./calendar";
+import { dayKey, itemsByDay, monthGrid, moveToDay, shiftAnchor, splitRepeats, undated, weekDays, weekStartDay } from "./calendar";
 import { normalize } from "./model";
 import { parseQuickAdd } from "./quickAdd";
 import type { Task } from "./types";
@@ -51,6 +51,16 @@ describe("reminders on days", () => {
     expect(days.get("2026-11-28")![0]).toMatchObject({ faded: false });
     expect(["2026-11-29", "2026-11-30"].map((k) => days.get(k)![0].faded)).toEqual([true, true]);
     expect(days.has("2026-12-01")).toBe(false);
+  });
+
+  it("collapses a repeat's later dates into a count unless Show repeats is on", () => {
+    const day = [...days.get("2026-11-05")!, ...days.get("2026-11-29")!];
+    const hidden = splitRepeats(day, false);
+    expect(hidden.full.map((i) => i.task.id)).toEqual(["allday", "early", "late"]);
+    expect(hidden.repeats.map((i) => i.task.id)).toEqual(["daily"]);
+    expect(splitRepeats(day, true)).toEqual({ full: day, repeats: [] });
+    // The real date of a repeating reminder always shows in full.
+    expect(splitRepeats(days.get("2026-11-28")!, false).full.map((i) => i.task.id)).toEqual(["daily"]);
   });
 
   it("lists undated reminders for the No date column", () => {

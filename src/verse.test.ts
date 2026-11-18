@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayOfYear, isMinimized, verseClipboardText, verseFor } from "./verse";
+import { dayOfYear, verseClipboardText, verseFor } from "./verse";
 import { VERSES } from "./verses";
 
 describe("dayOfYear", () => {
@@ -54,19 +54,6 @@ describe("VERSES", () => {
 
   it("says the LORD, not Yahweh", () => {
     expect(VERSES.some((v) => v.text.includes("Yahweh"))).toBe(false);
-  });
-});
-
-describe("isMinimized", () => {
-  const now = new Date(2026, 10, 7, 15, 0);
-
-  it("is minimized on the day it was minimized", () => {
-    expect(isMinimized("2026-11-07", now)).toBe(true);
-  });
-
-  it("opens again on a later day or when never minimized", () => {
-    expect(isMinimized("2026-11-06", now)).toBe(false);
-    expect(isMinimized(null, now)).toBe(false);
   });
 });
 

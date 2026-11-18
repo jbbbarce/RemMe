@@ -103,6 +103,15 @@ export function itemsByDay(tasks: Task[], from: Date, to: Date, showDone: boolea
   return days;
 }
 
+/**
+ * A day's reminders split for the month and week grids: `full` are drawn as chips, `repeats` are
+ * the later dates of repeating reminders, which collapse into a ↻ count unless Show repeats is on.
+ */
+export function splitRepeats(items: CalendarItem[], showRepeats: boolean): { full: CalendarItem[]; repeats: CalendarItem[] } {
+  if (showRepeats) return { full: items, repeats: [] };
+  return { full: items.filter((i) => !i.faded), repeats: items.filter((i) => i.faded) };
+}
+
 /** The change that moves a reminder to `day`, keeping its time; an undated one gets that date with no time. */
 export function moveToDay(task: Task, day: Date): Pick<Task, "dueAt" | "dueHasTime"> {
   const due = task.dueAt ? new Date(task.dueAt) : null;

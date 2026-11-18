@@ -1,4 +1,3 @@
-import { dayKey } from "./calendar";
 import { VERSES, type Verse } from "./verses";
 
 /** 1 for 1 January, in local time. */
@@ -17,9 +16,4 @@ export function verseFor(day: Date, verses: readonly Verse[] = VERSES): Verse {
 /** What clicking a verse copies. */
 export function verseClipboardText(verse: Verse): string {
   return `“${verse.text}” — ${verse.ref}`;
-}
-
-/** A window's verse is minimized only on the day it was minimized; the next day's verse opens again. */
-export function isMinimized(minimizedOn: string | null, now: Date): boolean {
-  return minimizedOn === dayKey(now);
 }

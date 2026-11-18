@@ -1,5 +1,5 @@
 import { TASK_DRAG } from "./useRowDrag";
-import { ChevronLeft, ChevronRight, PanelClose, PanelOpen } from "../icons";
+import { Checkmark, ChevronLeft, ChevronRight, PanelOpen, Repeat } from "../icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type CalendarItem,
@@ -10,6 +10,7 @@ import {
   moveToDay,
   sameDay,
   shiftAnchor,
+  splitRepeats,
   undated,
   weekDays,
   weekStartDay,
@@ -22,7 +23,13 @@ import type { useTaskActions } from "./useTaskActions";
 
 const MODE_KEY = "remme.calendar";
 const NO_DATE_KEY = "remme.calendar.nodate";
+const DONE_KEY = "remme.calendar.done";
+const REPEATS_KEY = "remme.calendar.repeats";
+/** At most this many reminders per month cell; a shorter window shows fewer so "+N more" stays in view. */
 const MONTH_LIMIT = 3;
+/** About how tall a two-line chip is, and the date row with "+N more", in a month cell. */
+const CHIP_PX = 36;
+const CELL_EXTRA_PX = 44;
 const DRAG_TYPE = TASK_DRAG;
 
 function readLocal<T>(key: string, fallback: T): T {
@@ -56,16 +63,34 @@ export function CalendarView({ data, now, actions, update, onInfo }: Props) {
   const weekStart = useMemo(() => weekStartDay(), []);
   const [mode, setMode] = useState<CalendarMode>(() => readLocal(MODE_KEY, "month"));
   const [anchor, setAnchor] = useState(() => now);
-  const [showDone, setShowDone] = useState(false);
+  const [showDone, setShowDone] = useState(() => readLocal(DONE_KEY, false));
+  const [showRepeats, setShowRepeats] = useState(() => readLocal(REPEATS_KEY, false));
   const [noDateOpen, setNoDateOpen] = useState(() => readLocal(NO_DATE_KEY, true));
   const [adding, setAdding] = useState<string | null>(null);
   const [moreFor, setMoreFor] = useState<string | null>(null);
   const [dropOn, setDropOn] = useState<string | null>(null);
+  const grid = useRef<HTMLDivElement>(null);
+  const [cellHeight, setCellHeight] = useState(0);
 
   useEffect(() => writeLocal(MODE_KEY, mode), [mode]);
   useEffect(() => writeLocal(NO_DATE_KEY, noDateOpen), [noDateOpen]);
+  useEffect(() => writeLocal(DONE_KEY, showDone), [showDone]);
+  useEffect(() => writeLocal(REPEATS_KEY, showRepeats), [showRepeats]);
 
   const days = mode === "month" ? monthGrid(anchor, weekStart) : weekDays(anchor, weekStart);
+  const rows = days.length / 7;
+
+  // Keep the height of a month cell, to know how many chips fit above "+N more".
+  useEffect(() => {
+    const el = grid.current;
+    if (!el) return;
+    const measure = () => setCellHeight(el.querySelector<HTMLElement>(".cal-day")?.getBoundingClientRect().height ?? 0);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [mode, rows]);
+  const monthLimit = cellHeight ? Math.max(1, Math.min(MONTH_LIMIT, Math.floor((cellHeight - CELL_EXTRA_PX) / CHIP_PX))) : MONTH_LIMIT;
   const items = itemsByDay(data.tasks, days[0], days[days.length - 1], showDone);
   const listOf = (task: Task) => data.lists.find((l) => l.id === task.listId);
   const weekdayNames = days.slice(0, 7).map((d) => d.toLocaleDateString(undefined, { weekday: "short" }));
@@ -114,10 +139,11 @@ export function CalendarView({ data, now, actions, update, onInfo }: Props) {
     },
   });
 
-  const chip = (item: CalendarItem, key: string) => (
+  const chip = (item: CalendarItem, key: string, stacked = mode === "month") => (
     <Chip
       key={key}
       item={item}
+      stacked={stacked}
       list={listOf(item.task)}
       now={now}
       onToggle={(done) => actions.toggle(item.task, done)}
@@ -146,22 +172,35 @@ export function CalendarView({ data, now, actions, update, onInfo }: Props) {
               </button>
             ))}
           </div>
-          <button className="link" onClick={() => setShowDone(!showDone)}>
-            {showDone ? "Hide done" : "Show done"}
-          </button>
-          <button
-            className="icon-btn"
-            aria-label={noDateOpen ? "Hide reminders with no date" : "Show reminders with no date"}
-            title="No date"
-            onClick={() => setNoDateOpen(!noDateOpen)}
-          >
-            {noDateOpen ? <PanelClose size={16} /> : <PanelOpen size={16} />}
-          </button>
+          <div className="cal-toggles" role="group" aria-label="Show">
+            <button className={`tool${showDone ? " on" : ""}`} aria-pressed={showDone} title="Show finished reminders" onClick={() => setShowDone(!showDone)}>
+              <Checkmark size={15} />
+              Show done
+            </button>
+            <button
+              className={`tool${showRepeats ? " on" : ""}`}
+              aria-pressed={showRepeats}
+              title="Show every date of repeating reminders, not just a count"
+              onClick={() => setShowRepeats(!showRepeats)}
+            >
+              <Repeat size={15} />
+              Show repeats
+            </button>
+            <button
+              className={`tool${noDateOpen ? " on" : ""}`}
+              aria-pressed={noDateOpen}
+              title="Show reminders with no date beside the calendar"
+              onClick={() => setNoDateOpen(!noDateOpen)}
+            >
+              <PanelOpen size={15} />
+              No date
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="cal-body">
-        <div className={`cal-grid ${mode}`}>
+        <div ref={grid} className={`cal-grid ${mode}`}>
           {weekdayNames.map((name) => (
             <div key={name} className="cal-weekday">
               {name}
@@ -170,8 +209,9 @@ export function CalendarView({ data, now, actions, update, onInfo }: Props) {
           {days.map((day) => {
             const key = dayKey(day);
             const dayItems = items.get(key) ?? [];
-            const shown = mode === "month" ? dayItems.slice(0, MONTH_LIMIT) : dayItems;
-            const hidden = dayItems.length - shown.length;
+            const { full, repeats } = splitRepeats(dayItems, showRepeats);
+            const shown = mode === "month" ? full.slice(0, monthLimit) : full;
+            const hidden = full.length - shown.length;
             const outside = mode === "month" && day.getMonth() !== anchor.getMonth();
             return (
               <div
@@ -180,9 +220,21 @@ export function CalendarView({ data, now, actions, update, onInfo }: Props) {
                 onClick={(e) => e.target === e.currentTarget && setAdding(key)}
                 {...dropHandlers(key, day)}
               >
-                <span className="cal-date" onClick={() => setAdding(key)}>
-                  {day.getDate()}
-                </span>
+                <div className="cal-day-head">
+                  {repeats.length > 0 && (
+                    <span
+                      className="cal-repeats"
+                      title={`Repeats on this day:\n${repeats.map((r) => r.task.title || "Untitled").join("\n")}`}
+                      aria-label={`${repeats.length} repeating ${repeats.length === 1 ? "reminder" : "reminders"} on this day`}
+                    >
+                      <Repeat size={11} />
+                      {repeats.length}
+                    </span>
+                  )}
+                  <span className="cal-date" onClick={() => setAdding(key)}>
+                    {day.getDate()}
+                  </span>
+                </div>
                 {shown.map((item, i) => chip(item, `${item.task.id}-${i}`))}
                 {hidden > 0 && (
                   <button className="cal-more" onClick={() => setMoreFor(key)}>
@@ -202,7 +254,7 @@ export function CalendarView({ data, now, actions, update, onInfo }: Props) {
                     <div className="cal-pop-backdrop" onClick={() => setMoreFor(null)} />
                     <div className="cal-pop" role="dialog" aria-label={day.toLocaleDateString(undefined, { dateStyle: "full" })}>
                       <div className="cal-pop-title">{day.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</div>
-                      {dayItems.map((item, i) => chip(item, `pop-${item.task.id}-${i}`))}
+                      {dayItems.map((item, i) => chip(item, `pop-${item.task.id}-${i}`, false))}
                     </div>
                   </>
                 )}
@@ -215,7 +267,7 @@ export function CalendarView({ data, now, actions, update, onInfo }: Props) {
           <aside className={`cal-nodate${dropOn === "nodate" ? " drop" : ""}`} aria-label="No date" {...dropHandlers("nodate", null)}>
             <h3>No date</h3>
             {undated(data.tasks, showDone).map((task) =>
-              chip({ task, date: now, faded: false }, `nodate-${task.id}`),
+              chip({ task, date: now, faded: false }, `nodate-${task.id}`, false),
             )}
             <p className="hint">Drag a reminder here to remove its date, or onto a day to give it one.</p>
           </aside>
@@ -228,12 +280,15 @@ export function CalendarView({ data, now, actions, update, onInfo }: Props) {
 /** One reminder on the calendar: tick it, open it, or drag it to another day. */
 function Chip({
   item,
+  stacked,
   list,
   now,
   onToggle,
   onOpen,
 }: {
   item: CalendarItem;
+  /** Month: the title wraps to two lines with the time under it. */
+  stacked: boolean;
   list: ReminderList | undefined;
   now: Date;
   onToggle(done: boolean): void;
@@ -244,7 +299,7 @@ function Chip({
   const time = task.dueAt && task.dueHasTime ? item.date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : null;
   return (
     <div
-      className={`cal-chip${faded ? " faded" : ""}${task.completed ? " done" : ""}${overdue ? " overdue" : ""}`}
+      className={`cal-chip${stacked ? " stacked" : ""}${faded ? " faded" : ""}${task.completed ? " done" : ""}${overdue ? " overdue" : ""}`}
       style={{ "--accent": `var(--c-${list?.color ?? "blue"})` } as React.CSSProperties}
       draggable={!faded}
       onDragStart={(e) => {
@@ -255,7 +310,7 @@ function Chip({
         e.stopPropagation();
         onOpen();
       }}
-      title={faded ? `${task.title} (repeats)` : task.title}
+      title={`${task.title || "Untitled"}${time ? `, ${time}` : ""}${faded ? " (repeats)" : ""}`}
     >
       {!faded && (
         <button
@@ -269,8 +324,17 @@ function Chip({
           <span />
         </button>
       )}
-      {time && <span className="cal-time">{time}</span>}
-      <span className="cal-title">{task.title || "Untitled"}</span>
+      {stacked ? (
+        <span className="cal-text">
+          <span className="cal-title">{task.title || "Untitled"}</span>
+          {time && <span className="cal-time">{time}</span>}
+        </span>
+      ) : (
+        <>
+          {time && <span className="cal-time">{time}</span>}
+          <span className="cal-title">{task.title || "Untitled"}</span>
+        </>
+      )}
     </div>
   );
 }

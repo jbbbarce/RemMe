@@ -23,7 +23,7 @@ The developer side of RemMe: the stack, how the pieces fit, and where each featu
 - **27 Oct 2026, `0ddbfac`:** rewritten as a Tauri 2 + React + TypeScript app, keeping only the ideas (a floating window, tray, reminders, start with Windows). The WPF code was removed.
 - **4 Nov 2026:** renamed from Reminders to RemMe. The app id changed from `com.reminders.app` to `com.remme.app`, and the first start copies data from the old folder (`copy_old_data` in `lib.rs`).
 
-[PLAN.md](../PLAN.md) lists the 26 steps since the rewrite.
+[PLAN.md](../PLAN.md) lists the 27 steps since the rewrite.
 
 ## Stack
 
@@ -232,7 +232,8 @@ Everything is in `src-tauri/src/`:
 | Pomodoro | 0.4.0 | `pomodoro.rs`, `run_timer` in `lib.rs`, `Pomodoro.tsx`, `pomodoro.ts` |
 | Updates | 0.5.0 | `updates.ts`, `UpdateBar.tsx`, the updater plugin, `release.yml` |
 | Title bar colour | 0.5.1 | `set_title_bar` in `lib.rs` |
-| Calendar | 0.6.0 | `calendar.ts`, `CalendarView.tsx`, `MiniCalendar.tsx` |
+| Calendar | 0.6.0; redesigned 0.16.0 | `calendar.ts` (`splitRepeats` since 0.16.0), `CalendarView.tsx` (the ↻ counts, `monthLimit` from the measured cell height, toggles in `remme.calendar.done` / `.repeats` / `.nodate`), `MiniCalendar.tsx` |
+| Floating list verse | 0.7.0; a bar 0.16.0 | `VersePanel` in `Verse.tsx` (`remme.verse.float.open`) |
 | Verse of the day | 0.7.0 | `verse.ts`, `verses.ts`, `Verse.tsx` |
 | Backups | 0.8.0 | `backup.rs`, backup commands in `lib.rs`, `Backups.tsx` |
 | Undo, Recently deleted | 0.10.0 | `Undo.tsx`; `trashTasks`, `undoDelete`, `restoreDeleted`, `purgeDeleted` in `model.ts`; `RecentlyDeleted.tsx` |
@@ -253,7 +254,7 @@ Everything is in `src-tauri/src/`:
 
 | Command | What it covers |
 |---|---|
-| `pnpm test` (Vitest, 113 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts` |
+| `pnpm test` (Vitest, 112 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts` |
 | `cargo test --manifest-path src-tauri/Cargo.toml` (32 tests) | Due-reminder detection, nagging and snooze; popup clicks; app triggers; copying data from the old folder; first-run examples; recovery from a damaged file; backup naming, pruning and the second folder; shortcut parsing; title bar colours; the Pomodoro state machine |
 
 Pure logic sits in `model.ts`, `dates.ts`, `quickAdd.ts`, `calendar.ts` and `selection.ts` so it can be tested without React. UI behaviour is checked by running the dev build and scripting it through WebView2's remote debugging port (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9333" pnpm tauri dev`), against a backed-up and then restored data file.

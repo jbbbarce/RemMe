@@ -1,7 +1,6 @@
-import { BookOpen, ChevronDown, ChevronUp, Subtract } from "../icons";
+import { BookOpen, ChevronDown, ChevronUp } from "../icons";
 import { useEffect, useRef, useState } from "react";
-import { dayKey } from "../calendar";
-import { isMinimized, verseClipboardText, verseFor } from "../verse";
+import { verseClipboardText, verseFor } from "../verse";
 import type { Verse } from "../verses";
 
 /** Smallest floating panel: one line of verse text and the reference. */
@@ -38,12 +37,6 @@ function useLocal<T>(key: string, fallback: T): [T, (value: T) => void] {
   ];
 }
 
-/** Minimized state for one window: the day it was minimized on, which lapses at midnight. */
-function useMinimized(key: string, now: Date): [boolean, (minimized: boolean) => void] {
-  const [day, setDay] = useLocal<string | null>(key, null);
-  return [isMinimized(day, now), (minimized) => setDay(minimized ? dayKey(now) : null)];
-}
-
 /** The verse text and reference. Clicking the text copies both. */
 function VerseText({ verse, clamp, onExpand }: { verse: Verse; clamp?: boolean; onExpand?(): void }) {
   const [copied, setCopied] = useState(false);
@@ -75,11 +68,20 @@ function VerseText({ verse, clamp, onExpand }: { verse: Verse; clamp?: boolean; 
   );
 }
 
-function MinimizedBar({ verse, onRestore }: { verse: Verse; onRestore(): void }) {
+/** The collapsed verse: the reference and the start of the verse on one line. */
+function VerseBar({ verse, onExpand }: { verse: Verse; onExpand(): void }) {
   return (
-    <button className="verse-bar" title="Show the verse of the day" onClick={onRestore}>
+    <button
+      className="verse-bar"
+      aria-expanded={false}
+      aria-label={`Verse of the day, ${verse.ref}. Show the whole verse`}
+      title={`${verse.text} (${verse.ref})`}
+      onClick={onExpand}
+    >
       <BookOpen size={13} />
-      <span className="verse-bar-ref">{verse.ref}</span>
+      <span className="side-strip-text">
+        <b>{verse.ref}</b> · {verse.text}
+      </span>
       <ChevronUp size={13} />
     </button>
   );
@@ -126,7 +128,7 @@ export function VerseCard({ now }: { now: Date }) {
 /** The verse of the day at the bottom of the floating list, with a drag handle to set its height. */
 export function VersePanel({ now, locked }: { now: Date; locked: boolean }) {
   const verse = verseFor(now);
-  const [minimized, setMinimized] = useMinimized("remme.verse.float.minimizedOn", now);
+  const [open, setOpen] = useLocal("remme.verse.float.open", false);
   /** The height dragged to, in pixels; null fits the verse until it is first dragged. */
   const [height, setHeight] = useLocal<number | null>("remme.verse.float.height", null);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
@@ -167,10 +169,10 @@ export function VersePanel({ now, locked }: { now: Date; locked: boolean }) {
     handle.addEventListener("pointercancel", end);
   };
 
-  if (minimized) {
+  if (!open) {
     return (
       <section className="verse-panel minimized" aria-label="Verse of the day">
-        <MinimizedBar verse={verse} onRestore={() => setMinimized(false)} />
+        <VerseBar verse={verse} onExpand={() => setOpen(true)} />
       </section>
     );
   }
@@ -195,8 +197,8 @@ export function VersePanel({ now, locked }: { now: Date; locked: boolean }) {
         <VerseText verse={verse} />
       </div>
       {!locked && (
-        <button className="icon-btn verse-minimize" title="Minimize the verse" onClick={() => setMinimized(true)}>
-          <Subtract size={13} />
+        <button className="icon-btn verse-minimize" aria-label="Collapse the verse" title="Collapse" aria-expanded onClick={() => setOpen(false)}>
+          <ChevronDown size={13} />
         </button>
       )}
     </section>
