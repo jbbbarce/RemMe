@@ -46,7 +46,7 @@ Everything RemMe can do, from the first sticky-note version to 0.16.0, and when 
 | 0.13.0 | 16 Nov | Drag to reorder and onto lists, Undo for ticking off and quick changes, the sidebar icon strip, floating list opacity, tray tooltip and Add reminder. |
 | 0.14.0 | 17 Nov | Overdue and day groups, keyboard navigation, multi-select with a selection bar, search highlighting. |
 | 0.15.0 | 18 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu, a redesigned details panel, Settings as a two-pane page, and the sidebar's verse and timer as one-line bars. |
-| 0.16.0 | 18 Nov | The calendar's repeats as small counts, wrapping titles, dimmed other months and labelled toggles; the floating list's verse as a one-line bar; board columns that share the width with a ⋯ menu per section; the list dialog's labelled fields and even grids. |
+| 0.16.0 | 18 Nov | The calendar's repeats as small counts, wrapping titles, dimmed other months and labelled toggles; the floating list's verse as a one-line bar; board columns that share the width with a ⋯ menu per section; the list dialog's labelled fields and even grids; the old CSS the redesign replaced removed. |
 
 ## Before the rewrite: the WPF sticky notes
 
@@ -303,7 +303,4 @@ These were built and tested by simulated input, but not yet seen working on a re
 
 ## Planned
 
-Not started; each is done only when asked for.
-
-- **Screen-by-screen redesigns**:
-  - removing old CSS the redesign replaced
+Nothing is planned right now. The screen-by-screen redesign finished in 0.16.0, including removing the old CSS it replaced; new ideas get a grilling session first.

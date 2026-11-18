@@ -164,7 +164,8 @@ Everything is in `src-tauri/src/`:
   | `useTaskActions.ts` | Every change to reminders, shared by all views |
   | `useRowDrag.ts` | Drag to reorder |
 
-- **Styles** are one stylesheet. Theme colours are CSS custom properties set per `data-theme` on `<html>` (`--ui`, `--text`, `--text-2`, `--text-3`, `--line`, `--focus` and others). A "Fluent base" layer at the end gives all themes one layout. `data-density` switches row spacing.
+- **Styles** are one stylesheet. Theme colours are CSS custom properties set per `data-theme` on `<html>` (`--ui`, `--text`, `--text-2`, `--text-3`, `--line`, `--focus` and others). A "Fluent base" layer gives all themes one layout, and each redesigned screen adds its block after it. `data-density` switches row spacing.
+- **Removing CSS safely** (as done in 0.16.0): rules whose classes no longer appear in the code, and declarations a later rule with the same selector overrides, were removed. The check was a snapshot of every element's computed style on 19 screens in six theme and light/dark setups (21,566 elements), taken before and after: identical.
 
 ## The data model
 
