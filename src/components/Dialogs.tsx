@@ -6,6 +6,7 @@ import {
   Alert,
   BookOpen,
   Checkmark,
+  Coach,
   FloatingList,
   History,
   Info,
@@ -22,6 +23,7 @@ import type { useUpdates } from "../updates";
 import { DEFAULT_SETTINGS, validMinutes } from "../model";
 import { DENSITIES, LIST_COLORS, LIST_ICONS, THEMES, type AppData, type ReminderList, type Settings, type ThemeId } from "../types";
 import { Switch } from "./Inspector";
+import { CoachSettingsSection } from "./CoachSettings";
 import { Modal } from "./ui";
 
 interface ListDialogProps {
@@ -134,6 +136,7 @@ const SECTIONS = [
   { id: "floating", label: "Floating list", icon: FloatingList },
   { id: "notifications", label: "Notifications", icon: Alert },
   { id: "timer", label: "Focus timer", icon: Timer },
+  { id: "coach", label: "Coach", icon: Coach },
   { id: "verse", label: "Verse of the day", icon: BookOpen },
   { id: "shortcuts", label: "Shortcuts", icon: Keyboard },
   { id: "backups", label: "Backups", icon: History },
@@ -363,6 +366,10 @@ export function SettingsDialog({ data, onShortcuts, onTheme, onSettings, updates
               <p className="hint">New lengths apply from the next session.</p>
               {toShortcuts}
             </>
+          )}
+
+          {section === "coach" && (
+            <CoachSettingsSection coach={data.settings.coach} onChange={(coach) => onSettings({ coach })} />
           )}
 
           {section === "verse" && (

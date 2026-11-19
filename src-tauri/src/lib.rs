@@ -9,6 +9,7 @@ use std::{
 };
 
 mod backup;
+mod coach;
 mod pomodoro;
 
 use backup::Kind;
@@ -18,6 +19,7 @@ use serde_json::{json, Value};
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
+    menu::Submenu,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, State, WebviewWindow, WindowEvent,
 };
@@ -36,6 +38,7 @@ const DEFAULT_LOCK: &str = "Ctrl+Shift+L";
 const DEFAULT_POMODORO: &str = "Ctrl+Shift+P";
 const MAIN: &str = "main";
 const FLOAT: &str = "float";
+const COACH: &str = "coach";
 
 /// Window state the backend owns, kept apart from the task data the UI saves.
 #[derive(Default, Serialize, Deserialize)]
@@ -57,6 +60,8 @@ struct UiState {
     backup_folder_error: Option<String>,
     /// Set when a damaged data file was replaced at startup, until the banner is dismissed.
     recovery: Option<Recovery>,
+    /// Coach is paused until this Unix time (seconds).
+    coach_paused_until: Option<i64>,
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -87,6 +92,42 @@ struct AppState {
     ui: Mutex<UiState>,
     shortcuts: Mutex<Shortcuts>,
     timer: Mutex<Timer>,
+    coach: Mutex<CoachRun>,
+}
+
+/// Coach while RemMe runs: the ladder, what the windows were last told, and the tray's counts.
+#[derive(Default)]
+struct CoachRun {
+    ladder: coach::Ladder,
+    state: CoachState,
+    /// Reminders due today and overdue, for the tray tooltip (sent by the main window).
+    due_today: u32,
+    overdue: u32,
+    /// Whether the tray menu has its Coach items, and whether the icon has its marker.
+    menu_on: Option<bool>,
+    marked: Option<bool>,
+}
+
+/// What the windows show about Coach: the sidebar bar, the floating list, the tray.
+#[derive(Clone, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CoachState {
+    enabled: bool,
+    watching: bool,
+    /// "watching until 5:00 pm", "paused until 3:15 pm", or "on, waiting for focus time".
+    label: String,
+    paused: bool,
+}
+
+/// One step of the ladder, for the Coach popup.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CoachStep {
+    step: coach::Step,
+    named: Option<coach::Named>,
+    /// The distraction's name, or None when you're idle.
+    distraction: Option<String>,
+    real_talk: bool,
 }
 
 #[derive(Clone, Serialize)]
@@ -766,13 +807,26 @@ fn set_round_corners(window: WebviewWindow, round: bool) {
 /// they change, since it already works them out for the sidebar.
 #[tauri::command]
 fn set_tray_status(app: AppHandle, due_today: u32, overdue: u32) {
-    let detail = match (due_today, overdue) {
+    {
+        let state = app.state::<AppState>();
+        let mut run = state.coach.lock().unwrap();
+        run.due_today = due_today;
+        run.overdue = overdue;
+    }
+    update_tray_tooltip(&app);
+}
+
+fn update_tray_tooltip(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let run = state.coach.lock().unwrap();
+    let detail = match (run.due_today, run.overdue) {
         (0, _) => "Nothing due today".to_string(),
         (n, 0) => format!("{n} due today"),
         (n, late) => format!("{n} due today, {late} overdue"),
     };
+    let coach = if run.state.enabled { format!("\nCoach: {}", run.state.label) } else { String::new() };
     if let Some(tray) = app.tray_by_id("tray") {
-        let _ = tray.set_tooltip(Some(format!("RemMe: {detail}")));
+        let _ = tray.set_tooltip(Some(format!("RemMe: {detail}{coach}")));
     }
 }
 
@@ -1232,16 +1286,28 @@ async fn running_apps() -> Vec<String> {
     names
 }
 
-fn build_tray(app: &AppHandle) -> tauri::Result<()> {
+/// The tray menu. With Coach on it gets a Coach submenu to pause or resume it (Coach is
+/// switched off only in Settings, so it can't be turned off on a whim).
+fn tray_menu(app: &AppHandle, coach_on: bool, paused: bool) -> tauri::Result<Menu<tauri::Wry>> {
     let open = MenuItem::with_id(app, "open", "Open RemMe", true, None::<&str>)?;
     let add = MenuItem::with_id(app, "add", "Add reminder…", true, None::<&str>)?;
     let float = MenuItem::with_id(app, "float", "Show or hide floating list", true, None::<&str>)?;
     let lock = MenuItem::with_id(app, "lock", "Lock or unlock floating list", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(
-        app,
-        &[&open, &add, &PredefinedMenuItem::separator(app)?, &float, &lock, &PredefinedMenuItem::separator(app)?, &quit],
-    )?;
+    let sep = || PredefinedMenuItem::separator(app);
+    if !coach_on {
+        return Menu::with_items(app, &[&open, &add, &sep()?, &float, &lock, &sep()?, &quit]);
+    }
+    let p15 = MenuItem::with_id(app, "coach-15", "Pause for 15 minutes", true, None::<&str>)?;
+    let p60 = MenuItem::with_id(app, "coach-60", "Pause for 1 hour", true, None::<&str>)?;
+    let pday = MenuItem::with_id(app, "coach-day", "Pause for the rest of the day", true, None::<&str>)?;
+    let resume = MenuItem::with_id(app, "coach-resume", "Resume Coach", paused, None::<&str>)?;
+    let coach_menu = Submenu::with_items(app, "Coach", true, &[&p15, &p60, &pday, &sep()?, &resume])?;
+    Menu::with_items(app, &[&open, &add, &sep()?, &float, &lock, &sep()?, &coach_menu, &sep()?, &quit])
+}
+
+fn build_tray(app: &AppHandle) -> tauri::Result<()> {
+    let menu = tray_menu(app, false, false)?;
 
     TrayIconBuilder::with_id("tray")
         .icon(app.default_window_icon().cloned().expect("app icon is bundled"))
@@ -1256,6 +1322,10 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
             }
             "float" => toggle_float_visible(app),
             "lock" => toggle_float_locked(app),
+            "coach-15" => coach_pause(app.clone(), Some(15)),
+            "coach-60" => coach_pause(app.clone(), Some(60)),
+            "coach-day" => coach_pause(app.clone(), None),
+            "coach-resume" => coach_resume(app.clone()),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -1266,6 +1336,294 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
         })
         .build(app)?;
     Ok(())
+}
+
+// ---------- Coach ----------
+
+/// The front window's process name and title, and whether that's the "coach" popup itself.
+#[cfg(windows)]
+fn front_window() -> Option<(String, String)> {
+    use windows::core::PWSTR;
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION};
+    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId};
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.0.is_null() {
+            return None;
+        }
+        let mut text = [0u16; 512];
+        let n = GetWindowTextW(hwnd, &mut text).max(0) as usize;
+        let title = String::from_utf16_lossy(&text[..n]);
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut path = [0u16; 1024];
+        let mut len = path.len() as u32;
+        let got = QueryFullProcessImageNameW(process, PROCESS_NAME_WIN32, PWSTR(path.as_mut_ptr()), &mut len);
+        let _ = CloseHandle(process);
+        got.ok()?;
+        let path = String::from_utf16_lossy(&path[..len as usize]);
+        let name = path.rsplit(['\\', '/']).next().unwrap_or(&path).to_string();
+        Some((name, title))
+    }
+}
+
+#[cfg(not(windows))]
+fn front_window() -> Option<(String, String)> {
+    None
+}
+
+/// Seconds since the last mouse or keyboard input, anywhere.
+#[cfg(windows)]
+fn idle_secs() -> u64 {
+    use windows::Win32::System::SystemInformation::GetTickCount;
+    use windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
+    let mut info = LASTINPUTINFO { cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };
+    unsafe {
+        if !GetLastInputInfo(&mut info).as_bool() {
+            return 0;
+        }
+        (GetTickCount().wrapping_sub(info.dwTime) / 1000) as u64
+    }
+}
+
+#[cfg(not(windows))]
+fn idle_secs() -> u64 {
+    0
+}
+
+/// When the current focus session ends, if one is on (running or paused).
+fn session_end(timer: &Timer, now_ms: i64) -> Option<NaiveDateTime> {
+    if timer.phase != Phase::Focus {
+        return None;
+    }
+    let ends = timer.ends_at.unwrap_or(now_ms + timer.remaining);
+    DateTime::from_timestamp_millis(ends).map(|t| t.with_timezone(&Local).naive_local())
+}
+
+/// Tells the windows and the tray about Coach's state when it changes.
+fn publish_coach_state(app: &AppHandle, next: CoachState) {
+    let (menu_changed, marker_changed, paused) = {
+        let state = app.state::<AppState>();
+        let mut run = state.coach.lock().unwrap();
+        if run.state == next && run.menu_on.is_some() {
+            return;
+        }
+        let menu_key = next.enabled;
+        let menu_changed = run.menu_on != Some(menu_key) || run.state.paused != next.paused;
+        let marker_changed = run.marked != Some(next.watching);
+        run.menu_on = Some(menu_key);
+        run.marked = Some(next.watching);
+        run.state = next.clone();
+        (menu_changed, marker_changed, next.paused)
+    };
+    let _ = app.emit("coach-state", next.clone());
+    if let Some(tray) = app.tray_by_id("tray") {
+        if menu_changed {
+            if let Ok(menu) = tray_menu(app, next.enabled, paused) {
+                let _ = tray.set_menu(Some(menu));
+            }
+        }
+        if marker_changed {
+            if let Some(icon) = tray_icon(app, next.watching) {
+                let _ = tray.set_icon(Some(icon));
+            }
+        }
+    }
+    update_tray_tooltip(app);
+}
+
+/// The app icon, with a small amber dot in its corner while Coach is watching.
+fn tray_icon(app: &AppHandle, marked: bool) -> Option<tauri::image::Image<'static>> {
+    let base = app.default_window_icon()?;
+    let (w, h) = (base.width(), base.height());
+    let mut rgba = base.rgba().to_vec();
+    if marked {
+        let r = (w.min(h) as f32 * 0.22).max(3.0);
+        let (cx, cy) = (w as f32 - r - 1.0, h as f32 - r - 1.0);
+        for y in 0..h {
+            for x in 0..w {
+                let d = ((x as f32 + 0.5 - cx).powi(2) + (y as f32 + 0.5 - cy).powi(2)).sqrt();
+                let i = ((y * w + x) * 4) as usize;
+                if d <= r {
+                    rgba[i..i + 4].copy_from_slice(&[0xF5, 0x9E, 0x0B, 0xFF]);
+                } else if d <= r + 1.2 {
+                    rgba[i..i + 4].copy_from_slice(&[0x20, 0x20, 0x20, 0xFF]);
+                }
+            }
+        }
+    }
+    Some(tauri::image::Image::new_owned(rgba, w, h))
+}
+
+/// Every 5 seconds: is it focus time, and are you off track? Climbs the ladder and shows Coach's popup.
+fn run_coach(app: AppHandle) {
+    loop {
+        thread::sleep(Duration::from_secs(5));
+        coach_check(&app);
+    }
+}
+
+fn coach_check(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let data = state.data.lock().unwrap().clone();
+    let settings = coach::settings(&data);
+    let now = local_now();
+    if !settings.enabled {
+        state.coach.lock().unwrap().ladder.leave();
+        publish_coach_state(app, CoachState { enabled: false, ..CoachState::default() });
+        return;
+    }
+    let paused_until = {
+        let mut ui = state.ui.lock().unwrap();
+        let now_s = Utc::now().timestamp();
+        match ui.coach_paused_until {
+            Some(until) if until > now_s => Some(until),
+            Some(_) => {
+                ui.coach_paused_until = None;
+                save_ui(&state, &ui);
+                None
+            }
+            None => None,
+        }
+    };
+    if let Some(until) = paused_until {
+        state.coach.lock().unwrap().ladder.restart();
+        let until = DateTime::from_timestamp(until, 0).map(|t| t.with_timezone(&Local).naive_local()).unwrap_or(now);
+        publish_coach_state(app, CoachState { enabled: true, watching: false, paused: true, label: format!("paused until {}", coach::clock(until)) });
+        return;
+    }
+    let (session_ends, session_task) = {
+        let timer = state.timer.lock().unwrap();
+        (session_end(&timer, now_ms()), timer.task_id.clone())
+    };
+    let overdue = coach::any_overdue(&data, now);
+    let Some(block) = coach::focus_block(&settings, now, session_ends, overdue) else {
+        state.coach.lock().unwrap().ladder.leave();
+        publish_coach_state(app, CoachState { enabled: true, label: "on, waiting for focus time".into(), ..CoachState::default() });
+        return;
+    };
+    let label = match block.ends {
+        Some(end) if session_ends == Some(end) && !block.key.starts_with("hours:") => "watching until this focus session ends".into(),
+        Some(end) => format!("watching until {}", coach::clock(end)),
+        None => "watching while something is overdue".into(),
+    };
+    publish_coach_state(app, CoachState { enabled: true, watching: true, paused: false, label });
+
+    let reading = match front_window() {
+        Some((app_name, title)) => coach::classify(&app_name, &title, idle_secs(), &settings),
+        None => coach::classify("", "", idle_secs(), &settings),
+    };
+    let (step, real_talk) = {
+        let mut run = state.coach.lock().unwrap();
+        let step = run.ladder.tick(Utc::now().timestamp(), &block.key, &reading, &settings);
+        (step, run.ladder.real_talk)
+    };
+    let Some(step) = step else { return };
+    let session_task = session_ends.and(session_task);
+    let named = coach::pick_reminder(&data, session_task.as_deref(), now);
+    let distraction = match reading {
+        coach::Reading::Distraction(name) => Some(name),
+        _ => None,
+    };
+    show_coach_popup(app, CoachStep { step, named, distraction, real_talk });
+}
+
+/// Shows Coach's popup in the bottom-right of the monitor you're using, without taking focus.
+fn show_coach_popup(app: &AppHandle, step: CoachStep) {
+    let Some(window) = app.get_webview_window(COACH) else { return };
+    let previous = foreground_window();
+    let push = matches!(step.step, coach::Step::Push);
+    let (w, h) = if push { (380.0, 184.0) } else { (340.0, 164.0) };
+    let _ = window.set_size(tauri::LogicalSize::new(w, h));
+    if let Some(area) = work_area_of(previous) {
+        let scale = window.scale_factor().unwrap_or(1.0);
+        let (pw, ph) = ((w * scale) as i32, (h * scale) as i32);
+        let margin = (16.0 * scale) as i32;
+        let _ = window.set_position(tauri::PhysicalPosition::new(area.2 - pw - margin, area.3 - ph - margin));
+    }
+    let _ = app.emit_to(COACH, "coach-step", step);
+    let _ = window.set_always_on_top(true);
+    let _ = window.show();
+    restore_foreground(app, previous);
+}
+
+/// The work area (left, top, right, bottom, in pixels) of the monitor showing `hwnd`.
+#[cfg(windows)]
+fn work_area_of(hwnd: isize) -> Option<(i32, i32, i32, i32)> {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTOPRIMARY};
+    unsafe {
+        let monitor = MonitorFromWindow(HWND(hwnd as *mut _), MONITOR_DEFAULTTOPRIMARY);
+        let mut info = MONITORINFO { cbSize: std::mem::size_of::<MONITORINFO>() as u32, ..Default::default() };
+        if !GetMonitorInfoW(monitor, &mut info).as_bool() {
+            return None;
+        }
+        let r = info.rcWork;
+        Some((r.left, r.top, r.right, r.bottom))
+    }
+}
+
+#[cfg(not(windows))]
+fn work_area_of(_hwnd: isize) -> Option<(i32, i32, i32, i32)> {
+    None
+}
+
+#[tauri::command]
+fn coach_state(state: State<AppState>) -> CoachState {
+    state.coach.lock().unwrap().state.clone()
+}
+
+/// An answer from Coach's popup: "back" (show the reminder), "focus" (start a focus session on it) or "dismiss".
+#[tauri::command]
+fn coach_answer(app: AppHandle, answer: String, task_id: Option<String>) {
+    if let Some(window) = app.get_webview_window(COACH) {
+        let _ = window.hide();
+    }
+    match answer.as_str() {
+        "back" => {
+            show_main_window(&app);
+            if task_id.is_some() {
+                let _ = app.emit_to(MAIN, "popup-action", PopupAction { action: "open", task_id, minutes: None });
+            }
+        }
+        "focus" => {
+            app.state::<AppState>().coach.lock().unwrap().ladder.restart();
+            pomodoro_start(app.clone(), task_id);
+        }
+        _ => {}
+    }
+}
+
+/// Pauses Coach for `minutes`, or until midnight.
+#[tauri::command]
+fn coach_pause(app: AppHandle, minutes: Option<i64>) {
+    let until = match minutes {
+        Some(m) => Utc::now().timestamp() + m.clamp(1, 24 * 60) * 60,
+        None => coach::end_of_day(local_now()).and_local_timezone(Local).earliest().map_or(Utc::now().timestamp() + 3600, |t| t.timestamp()),
+    };
+    {
+        let state = app.state::<AppState>();
+        let mut ui = state.ui.lock().unwrap();
+        ui.coach_paused_until = Some(until);
+        save_ui(&state, &ui);
+    }
+    if let Some(window) = app.get_webview_window(COACH) {
+        let _ = window.hide();
+    }
+    coach_check(&app);
+}
+
+#[tauri::command]
+fn coach_resume(app: AppHandle) {
+    {
+        let state = app.state::<AppState>();
+        let mut ui = state.ui.lock().unwrap();
+        ui.coach_paused_until = None;
+        save_ui(&state, &ui);
+    }
+    coach_check(&app);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1311,6 +1669,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(shortcut_plugin)
         .invoke_handler(tauri::generate_handler![
+            coach_state,
+            coach_answer,
+            coach_pause,
+            coach_resume,
             load_data,
             save_data,
             set_shortcuts,
@@ -1382,6 +1744,7 @@ pub fn run() {
                 ui: Mutex::new(ui),
                 shortcuts: Mutex::new(Shortcuts::default()),
                 timer: Mutex::new(timer),
+                coach: Mutex::new(CoachRun::default()),
             });
 
             let handle = app.handle().clone();
@@ -1405,6 +1768,8 @@ pub fn run() {
             thread::spawn(move || run_timer(ticker));
             let watcher = handle.clone();
             thread::spawn(move || watch_apps(watcher));
+            let coach_handle = handle.clone();
+            thread::spawn(move || run_coach(coach_handle));
             thread::spawn(move || loop {
                 check_reminders(&handle);
                 thread::sleep(Duration::from_secs(15));
@@ -1601,6 +1966,7 @@ mod tests {
             ui: Mutex::new(UiState { backup_folder, ..UiState::default() }),
             shortcuts: Mutex::new(Shortcuts::default()),
             timer: Mutex::new(Timer::default()),
+            coach: Mutex::new(CoachRun::default()),
         }
     }
 

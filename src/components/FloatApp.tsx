@@ -14,6 +14,7 @@ import { UndoToast, useUndo } from "./Undo";
 import { useTaskActions } from "./useTaskActions";
 import { useRowDrag } from "./useRowDrag";
 import { VersePanel } from "./Verse";
+import { CoachFloatButton } from "./CoachStatus";
 
 interface Props {
   data: AppData;
@@ -62,6 +63,7 @@ export function FloatApp({ data, update }: Props) {
         </span>
         <span className="spacer" data-tauri-drag-region />
         <PomodoroPill data={data} disabled={locked} />
+        {!locked && <CoachFloatButton />}
         {locked ? (
           <span className="lock-badge" title="Locked">
             <LockClosed size={12} />

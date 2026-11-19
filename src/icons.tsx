@@ -57,6 +57,7 @@ import {
   SettingsRegular,
   StarRegular,
   SubtractRegular,
+  TargetArrowRegular,
   TaskListLtrRegular,
   TextBulletListLtrRegular,
   TimerRegular,
@@ -87,6 +88,7 @@ export const AlertUrgent = sized(AlertUrgentRegular);
 export const Board = sized(BoardRegular);
 export const BookOpen = sized(BookOpenRegular);
 export const Checkmark = sized(CheckmarkRegular);
+export const Coach = sized(TargetArrowRegular);
 export const ChevronDown = sized(ChevronDownRegular);
 export const ChevronLeft = sized(ChevronLeftRegular);
 export const ChevronRight = sized(ChevronRightRegular);

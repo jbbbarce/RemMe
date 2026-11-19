@@ -4016,3 +4016,209 @@ button.side-strip:hover,
 .column-head {
   min-height: 32px;
 }
+
+/* ---------- Settings → Coach ---------- */
+
+.coach-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.coach-notice p {
+  margin: 0;
+}
+
+.focus-days {
+  display: flex;
+  flex-direction: column;
+}
+
+.focus-day {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  border-bottom: 1px solid var(--line);
+}
+
+.focus-day-name {
+  flex: none;
+  width: 40px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.focus-ranges {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-width: 0;
+}
+
+.focus-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.focus-range .field {
+  width: auto;
+  min-height: 28px;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+
+.distraction-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.distraction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 2px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--card);
+  font-size: 12.5px;
+}
+
+.distraction-kind {
+  color: var(--text-3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.distraction-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.distraction-add .segmented button {
+  width: auto;
+  padding: 0 10px;
+}
+
+.distraction-add .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.coach-lines {
+  resize: vertical;
+  font-size: 13px;
+}
+
+/* ---------- Coach popup ---------- */
+
+.coach-card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--ui);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.coach-card.push {
+  border-left-color: var(--c-orange);
+}
+
+.coach-card.real-talk {
+  border-left-color: var(--c-red);
+}
+
+.coach-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ui);
+}
+
+.coach-card.real-talk .coach-head {
+  color: var(--c-red);
+}
+
+.coach-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.coach-line {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 19px;
+}
+
+.coach-card.push .coach-line {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.coach-reminder {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--selected);
+  color: var(--text-2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coach-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.coach-actions .btn {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+/* ---------- Coach in the sidebar and the floating list ---------- */
+
+.coach-strip.watching {
+  border-color: color-mix(in srgb, var(--c-orange) 55%, var(--line));
+}
+
+.coach-strip.watching > svg,
+.coach-rail.watching,
+.coach-float.watching {
+  color: var(--c-orange);
+}
+
+.coach-strip-action {
+  flex: none;
+  color: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+}

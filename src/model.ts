@@ -1,3 +1,4 @@
+import { DEFAULT_COACH, coachFrom } from "./coach";
 import { REPEAT_LABELS, currentStreak, doneOnTime, dueOnDay, endOfDay, formatDue, isOverdue, nextDue, startOfDay } from "./dates";
 import {
   DENSITIES,
@@ -28,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   stickyReminders: true,
   density: "comfortable",
   floatOpacity: 100,
+  coach: DEFAULT_COACH,
 };
 
 /** Session lengths are whole minutes from 1 to 180. */
@@ -75,6 +77,7 @@ export function normalize(raw: SavedData | null | undefined): AppData {
     typeof settings.floatOpacity === "number" && settings.floatOpacity >= 40 && settings.floatOpacity <= 100
       ? Math.round(settings.floatOpacity)
       : DEFAULT_SETTINGS.floatOpacity;
+  settings.coach = coachFrom(raw?.settings?.coach);
   const deleted = (Array.isArray(raw?.deleted) ? raw.deleted : []).flatMap(deletedFrom);
   return { version: 1, lists, tasks, settings, deleted };
 }

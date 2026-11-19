@@ -85,6 +85,41 @@ export interface Settings {
   density: Density;
   /** Due-reminder popups stay on screen until Snooze, Done or ✕ is pressed. */
   stickyReminders: boolean;
+  /** Coach: notices when you're off track during focus time. Off by default. */
+  coach: CoachSettings;
+}
+
+/** A stretch of focus hours on one weekday, as local "HH:mm" times. */
+export interface FocusRange {
+  start: string;
+  end: string;
+}
+
+/** An app (a process name such as "steam.exe") or a site (a word in a browser's window title). */
+export interface Distraction {
+  kind: "app" | "site";
+  match: string;
+}
+
+export interface CoachSettings {
+  enabled: boolean;
+  /** Seven days, Sunday first (as `Date.getDay()`), each with up to 3 ranges. */
+  focusHours: FocusRange[][];
+  /** Also watch whenever a reminder is overdue, outside focus hours. */
+  alsoWhenOverdue: boolean;
+  distractions: Distraction[];
+  /** Minutes without input before you count as idle. */
+  idleMinutes: number;
+  /** Minutes off track without a stop before the Nudge, and before the Push. */
+  nudgeAfter: number;
+  pushAfter: number;
+  /** Minutes back on track in a row that reset the ladder. */
+  resetAfter: number;
+  realTalk: boolean;
+  /** Minutes off track in total, in one focus block, before real talk. */
+  realTalkAfter: number;
+  /** Your own real-talk lines, added to the built-in ones. */
+  realTalkLines: string[];
 }
 
 export type TimerPhase = "idle" | "focus" | "shortBreak" | "longBreak";

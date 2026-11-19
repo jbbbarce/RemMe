@@ -38,6 +38,20 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "resizable": true
+      },
+      {
+        "label": "coach",
+        "title": "Coach",
+        "width": 340,
+        "height": 164,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "focus": false
       }
     ],
     "security": {

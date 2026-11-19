@@ -1,6 +1,6 @@
 # RemMe features
 
-Everything RemMe can do, from the first sticky-note version to 0.16.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
+Everything RemMe can do, from the first sticky-note version to 0.17.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Contents
 
@@ -14,6 +14,7 @@ Everything RemMe can do, from the first sticky-note version to 0.16.0, and when 
 - [Calendar](#calendar)
 - [Floating list](#floating-list)
 - [Notifications](#notifications)
+- [Coach](#coach)
 - [Pomodoro timer](#pomodoro-timer)
 - [Verse of the day](#verse-of-the-day)
 - [Look and feel](#look-and-feel)
@@ -47,6 +48,7 @@ Everything RemMe can do, from the first sticky-note version to 0.16.0, and when 
 | 0.14.0 | 17 Nov | Overdue and day groups, keyboard navigation, multi-select with a selection bar, search highlighting. |
 | 0.15.0 | 18 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu, a redesigned details panel, Settings as a two-pane page, and the sidebar's verse and timer as one-line bars. |
 | 0.16.0 | 18 Nov | The calendar's repeats as small counts, wrapping titles, dimmed other months and labelled toggles; the floating list's verse as a one-line bar; board columns that share the width with a ⋯ menu per section; the list dialog's labelled fields and even grids; the old CSS the redesign replaced removed. |
+| 0.17.0 | 19 Nov | Coach: focus hours, a distraction list, the Nudge and Push popups, real talk, Pause and the tray marker. Old CSS removed. |
 
 ## Before the rewrite: the WPF sticky notes
 
@@ -181,6 +183,41 @@ From 0.6.0, in the sidebar.
 - **Popups that stay** (0.9.0): reminder popups stay on screen until you respond, because Windows only passes on a button press while the popup shows. Turn it off in **Settings → Notifications**.
 - **Nag** and **When I open** popups: see [Reminders](#reminders). "You opened <app>" popups have a **Done** button.
 
+## Coach
+
+From 0.17.0. Off until you turn it on in **Settings → Coach**. Coach is for procrastination: during your focus time it notices when you're off track and points you back to what's due, more firmly the longer it goes on.
+
+- **Focus time**: inside your **focus hours** (each weekday gets up to three time ranges, with presets "Weekdays 9–5" and "Every evening 7–10"), or during any focus timer session at any hour. A switch, **Also when something is overdue**, adds any time a reminder is overdue.
+- **Distractions**: a list you edit, starting with YouTube, Netflix, TikTok, Reddit, Facebook, Instagram, X, Twitch, Steam, Epic Games and Discord.
+  - A **Site** counts when its name is a whole word in a **browser's** window title (Chrome, Edge, Firefox, Brave, Opera, Vivaldi). A document called "YouTube plan" doesn't count.
+  - An **App** counts when it's the window in front.
+- **Idle**: no mouse or keyboard for 10 minutes (adjustable). A video playing on a distraction counts as the distraction, not as idle.
+- **The ladder**:
+  - After **1 minute** off track without a stop, a **Nudge**: a small popup in the bottom-right of the screen you're using, naming what to do. It's silent and goes away by itself after 30 seconds.
+  - After **5 minutes**, a **Push**: bigger, with a sound, and it stays until you answer. It comes back every 5 minutes while you stay off track.
+  - Getting back on track for **2 minutes** in a row starts the ladder over. A quick flick back to your work doesn't.
+  - The popups don't take focus from the app you're in, and Windows' Do Not Disturb doesn't silence them.
+- **What it names**: the focus session's reminder, otherwise the most overdue reminder, then the next due today, then a flagged one. With none of those, a general "This is your focus time" line.
+- **Answers**: **Back to it** opens the reminder in the main window. **Start focus** starts a focus session on it and restarts the ladder. **Dismiss** closes the popup.
+- **Real talk**: after **20 minutes off track in total** in one focus block, the Push switches to a blunt voice, such as "How can you have dreams if you ain't even doing anything?" It goes after your time and choices, never you as a person. It ends after 15 minutes back on track. Add your own lines in Settings (`{reminder}` puts in what's due), or switch real talk off.
+- **Pause**: 15 minutes, 1 hour or the rest of the day, from the tray's **Coach** menu, the sidebar's **Coach** bar or the floating list's Coach button. **Resume** ends a pause early. Coach is switched off only in Settings.
+- **Seeing that it's on**:
+  - The tray icon gets an amber dot while Coach is watching.
+  - The tray tooltip and the sidebar bar say "watching until 5:00 pm", "paused until 3:15 pm" or "on, waiting for focus time".
+- **Privacy**:
+  - It reads only the front window's app and title and your idle time, about every 5 seconds, and only during focus time.
+  - It never takes screenshots and never stores window titles.
+  - It sends nothing anywhere and never closes your apps.
+  - With Coach off, nothing runs.
+- **Known limits**:
+  - Coach only sees window titles, so a distraction whose window title doesn't name it isn't caught.
+  - Coach can't tell when you're in a call; use Pause.
+  - Coach only works while RemMe is running.
+- **Coming next**:
+  - 0.18.0: a natural voice that runs on your PC.
+  - 0.19.0: a **Takeover** overlay after 10 minutes, and **This is for work**.
+  - 0.20.0: a daily summary.
+
 ## Pomodoro timer
 
 From 0.4.0.
@@ -300,14 +337,12 @@ These were built and tested by simulated input, but not yet seen working on a re
 - The sidebar's bars in light themes, and the rail's timer button with a real mouse.
 - The calendar's ↻ tooltip with a real mouse, and how many chips fit in a month cell on other window sizes.
 - Dragging cards between the new shared-width board columns with a real mouse.
+- Coach with a real browser on YouTube (tested with Notepad as the distraction; sites are covered by unit tests), the tray's Coach menu and the amber dot (Windows draws these), the Coach popup on a second monitor, and the floating list's Coach button.
 
 ## Planned
 
-- **Coach** (designed 19 Nov; being built): a watchdog for procrastination. During your focus hours or a focus session, it notices when you're on a distraction (YouTube, games and the like, from a list you control) or idle. It then pushes you back to what's due, from a gentle Nudge to a Push with sound, and later to a Takeover overlay. After 20 minutes off track in total it switches to blunt "real talk".
-  - **Rules:** it's off by default, reads only the front window's app and title and your idle time, never takes screenshots, sends nothing anywhere, never closes apps, and can be paused from the tray.
-  - **Releases:**
-    - 0.17.0: settings, watching, the Nudge and Push, and Pause
-    - 0.18.0: a natural voice that runs on your PC
-    - 0.19.0: the Takeover and "This is for work"
-    - 0.20.0: the daily summary
+- **Coach, the rest** (see [Coach](#coach)):
+  - 0.18.0: a natural voice that runs on your PC (Kokoro)
+  - 0.19.0: the Takeover and "This is for work"
+  - 0.20.0: the daily summary
 - **Later**, each after its own grilling: an Android version, and a free open-source AI that runs on the PC.

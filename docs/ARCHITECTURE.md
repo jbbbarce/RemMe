@@ -23,7 +23,7 @@ The developer side of RemMe: the stack, how the pieces fit, and where each featu
 - **27 Oct 2026, `0ddbfac`:** rewritten as a Tauri 2 + React + TypeScript app, keeping only the ideas (a floating window, tray, reminders, start with Windows). The WPF code was removed.
 - **4 Nov 2026:** renamed from Reminders to RemMe. The app id changed from `com.reminders.app` to `com.remme.app`, and the first start copies data from the old folder (`copy_old_data` in `lib.rs`).
 
-[PLAN.md](../PLAN.md) lists the 28 steps since the rewrite.
+[PLAN.md](../PLAN.md) lists the 30 steps since the rewrite.
 
 ## Stack
 
@@ -46,6 +46,7 @@ Tauri creates two windows, defined in `src-tauri/tauri.conf.json`:
 
 - `main`: the main window.
 - `float`: the floating list, always on top. Both start hidden and transparent (for Mica and Acrylic).
+- `coach`: Coach's popup, always on top, no frame, not in the taskbar, hidden until a Nudge or Push.
 
 Both load the same React bundle. `src/App.tsx` reads the window's label and renders `MainApp` or `FloatApp`, adding the `is-float` class to `<html>` for the floating window.
 
@@ -83,6 +84,7 @@ Everything is in `src-tauri/src/`:
 **Background threads**
 
 - **Due checks** every 15 seconds: `check_reminders` reads due tasks from the data (`due_tasks`), decides with `should_notify` (nag interval, snooze, already notified), and shows popups. More than 3 at once are summed up in one popup.
+- **Coach** every 5 seconds, only while Coach is on and it's focus time: reads the front window's process and title (`GetForegroundWindow`, `QueryFullProcessImageNameW`, `GetWindowTextW`) and idle time (`GetLastInputInfo`), passes them to `coach::classify` (titles go nowhere else), climbs the ladder and shows the `coach` popup without taking focus.
 - **App watcher** every 3 seconds, while any reminder has an app trigger: `watch_apps` compares running processes and notifies for newly started ones.
 - **Timer** every 500 ms: `run_timer` advances the Pomodoro timer, emits `pomodoro` and, at the end of a phase, `pomodoro-done`.
 
@@ -94,7 +96,8 @@ Everything is in `src-tauri/src/`:
 | Floating window | `get_float_state`, `set_float`, `show_main` |
 | Shortcuts | `set_shortcuts`, `suspend_shortcuts` (while recording a new one) |
 | Look | `set_title_bar`, `get_accent` (Windows accent via `UISettings`), `set_round_corners` |
-| Tray | `set_tray_status` (tooltip text) |
+| Tray | `set_tray_status` (the due counts for the tooltip; Coach adds its line) |
+| Coach | `coach_state`, `coach_answer` (Back to it, Start focus, Dismiss), `coach_pause`, `coach_resume` |
 | Timer | `pomodoro_state`, `pomodoro_start`, `pomodoro_toggle`, `pomodoro_skip`, `pomodoro_reset` |
 | Backups | `list_backups`, `backup_now`, `restore_backup`, `delete_backup`, `open_backup_folder`, `get_backup_folder`, `choose_backup_folder`, `clear_backup_folder`, `get_recovery`, `dismiss_recovery` |
 | Export and import | `export_data`, `pick_import_file`, `import_data` |
@@ -110,6 +113,8 @@ Everything is in `src-tauri/src/`:
 | `pomodoro-done` | both; only `main` acts | A phase ended. The main window counts the session and plays the chime, so it happens once. |
 | `popup-action` | `main` | Snooze, Done or a click on a popup |
 | `new-reminder` | `main` | **Add reminder…** in the tray menu |
+| `coach-state` | all | Coach on or off, watching or paused, and its label |
+| `coach-step` | `coach` | A Nudge or Push: the step, the reminder named, the distraction, and whether real talk is on |
 
 **Windows-specific parts**
 
@@ -157,6 +162,9 @@ Everything is in `src-tauri/src/`:
   | `Dialogs.tsx` | Settings (two panes: `SECTIONS`, `Setting`, `ShortcutRecorder`, `MinutesField`) and the list dialog |
   | `Backups.tsx` | The backups section and the recovery banner |
   | `Pomodoro.tsx` | The sidebar timer (a bar that expands to the panel, `remme.timer.open`), the rail's ring button and the floating list's pill |
+  | `CoachApp.tsx` | The Coach popup window (picks a line and plays the Push sound) |
+  | `CoachSettings.tsx` | Settings → Coach |
+  | `CoachStatus.tsx` | `useCoachState`, the sidebar's Coach bar and the floating list's Coach button |
   | `Verse.tsx` | The sidebar verse (a bar that expands, `remme.verse.main.open`) and the floating list's verse panel |
   | `UpdateBar.tsx` | The update bar |
   | `Undo.tsx` | The Undo toast |
@@ -246,6 +254,7 @@ Everything is in `src-tauri/src/`:
 | Undo for changes | 0.13.0 | `Undo.track`, `snapshot`, `restoreSnapshot`, `changeMessage` |
 | Sidebar rail | 0.13.0 | `MainApp.tsx` (`useMedia`, `railChoice`), `Sidebar.tsx` |
 | Float opacity | 0.13.0 | `Settings.floatOpacity`, `FloatApp.tsx` |
+| Coach | 0.17.0 | `coach.rs` (the pure part: `classify`, `focus_block`, `pick_reminder`, `Ladder`); in `lib.rs` `run_coach` / `coach_check` (every 5 s), `front_window` and `idle_secs` (Win32), `show_coach_popup`, `tray_menu`, `tray_icon`, the coach commands; `coach.ts` (settings, defaults, `coachFrom`), `coachLines.ts` (the lines and `pickLine`), `CoachApp.tsx`, `CoachSettings.tsx`, `CoachStatus.tsx`. Decisions: `docs/adr/0001`, `0002` (on the owner's PC) |
 | Tray tooltip, Add reminder | 0.13.0 | `set_tray_status`, the tray menu in `lib.rs`; `new-reminder` in `MainApp.tsx` |
 | Day groups | 0.14.0 | `dayGroups`, `dayGroupTitle` in `model.ts`; `TaskViews.tsx` |
 | Empty views | 0.15.0 | `emptyMessage` in `model.ts`; `EmptyView` in `TaskViews.tsx` |
@@ -257,8 +266,8 @@ Everything is in `src-tauri/src/`:
 
 | Command | What it covers |
 |---|---|
-| `pnpm test` (Vitest, 113 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts` |
-| `cargo test --manifest-path src-tauri/Cargo.toml` (32 tests) | Due-reminder detection, nagging and snooze; popup clicks; app triggers; copying data from the old folder; first-run examples; recovery from a damaged file; backup naming, pruning and the second folder; shortcut parsing; title bar colours; the Pomodoro state machine |
+| `pnpm test` (Vitest, 126 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts`, `coach.test.ts` (Coach settings and their checks), `coachLines.test.ts` (filling in, no repeats, real talk, line rules) |
+| `cargo test --manifest-path src-tauri/Cargo.toml` (41 tests) | Coach (classification, focus time, which reminder it names, the ladder and real talk); due-reminder detection, nagging and snooze; popup clicks; app triggers; copying data from the old folder; first-run examples; recovery from a damaged file; backup naming, pruning and the second folder; shortcut parsing; title bar colours; the Pomodoro state machine |
 
 Pure logic sits in `model.ts`, `dates.ts`, `quickAdd.ts`, `calendar.ts` and `selection.ts` so it can be tested without React. UI behaviour is checked by running the dev build and scripting it through WebView2's remote debugging port (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9333" pnpm tauri dev`), against a backed-up and then restored data file.
 

@@ -47,6 +47,13 @@ For every feature with the version it arrived in, a shortcuts table and the app'
 - **Repeating reminders:** set **Repeat** (daily, weekly, monthly or yearly) in a reminder's details. Checking it off keeps the done one in Completed and adds the next one; uncheck it straight away to take that back. A reminder finished late comes back on its next future date.
 - **Subtasks:** add a checklist in a reminder's details. The row shows how many are done, and the next repeat starts with them all unchecked.
 - **Nag mode:** set **Nag** in a reminder's details and its notification repeats every 5, 10, 15, 30 or 60 minutes until you check it off.
+- **Coach** (off until you turn it on in **Settings → Coach**): keeps you on your schedule.
+  - **When it watches:** during your **focus hours** (weekly times you set) and any **focus timer** session. It notices when you're on a **distraction** (sites like YouTube in a browser, or apps like Steam, from a list you edit) or **idle**.
+  - **How it escalates:** after 1 minute off track, a small **Nudge** popup names what's due ("Quick check: *Lab report* is waiting."). After 5 minutes, a firmer **Push** with a sound, which stays until you answer and comes back while you stay off track.
+  - **Real talk:** after 20 minutes off track in total in one focus block, it gets blunt. For example: "You're not tired. You're avoiding *Lab report*." You can add your own lines.
+  - **Answering:** **Back to it** opens the reminder, and **Start focus** starts a focus session on it.
+  - **Pausing:** pause it for 15 minutes, an hour or the rest of the day from the tray's **Coach** menu, the sidebar's Coach bar or the floating list. The tray tooltip says whether it's watching.
+  - **Privacy:** it reads only the front window's app and title and how long since you last used the mouse or keyboard. It never takes screenshots, never stores what it reads, sends nothing anywhere, and never closes your apps.
 - **Pomodoro timer:** 25-minute focus sessions with 5-minute breaks, and a 15-minute long break after every fourth. The timer is at the bottom of the sidebar and in the floating list's header.
   - In the sidebar it's a one-line bar with the phase, the time left and a Start/Pause button. Click the bar for the full timer (the reminder it's on, Skip, Reset and today's count); its chevron collapses it again. In the narrow icon strip it's a ring button that starts or pauses.
   - Start a plain session there, or press the timer button on a reminder (or **Focus on this** in its details) to focus on that reminder.

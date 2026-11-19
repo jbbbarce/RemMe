@@ -3,6 +3,7 @@ import { Add, Delete, Dismiss, LIST_ICON_COMPONENTS, More, SMART_ICONS, Search }
 import { SMART_LISTS, smartCount } from "../model";
 import type { AppData, ReminderList, View } from "../types";
 import { PomodoroPanel, PomodoroRailButton } from "./Pomodoro";
+import { CoachBar } from "./CoachStatus";
 import { Menu, Tip } from "./ui";
 import { TASK_DRAG, carriesTask } from "./useRowDrag";
 import { VerseCard } from "./Verse";
@@ -170,6 +171,7 @@ export function Sidebar(props: Props) {
 
       {/* The verse and the timer sit at the bottom as one-line bars; the rail keeps only the timer's ring. */}
       <div className="side-bottom">
+        <CoachBar rail={rail} />
         {!rail && data.settings.verseOfDay && <VerseCard now={now} />}
         {rail ? <PomodoroRailButton data={data} /> : <PomodoroPanel data={data} />}
       </div>
