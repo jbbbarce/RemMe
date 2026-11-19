@@ -303,4 +303,11 @@ These were built and tested by simulated input, but not yet seen working on a re
 
 ## Planned
 
-Nothing is planned right now. The screen-by-screen redesign finished in 0.16.0, including removing the old CSS it replaced; new ideas get a grilling session first.
+- **Coach** (designed 19 Nov; being built): a watchdog for procrastination. During your focus hours or a focus session, it notices when you're on a distraction (YouTube, games and the like, from a list you control) or idle. It then pushes you back to what's due, from a gentle Nudge to a Push with sound, and later to a Takeover overlay. After 20 minutes off track in total it switches to blunt "real talk".
+  - **Rules:** it's off by default, reads only the front window's app and title and your idle time, never takes screenshots, sends nothing anywhere, never closes apps, and can be paused from the tray.
+  - **Releases:**
+    - 0.17.0: settings, watching, the Nudge and Push, and Pause
+    - 0.18.0: a natural voice that runs on your PC
+    - 0.19.0: the Takeover and "This is for work"
+    - 0.20.0: the daily summary
+- **Later**, each after its own grilling: an Android version, and a free open-source AI that runs on the PC.
