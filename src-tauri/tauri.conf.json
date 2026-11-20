@@ -52,6 +52,20 @@
         "skipTaskbar": true,
         "resizable": false,
         "focus": false
+      },
+      {
+        "label": "takeover",
+        "title": "Coach",
+        "width": 800,
+        "height": 600,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "focus": false
       }
     ],
     "security": {

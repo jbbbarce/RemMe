@@ -20,7 +20,16 @@ describe("Coach's lines", () => {
     expect(linesFor("push", { reminder: null, distraction: null, realTalk: false })[0]).toContain("focus time");
   });
 
-  it("use real talk only for the Push, with your own lines added", () => {
+  it("have their own lines for the Takeover, and real talk there too", () => {
+    const lines = linesFor("takeover", ctx);
+    expect(lines).toContain("Focus, snooze or a real break. Not more of this.");
+    expect(lines).not.toContain(linesFor("push", ctx)[0]);
+    expect(linesFor("takeover", { ...ctx, realTalk: true })).toContain("Nobody's coming to do this for you.");
+    // Idle: nothing that names a distraction.
+    expect(linesFor("takeover", { ...ctx, distraction: null }).every((l) => !l.includes("{distraction}"))).toBe(true);
+  });
+
+  it("use real talk only for the Push and Takeover, with your own lines added", () => {
     const own = "Future you is watching.";
     const real = linesFor("push", { ...ctx, realTalk: true, ownLines: [own] });
     expect(real).toContain(own);
@@ -37,7 +46,7 @@ describe("Coach's lines", () => {
   });
 
   it("keep every line short and free of swearing", () => {
-    const lines = [true, false].flatMap((realTalk) => (["nudge", "push"] as const).flatMap((s) => linesFor(s, { ...ctx, realTalk })));
+    const lines = [true, false].flatMap((realTalk) => (["nudge", "push", "takeover"] as const).flatMap((s) => linesFor(s, { ...ctx, realTalk })));
     for (const l of lines) {
       expect(fill(l, ctx).length).toBeLessThanOrEqual(90);
       expect(/\b(damn|hell|shit|fuck|stupid|idiot|loser|worthless)\b/i.test(l)).toBe(false);

@@ -20,6 +20,8 @@ pub struct Settings {
     pub reset_after: i64,
     pub real_talk: bool,
     pub real_talk_after: i64,
+    pub takeover: bool,
+    pub takeover_after: i64,
 }
 
 impl Default for Settings {
@@ -35,6 +37,8 @@ impl Default for Settings {
             reset_after: 2,
             real_talk: true,
             real_talk_after: 20,
+            takeover: true,
+            takeover_after: 10,
         }
     }
 }
@@ -61,9 +65,15 @@ pub fn settings(data: &Value) -> Settings {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Reading {
     OnTrack,
-    /// On a distraction: its name as listed (such as "YouTube").
-    Distraction(String),
+    /// On a distraction: its name as listed (such as "YouTube"), and its list entry's key.
+    Distraction { name: String, entry: String },
     Idle,
+}
+
+/// A list entry's key, such as "site:youtube" or "app:steam", for work exceptions.
+pub fn entry_key(d: &Distraction) -> String {
+    let m = if d.kind == "app" { app_key(&d.matches) } else { d.matches.trim().to_lowercase() };
+    format!("{}:{m}", d.kind)
 }
 
 const BROWSERS: [&str; 6] = ["chrome", "msedge", "firefox", "brave", "opera", "vivaldi"];
@@ -84,8 +94,9 @@ fn has_word(text: &str, word: &str) -> bool {
 }
 
 /// Classifies the front window. Sites only count in a browser; RemMe itself is always on track.
-/// A distraction in front wins over idle, so a video playing doesn't count as idle.
-pub fn classify(app: &str, title: &str, idle_secs: u64, s: &Settings) -> Reading {
+/// A distraction in front wins over idle, so a video playing doesn't count as idle. An entry in
+/// `for_work` (keys from `entry_key`) is ignored, and reads as on track even while idle.
+pub fn classify(app: &str, title: &str, idle_secs: u64, s: &Settings, for_work: &[String]) -> Reading {
     let app = app_key(app);
     if app != "remme" {
         let browser = BROWSERS.contains(&app.as_str());
@@ -96,10 +107,14 @@ pub fn classify(app: &str, title: &str, idle_secs: u64, s: &Settings) -> Reading
                 _ => false,
             };
             if hit {
+                let entry = entry_key(d);
+                if for_work.contains(&entry) {
+                    return Reading::OnTrack;
+                }
                 // An app reads better without ".exe": "Close steam", not "Close steam.exe".
                 let name = d.matches.trim();
                 let name = if d.kind == "app" { name.strip_suffix(".exe").or_else(|| name.strip_suffix(".EXE")).unwrap_or(name) } else { name };
-                return Reading::Distraction(name.to_string());
+                return Reading::Distraction { name: name.to_string(), entry };
             }
         }
     }
@@ -193,6 +208,7 @@ pub fn pick_reminder(data: &Value, session_task: Option<&str>, now: NaiveDateTim
 pub enum Step {
     Nudge,
     Push,
+    Takeover,
 }
 
 /// The longest gap between two checks that still counts; a longer one (the PC slept) counts as this.
@@ -209,11 +225,17 @@ pub struct Ladder {
     off_run: i64,
     on_run: i64,
     nudged: bool,
-    /// When the last Push fired, on the `off_run` clock; the Push repeats while you stay off track.
+    /// When the last Push fired, on the `off_run` clock. With the Takeover off, the Push repeats.
     pushed_at: Option<i64>,
+    taken_over: bool,
     /// Off track in total in this block, for real talk.
     block_total: i64,
     pub real_talk: bool,
+    /// A snooze: until then time still counts toward real talk, but no step shows.
+    hold_until: Option<i64>,
+    /// After a snooze or break (or a restart with a Takeover up): if the next check finds you
+    /// off track, the Push shows at once and the Takeover follows (Takeover - Push) later.
+    resume_pending: bool,
 }
 
 impl Ladder {
@@ -223,6 +245,9 @@ impl Ladder {
         self.on_run = 0;
         self.nudged = false;
         self.pushed_at = None;
+        self.taken_over = false;
+        self.hold_until = None;
+        self.resume_pending = false;
         self.last = None;
     }
 
@@ -231,20 +256,71 @@ impl Ladder {
         *self = Ladder::default();
     }
 
+    /// The focus block the ladder is in, for counting breaks.
+    pub fn block(&self) -> Option<&str> {
+        self.block.as_deref()
+    }
+
+    /// A snooze until `until`: no steps until then, and then on to the Push if still off track.
+    pub fn hold(&mut self, until: i64) {
+        if self.hold_until != Some(until) {
+            // Keep the clock going: snooze time counts toward real talk.
+            let last = self.last;
+            self.restart();
+            self.last = last;
+            self.hold_until = Some(until);
+        }
+    }
+
+    /// After a break, or a restart with a Takeover up: the next off-track check goes straight to the Push.
+    pub fn resume_at_push(&mut self) {
+        self.restart();
+        self.resume_pending = true;
+    }
+
     /// One check at `now` (Unix seconds) in `block`. Returns the step to show, if one is due.
     pub fn tick(&mut self, now: i64, block: &str, reading: &Reading, s: &Settings) -> Option<Step> {
         if self.block.as_deref() != Some(block) {
-            *self = Ladder { block: Some(block.to_string()), ..Ladder::default() };
+            // A fresh ladder for a new block; one that just started (after a restart) keeps what's pending.
+            let keep = if self.block.is_none() { (self.hold_until, self.resume_pending) } else { (None, false) };
+            *self = Ladder { block: Some(block.to_string()), hold_until: keep.0, resume_pending: keep.1, ..Ladder::default() };
         }
         let dt = self.last.map_or(0, |last| (now - last).clamp(0, MAX_TICK_SECS));
         self.last = Some(now);
+        let push_mins = s.push_after.max(s.nudge_after + 1);
+        let push_after = push_mins * 60;
+        let takeover_after = s.takeover_after.max(push_mins + 1) * 60;
+        let off = *reading != Reading::OnTrack;
 
-        if *reading == Reading::OnTrack {
+        if let Some(until) = self.hold_until {
+            if now < until {
+                if off {
+                    self.add_to_total(dt, s);
+                }
+                return None;
+            }
+            self.hold_until = None;
+            self.resume_pending = true;
+        }
+        if self.resume_pending {
+            self.resume_pending = false;
+            if off {
+                self.off_run = push_after;
+                self.on_run = 0;
+                self.nudged = true;
+                self.pushed_at = Some(push_after);
+                self.add_to_total(dt, s);
+                return Some(Step::Push);
+            }
+        }
+
+        if !off {
             self.on_run += dt;
             if self.on_run >= s.reset_after.max(1) * 60 {
                 self.off_run = 0;
                 self.nudged = false;
                 self.pushed_at = None;
+                self.taken_over = false;
             }
             if self.real_talk && self.on_run >= REAL_TALK_ENDS_SECS {
                 self.real_talk = false;
@@ -255,13 +331,23 @@ impl Ladder {
 
         self.on_run = 0;
         self.off_run += dt;
-        self.block_total += dt;
-        if s.real_talk && self.block_total >= s.real_talk_after.max(1) * 60 {
-            self.real_talk = true;
-        }
-        let push_after = s.push_after.max(s.nudge_after + 1) * 60;
+        self.add_to_total(dt, s);
         if self.off_run >= push_after {
-            // Until the Takeover arrives, the Push comes back every `push_after` while you stay off track.
+            if s.takeover {
+                if !self.taken_over && self.off_run >= takeover_after {
+                    self.taken_over = true;
+                    self.nudged = true;
+                    self.pushed_at.get_or_insert(self.off_run);
+                    return Some(Step::Takeover);
+                }
+                if self.pushed_at.is_none() {
+                    self.pushed_at = Some(self.off_run);
+                    self.nudged = true;
+                    return Some(Step::Push);
+                }
+                return None;
+            }
+            // With no Takeover, the Push comes back every `push_after` while you stay off track.
             let due = self.pushed_at.is_none_or(|at| self.off_run - at >= push_after);
             if due {
                 self.pushed_at = Some(self.off_run);
@@ -276,6 +362,102 @@ impl Ladder {
         }
         None
     }
+
+    fn add_to_total(&mut self, dt: i64, s: &Settings) {
+        self.block_total += dt;
+        if s.real_talk && self.block_total >= s.real_talk_after.max(1) * 60 {
+            self.real_talk = true;
+        }
+    }
+}
+
+pub const SNOOZE_SECS: i64 = 5 * 60;
+pub const SNOOZES_PER_HOUR: usize = 2;
+pub const BREAK_SECS: i64 = 15 * 60;
+pub const BREAKS_PER_BLOCK: u32 = 3;
+
+/// The Takeover's escape hatches and their limits, saved so restarting RemMe doesn't reset them.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Limits {
+    /// When each snooze of the last hour started (Unix seconds).
+    pub snoozes: Vec<i64>,
+    pub snooze_until: Option<i64>,
+    /// The focus block the break count belongs to.
+    pub break_block: String,
+    pub breaks: u32,
+    pub break_until: Option<i64>,
+}
+
+impl Limits {
+    fn recent(&self, now: i64) -> impl Iterator<Item = &i64> {
+        self.snoozes.iter().filter(move |&&t| now - t < 3600)
+    }
+
+    pub fn snoozes_left(&self, now: i64) -> usize {
+        SNOOZES_PER_HOUR.saturating_sub(self.recent(now).count())
+    }
+
+    /// With none left, when the next snooze frees up.
+    pub fn next_snooze(&self, now: i64) -> Option<i64> {
+        if self.snoozes_left(now) > 0 {
+            return None;
+        }
+        self.recent(now).min().map(|t| t + 3600)
+    }
+
+    pub fn breaks_left(&self, block: &str) -> u32 {
+        if self.break_block == block { BREAKS_PER_BLOCK.saturating_sub(self.breaks) } else { BREAKS_PER_BLOCK }
+    }
+
+    /// Starts a snooze if one is left. Returns when it ends.
+    pub fn snooze(&mut self, now: i64) -> Option<i64> {
+        if self.snoozes_left(now) == 0 {
+            return None;
+        }
+        self.snoozes.retain(|&t| now - t < 3600);
+        self.snoozes.push(now);
+        self.snooze_until = Some(now + SNOOZE_SECS);
+        self.snooze_until
+    }
+
+    /// Starts a break in `block` if one is left. Returns when it ends.
+    pub fn take_break(&mut self, now: i64, block: &str) -> Option<i64> {
+        if self.breaks_left(block) == 0 {
+            return None;
+        }
+        if self.break_block != block {
+            self.break_block = block.to_string();
+            self.breaks = 0;
+        }
+        self.breaks += 1;
+        self.snooze_until = None;
+        self.break_until = Some(now + BREAK_SECS);
+        self.break_until
+    }
+}
+
+/// A distraction-list entry ignored for an hour after "This is for work". Only the entry's key
+/// and name are kept, never a window title.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkException {
+    pub entry: String,
+    pub name: String,
+    pub until: i64,
+}
+
+pub const WORK_SECS: i64 = 60 * 60;
+
+/// Adds (or renews) an hour's exception for `entry`, dropping expired ones.
+pub fn allow_for_work(list: &mut Vec<WorkException>, entry: &str, name: &str, now: i64) {
+    list.retain(|w| w.until > now && w.entry != entry);
+    list.push(WorkException { entry: entry.to_string(), name: name.to_string(), until: now + WORK_SECS });
+}
+
+/// The keys of the exceptions still running.
+pub fn active_work(list: &[WorkException], now: i64) -> Vec<String> {
+    list.iter().filter(|w| w.until > now).map(|w| w.entry.clone()).collect()
 }
 
 /// "5:00 pm"-style local time for the tray and sidebar.
@@ -305,6 +487,10 @@ mod tests {
         .unwrap()
     }
 
+    fn yt() -> Reading {
+        Reading::Distraction { name: "YouTube".into(), entry: "site:youtube".into() }
+    }
+
     fn at(y: i32, m: u32, d: u32, h: u32, min: u32) -> NaiveDateTime {
         NaiveDate::from_ymd_opt(y, m, d).unwrap().and_hms_opt(h, min, 0).unwrap()
     }
@@ -312,21 +498,21 @@ mod tests {
     #[test]
     fn sites_count_only_in_a_browser_and_as_whole_words() {
         let s = s();
-        assert_eq!(classify("chrome.exe", "Funny cats - YouTube - Google Chrome", 0, &s), Reading::Distraction("YouTube".into()));
-        assert_eq!(classify("WINWORD.EXE", "YouTube marketing plan.docx", 0, &s), Reading::OnTrack);
+        assert_eq!(classify("chrome.exe", "Funny cats - YouTube - Google Chrome", 0, &s, &[]), yt());
+        assert_eq!(classify("WINWORD.EXE", "YouTube marketing plan.docx", 0, &s, &[]), Reading::OnTrack);
         // "X" must not match the x in "Excel" or "Box".
-        assert_eq!(classify("msedge.exe", "Box - Excel online - Microsoft Edge", 0, &s), Reading::OnTrack);
-        assert_eq!(classify("msedge.exe", "Home / X - Microsoft Edge", 0, &s), Reading::Distraction("X".into()));
-        assert_eq!(classify("Steam.exe", "Steam", 0, &s), Reading::Distraction("steam".into()));
+        assert_eq!(classify("msedge.exe", "Box - Excel online - Microsoft Edge", 0, &s, &[]), Reading::OnTrack);
+        assert_eq!(classify("msedge.exe", "Home / X - Microsoft Edge", 0, &s, &[]), Reading::Distraction { name: "X".into(), entry: "site:x".into() });
+        assert_eq!(classify("Steam.exe", "Steam", 0, &s, &[]), Reading::Distraction { name: "steam".into(), entry: "app:steam".into() });
     }
 
     #[test]
     fn idle_counts_unless_a_distraction_is_in_front_and_remme_is_never_off_track() {
         let s = s();
-        assert_eq!(classify("code.exe", "main.rs", 11 * 60, &s), Reading::Idle);
-        assert_eq!(classify("code.exe", "main.rs", 9 * 60, &s), Reading::OnTrack);
-        assert_eq!(classify("chrome.exe", "Lecture - YouTube", 30 * 60, &s), Reading::Distraction("YouTube".into()));
-        assert_eq!(classify("remme.exe", "YouTube", 0, &s), Reading::OnTrack);
+        assert_eq!(classify("code.exe", "main.rs", 11 * 60, &s, &[]), Reading::Idle);
+        assert_eq!(classify("code.exe", "main.rs", 9 * 60, &s, &[]), Reading::OnTrack);
+        assert_eq!(classify("chrome.exe", "Lecture - YouTube", 30 * 60, &s, &[]), yt());
+        assert_eq!(classify("remme.exe", "YouTube", 0, &s, &[]), Reading::OnTrack);
     }
 
     #[test]
@@ -379,20 +565,124 @@ mod tests {
     fn nudges_after_a_minute_and_pushes_after_five() {
         let s = s();
         let (mut l, mut t) = (Ladder::default(), 0);
-        let yt = Reading::Distraction("YouTube".into());
+        let yt = yt();
         l.tick(t, "b", &yt, &s);
         assert_eq!(run(&mut l, &mut t, 55, &yt, &s), vec![]);
         assert_eq!(run(&mut l, &mut t, 5, &yt, &s), vec![Step::Nudge]);
         assert_eq!(run(&mut l, &mut t, 240, &yt, &s), vec![Step::Push]);
-        // The Push comes back while you stay off track.
+        // With the Takeover on, the Push doesn't repeat: the Takeover comes at 10 minutes, once.
+        assert_eq!(run(&mut l, &mut t, 300, &yt, &s), vec![Step::Takeover]);
+        assert_eq!(run(&mut l, &mut t, 1200, &yt, &s), vec![]);
+    }
+
+    #[test]
+    fn without_the_takeover_the_push_repeats() {
+        let mut s = s();
+        s.takeover = false;
+        let (mut l, mut t) = (Ladder::default(), 0);
+        let yt = yt();
+        l.tick(t, "b", &yt, &s);
+        assert_eq!(run(&mut l, &mut t, 300, &yt, &s), vec![Step::Nudge, Step::Push]);
         assert_eq!(run(&mut l, &mut t, 300, &yt, &s), vec![Step::Push]);
+    }
+
+    #[test]
+    fn after_a_snooze_off_track_goes_straight_to_the_push_then_the_takeover() {
+        let s = s();
+        let (mut l, mut t) = (Ladder::default(), 0);
+        let yt = yt();
+        l.tick(t, "b", &yt, &s);
+        assert_eq!(run(&mut l, &mut t, 600, &yt, &s), vec![Step::Nudge, Step::Push, Step::Takeover]);
+        l.hold(t + SNOOZE_SECS);
+        // Nothing during the snooze, but the time counts toward real talk (10 + 5 minutes so far).
+        assert_eq!(run(&mut l, &mut t, 295, &yt, &s), vec![]);
+        assert_eq!(run(&mut l, &mut t, 5, &yt, &s), vec![Step::Push]);
+        // The Takeover comes back Takeover - Push = 5 minutes later.
+        assert_eq!(run(&mut l, &mut t, 295, &yt, &s), vec![]);
+        assert_eq!(run(&mut l, &mut t, 5, &yt, &s), vec![Step::Takeover]);
+        assert!(l.real_talk);
+    }
+
+    #[test]
+    fn a_snooze_that_ends_on_track_starts_the_climb_over() {
+        let s = s();
+        let (mut l, mut t) = (Ladder::default(), 0);
+        let yt = yt();
+        l.tick(t, "b", &yt, &s);
+        run(&mut l, &mut t, 600, &yt, &s);
+        l.hold(t + SNOOZE_SECS);
+        run(&mut l, &mut t, 300, &Reading::OnTrack, &s);
+        assert_eq!(run(&mut l, &mut t, 60, &yt, &s), vec![Step::Nudge]);
+    }
+
+    #[test]
+    fn resuming_after_a_break_or_restart_pushes_at_once_even_in_a_new_ladder() {
+        let s = s();
+        let yt = yt();
+        // A restart with a Takeover up: a fresh ladder that hasn't seen a block yet.
+        let mut l = Ladder::default();
+        l.resume_at_push();
+        assert_eq!(l.tick(0, "b", &yt, &s), Some(Step::Push));
+        // After a break that ends on track, nothing shows.
+        let mut l = Ladder::default();
+        l.tick(0, "b", &yt, &s);
+        l.resume_at_push();
+        assert_eq!(l.tick(5, "b", &Reading::OnTrack, &s), None);
+    }
+
+    #[test]
+    fn after_a_break_ends_off_track_the_push_shows_and_the_takeover_follows() {
+        let s = s();
+        let (mut l, mut t) = (Ladder::default(), 0);
+        let yt = yt();
+        l.tick(t, "b", &yt, &s);
+        assert_eq!(run(&mut l, &mut t, 600, &yt, &s), vec![Step::Nudge, Step::Push, Step::Takeover]);
+        // A break: the ladder restarts and isn't ticked until it ends.
+        l.restart();
+        t += 600;
+        l.resume_at_push();
+        assert_eq!(l.tick(t, "b", &yt, &s), Some(Step::Push));
+        assert_eq!(run(&mut l, &mut t, 300, &yt, &s), vec![Step::Takeover]);
+    }
+
+    #[test]
+    fn snoozes_are_two_an_hour_and_breaks_three_a_block() {
+        let mut lim = Limits::default();
+        assert_eq!(lim.snooze(0), Some(SNOOZE_SECS));
+        assert_eq!(lim.snoozes_left(100), 1);
+        assert!(lim.snooze(1000).is_some());
+        assert_eq!(lim.snooze(2000), None);
+        assert_eq!(lim.next_snooze(2000), Some(3600));
+        assert_eq!(lim.snoozes_left(3600), 1);
+        assert!(lim.snooze(3600).is_some());
+        for _ in 0..3 {
+            assert!(lim.take_break(0, "b").is_some());
+        }
+        assert_eq!(lim.breaks_left("b"), 0);
+        assert_eq!(lim.take_break(0, "b"), None);
+        assert_eq!(lim.breaks_left("next"), 3);
+        assert_eq!(lim.take_break(10, "next"), Some(10 + BREAK_SECS));
+    }
+
+    #[test]
+    fn this_is_for_work_ignores_only_that_entry_for_an_hour() {
+        let s = s();
+        let mut work = Vec::new();
+        allow_for_work(&mut work, "site:youtube", "YouTube", 0);
+        let keys = active_work(&work, 100);
+        assert_eq!(classify("chrome.exe", "Tutorial - YouTube", 0, &s, &keys), Reading::OnTrack);
+        // Even idle on it: a work video playing isn't idle.
+        assert_eq!(classify("chrome.exe", "Tutorial - YouTube", 3600, &s, &keys), Reading::OnTrack);
+        assert_eq!(classify("steam.exe", "Steam", 0, &s, &keys), Reading::Distraction { name: "steam".into(), entry: "app:steam".into() });
+        assert!(active_work(&work, WORK_SECS).is_empty());
+        assert_eq!(entry_key(&Distraction { kind: "app".into(), matches: "Steam.EXE".into() }), "app:steam");
     }
 
     #[test]
     fn two_minutes_on_track_resets_but_a_short_flick_does_not() {
         let s = s();
         let (mut l, mut t) = (Ladder::default(), 0);
-        let yt = Reading::Distraction("YouTube".into());
+        let yt = yt();
         l.tick(t, "b", &yt, &s);
         assert_eq!(run(&mut l, &mut t, 60, &yt, &s), vec![Step::Nudge]);
         // A 30-second flick back to work doesn't restart the climb: the Push still comes at 5 minutes off.
@@ -427,7 +717,7 @@ mod tests {
     fn a_new_block_starts_fresh_and_a_long_gap_counts_as_one_check() {
         let s = s();
         let (mut l, mut t) = (Ladder::default(), 0);
-        let yt = Reading::Distraction("YouTube".into());
+        let yt = yt();
         l.tick(t, "b", &yt, &s);
         run(&mut l, &mut t, 60, &yt, &s);
         // The PC slept for an hour: that gap counts as 15 seconds, not an hour.

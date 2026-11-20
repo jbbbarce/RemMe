@@ -4119,6 +4119,25 @@ button.side-strip:hover,
   min-width: 0;
 }
 
+.coach-settings {
+  display: contents;
+}
+
+.coach-settings:disabled .setting,
+.coach-settings:disabled .settings-block,
+.coach-settings:disabled .coach-notice {
+  opacity: 0.55;
+}
+
+.coach-locked {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--c-orange) 14%, transparent);
+  color: var(--text);
+  font-size: 13px;
+}
+
 .coach-lines {
   resize: vertical;
   font-size: 13px;
@@ -4201,6 +4220,84 @@ button.side-strip:hover,
 .coach-actions .btn {
   min-height: 28px;
   padding: 0 10px;
+  font-size: 13px;
+}
+
+/* ---------- Coach's Takeover ---------- */
+
+.takeover {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 24px;
+  background: rgb(0 0 0 / 0.85);
+}
+
+.takeover-card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(560px, 100%);
+  padding: 24px 26px;
+  border: 1px solid var(--line);
+  border-top: 5px solid var(--c-orange);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.5);
+}
+
+.takeover-card.real-talk {
+  border-top-color: var(--c-red);
+}
+
+.takeover-card.real-talk .coach-head {
+  color: var(--c-red);
+}
+
+.takeover-line {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 33px;
+}
+
+.takeover-card .coach-reminder {
+  font-size: 13px;
+}
+
+.takeover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.takeover-actions .btn {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.takeover-choice {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 18px;
+}
+
+.takeover-choice small {
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.takeover-error {
+  margin: 0;
+  color: var(--c-red);
   font-size: 13px;
 }
 

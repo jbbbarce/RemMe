@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { CoachApp } from "./components/CoachApp";
 import { FloatApp } from "./components/FloatApp";
 import { MainApp } from "./components/MainApp";
+import { TakeoverApp } from "./components/TakeoverApp";
 import { useAppData } from "./store";
 import { applyTheme } from "./theme";
 import { TipProvider } from "./components/ui";
@@ -11,8 +12,12 @@ const label = getCurrentWindow().label;
 const isFloat = label === "float";
 /** Coach's popup: a small always-on-top window styled like the floating list. */
 const isCoach = label === "coach";
-document.documentElement.classList.toggle("is-float", isFloat || isCoach);
-document.documentElement.classList.toggle("is-coach", isCoach);
+/** Coach's Takeover: a dimmed overlay across a whole screen. */
+const isTakeover = label === "takeover";
+const isPopup = isFloat || isCoach || isTakeover;
+document.documentElement.classList.toggle("is-float", isPopup);
+document.documentElement.classList.toggle("is-coach", isCoach || isTakeover);
+document.documentElement.classList.toggle("is-takeover", isTakeover);
 
 export default function App() {
   const { data, update, saveError, loadError } = useAppData();
@@ -25,10 +30,10 @@ export default function App() {
 
   useEffect(() => {
     if (!theme) return;
-    applyTheme(theme, isFloat || isCoach);
+    applyTheme(theme, isPopup);
     // Calm and Fluent follow Windows' light or dark mode, so apply again when it changes.
     const scheme = window.matchMedia("(prefers-color-scheme: dark)");
-    const reapply = () => applyTheme(theme, isFloat || isCoach);
+    const reapply = () => applyTheme(theme, isPopup);
     scheme.addEventListener("change", reapply);
     return () => scheme.removeEventListener("change", reapply);
   }, [theme]);
@@ -44,7 +49,9 @@ export default function App() {
   }
   return (
     <TipProvider>
-      {isCoach ? (
+      {isTakeover ? (
+        <TakeoverApp data={data} />
+      ) : isCoach ? (
         <CoachApp data={data} />
       ) : isFloat ? (
         <FloatApp data={data} update={update} />

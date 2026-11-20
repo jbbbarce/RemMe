@@ -57,6 +57,14 @@ describe("Coach settings", () => {
     expect(c.realTalkAfter).toBe(20);
   });
 
+  it("keep the Takeover on by default and after the Push", () => {
+    expect(coachFrom({}).takeover).toBe(true);
+    expect(coachFrom({}).takeoverAfter).toBe(10);
+    const c = coachFrom({ takeover: false, pushAfter: 12, takeoverAfter: 8 });
+    expect(c.takeover).toBe(false);
+    expect(c.takeoverAfter).toBe(13);
+  });
+
   it("keep your own real-talk lines, trimmed", () => {
     expect(coachFrom({ realTalkLines: [" Get up. ", "", 4] }).realTalkLines).toEqual(["Get up."]);
   });

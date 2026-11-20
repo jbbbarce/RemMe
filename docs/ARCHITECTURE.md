@@ -46,7 +46,8 @@ Tauri creates two windows, defined in `src-tauri/tauri.conf.json`:
 
 - `main`: the main window.
 - `float`: the floating list, always on top. Both start hidden and transparent (for Mica and Acrylic).
-- `coach`: Coach's popup, always on top, no frame, not in the taskbar, hidden until a Nudge or Push.
+- `coach`: Coach's popup, always on top, no frame, not in the taskbar, hidden until a Nudge or Push. Shown with `SW_SHOWNOACTIVATE` so it never takes the keyboard.
+- `takeover`: Coach's Takeover, transparent, always on top, no frame, not in the taskbar. Sized to the whole monitor of the front window when shown, and it takes focus. Its close request is refused, so Alt+F4 does nothing.
 
 Both load the same React bundle. `src/App.tsx` reads the window's label and renders `MainApp` or `FloatApp`, adding the `is-float` class to `<html>` for the floating window.
 
@@ -84,7 +85,7 @@ Everything is in `src-tauri/src/`:
 **Background threads**
 
 - **Due checks** every 15 seconds: `check_reminders` reads due tasks from the data (`due_tasks`), decides with `should_notify` (nag interval, snooze, already notified), and shows popups. More than 3 at once are summed up in one popup.
-- **Coach** every 5 seconds, only while Coach is on and it's focus time: reads the front window's process and title (`GetForegroundWindow`, `QueryFullProcessImageNameW`, `GetWindowTextW`) and idle time (`GetLastInputInfo`), passes them to `coach::classify` (titles go nowhere else), climbs the ladder and shows the `coach` popup without taking focus.
+- **Coach** every 5 seconds, only while Coach is on and it's focus time: reads the front window's process and title (`GetForegroundWindow`, `QueryFullProcessImageNameW`, `GetWindowTextW`) and idle time (`GetLastInputInfo`), passes them to `coach::classify` (titles go nowhere else), climbs the ladder and shows the `coach` popup without taking focus, or the `takeover` window. While Coach's own popup or Takeover is in front, the reading from before it is kept. The Takeover becomes a Push when `SHQueryUserNotificationState` reports a Direct3D full-screen app and another app's window covers its whole monitor. Snoozes, breaks, work exceptions and whether a Takeover is up are kept in `ui-state.json` (`coachLimits`, `coachWork`, `coachTakeoverUp`); during a break nothing is read.
 - **App watcher** every 3 seconds, while any reminder has an app trigger: `watch_apps` compares running processes and notifies for newly started ones.
 - **Timer** every 500 ms: `run_timer` advances the Pomodoro timer, emits `pomodoro` and, at the end of a phase, `pomodoro-done`.
 
@@ -97,7 +98,7 @@ Everything is in `src-tauri/src/`:
 | Shortcuts | `set_shortcuts`, `suspend_shortcuts` (while recording a new one) |
 | Look | `set_title_bar`, `get_accent` (Windows accent via `UISettings`), `set_round_corners` |
 | Tray | `set_tray_status` (the due counts for the tooltip; Coach adds its line) |
-| Coach | `coach_state`, `coach_answer` (Back to it, Start focus, Dismiss), `coach_pause`, `coach_resume` |
+| Coach | `coach_state`, `coach_answer` (Back to it, Start focus, Dismiss, This is for work, and the Takeover's Snooze and Break, refused past their limits), `coach_pause` (refused while a Takeover is up), `coach_resume`, `coach_end_break`, `coach_work_undo`. `save_data` keeps Coach's settings unchanged while a Takeover is up |
 | Coach's voice | `voice_status`, `voice_download` (in the background), `voice_remove`, `voice_speak` (returns 24 kHz mono f32 samples as raw bytes) |
 | Timer | `pomodoro_state`, `pomodoro_start`, `pomodoro_toggle`, `pomodoro_skip`, `pomodoro_reset` |
 | Backups | `list_backups`, `backup_now`, `restore_backup`, `delete_backup`, `open_backup_folder`, `get_backup_folder`, `choose_backup_folder`, `clear_backup_folder`, `get_recovery`, `dismiss_recovery` |
@@ -114,9 +115,10 @@ Everything is in `src-tauri/src/`:
 | `pomodoro-done` | both; only `main` acts | A phase ended. The main window counts the session and plays the chime, so it happens once. |
 | `popup-action` | `main` | Snooze, Done or a click on a popup |
 | `new-reminder` | `main` | **Add reminder…** in the tray menu |
-| `coach-state` | all | Coach on or off, watching or paused, and its label |
+| `coach-state` | all | Coach on or off, watching or paused, its label, whether a Takeover is up, the snoozes and breaks left, the break's end, and the work exceptions |
 | `voice-status` | all | The voice's download state: none, downloading (done and total bytes), ready, or error |
 | `coach-step` | `coach` | A Nudge or Push: the step, the reminder named, the distraction, and whether real talk is on |
+| `coach-takeover` | `takeover` | A Takeover, with the same fields. It has its own name because a page's `listen()` hears events sent to any window |
 
 **Windows-specific parts**
 
@@ -164,7 +166,8 @@ Everything is in `src-tauri/src/`:
   | `Dialogs.tsx` | Settings (two panes: `SECTIONS`, `Setting`, `ShortcutRecorder`, `MinutesField`) and the list dialog |
   | `Backups.tsx` | The backups section and the recovery banner |
   | `Pomodoro.tsx` | The sidebar timer (a bar that expands to the panel, `remme.timer.open`), the rail's ring button and the floating list's pill |
-  | `CoachApp.tsx` | The Coach popup window (picks a line and plays the Push sound) |
+  | `CoachApp.tsx` | The Coach popup window (picks a line and plays the Push sound; `lineFor` and `soundAndSpeak` are shared with the Takeover) |
+  | `TakeoverApp.tsx` | The Takeover window: the card, its three choices and their counts |
   | `CoachSettings.tsx` | Settings → Coach |
   | `CoachStatus.tsx` | `useCoachState`, the sidebar's Coach bar and the floating list's Coach button |
   | `Verse.tsx` | The sidebar verse (a bar that expands, `remme.verse.main.open`) and the floating list's verse panel |
@@ -256,6 +259,7 @@ Everything is in `src-tauri/src/`:
 | Undo for changes | 0.13.0 | `Undo.track`, `snapshot`, `restoreSnapshot`, `changeMessage` |
 | Sidebar rail | 0.13.0 | `MainApp.tsx` (`useMedia`, `railChoice`), `Sidebar.tsx` |
 | Float opacity | 0.13.0 | `Settings.floatOpacity`, `FloatApp.tsx` |
+| Coach's Takeover, This is for work | 0.19.0 | `coach.rs` (`Step::Takeover`, `Ladder::hold` and `resume_at_push`, `Limits`, `WorkException`, `allow_for_work`, `entry_key`); in `lib.rs` `show_takeover`, `set_takeover_up`, `show_inactive`, `coach_window_in_front`, `exclusive_fullscreen`, `monitor_area`, the new coach commands, and the lock in `save_data` and `tray_menu`; `TakeoverApp.tsx`, the Takeover lines in `coachLines.ts`, This is for work in `CoachApp.tsx`, End break and Undo in `CoachStatus.tsx`, the Takeover settings and the lock in `CoachSettings.tsx` |
 | Coach's voice | 0.18.0 | `voice.rs` (the pinned manifest and SHA-256s, `download`, `verify_all`, the `rules` fallback for unknown words, `token_ids`, `Engine` on ONNX Runtime), `kokoro_vocab.rs` (Kokoro's 115 token ids), the voice commands in `lib.rs`; `voice.ts` (`useVoiceStatus`, `speak`), the Voice block in `CoachSettings.tsx`, speaking the Push in `CoachApp.tsx`. Decisions: `docs/adr/0002`, `0003`. Files: `%APPDATA%\com.remme.app\voice\` |
 | Coach | 0.17.0 | `coach.rs` (the pure part: `classify`, `focus_block`, `pick_reminder`, `Ladder`); in `lib.rs` `run_coach` / `coach_check` (every 5 s), `front_window` and `idle_secs` (Win32), `show_coach_popup`, `tray_menu`, `tray_icon`, the coach commands; `coach.ts` (settings, defaults, `coachFrom`), `coachLines.ts` (the lines and `pickLine`), `CoachApp.tsx`, `CoachSettings.tsx`, `CoachStatus.tsx`. Decisions: `docs/adr/0001`, `0002` (on the owner's PC) |
 | Tray tooltip, Add reminder | 0.13.0 | `set_tray_status`, the tray menu in `lib.rs`; `new-reminder` in `MainApp.tsx` |
@@ -269,8 +273,8 @@ Everything is in `src-tauri/src/`:
 
 | Command | What it covers |
 |---|---|
-| `pnpm test` (Vitest, 127 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts`, `coach.test.ts` (Coach settings and their checks), `coachLines.test.ts` (filling in, no repeats, real talk, line rules) |
-| `cargo test --manifest-path src-tauri/Cargo.toml` (47 tests, plus one ignored end-to-end voice test run by hand) | Coach (classification, focus time, which reminder it names, the ladder and real talk); the voice (the manifest, fingerprint checks, the fallback rules, token ids); due-reminder detection, nagging and snooze; popup clicks; app triggers; copying data from the old folder; first-run examples; recovery from a damaged file; backup naming, pruning and the second folder; shortcut parsing; title bar colours; the Pomodoro state machine |
+| `pnpm test` (Vitest, 129 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts`, `coach.test.ts` (Coach settings and their checks), `coachLines.test.ts` (filling in, no repeats, real talk, the Takeover's lines, line rules) |
+| `cargo test --manifest-path src-tauri/Cargo.toml` (54 tests, plus one ignored end-to-end voice test run by hand) | Coach (classification, focus time, which reminder it names, the ladder and real talk, the Takeover, snoozes and breaks and their limits, resuming after a restart, This is for work); the voice (the manifest, fingerprint checks, the fallback rules, token ids); due-reminder detection, nagging and snooze; popup clicks; app triggers; copying data from the old folder; first-run examples; recovery from a damaged file; backup naming, pruning and the second folder; shortcut parsing; title bar colours; the Pomodoro state machine |
 
 Pure logic sits in `model.ts`, `dates.ts`, `quickAdd.ts`, `calendar.ts` and `selection.ts` so it can be tested without React. UI behaviour is checked by running the dev build and scripting it through WebView2's remote debugging port (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9333" pnpm tauri dev`), against a backed-up and then restored data file.
 

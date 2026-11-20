@@ -20,6 +20,8 @@ export const DEFAULT_COACH: CoachSettings = {
   realTalk: true,
   realTalkAfter: 20,
   realTalkLines: [],
+  takeover: true,
+  takeoverAfter: 10,
   speak: false,
   voice: "af_heart",
   realTalkVoice: null,
@@ -91,6 +93,8 @@ export function coachFrom(raw: unknown): CoachSettings {
       })
     : DEFAULT_DISTRACTIONS;
   const nudgeAfter = minutesIn(c.nudgeAfter, DEFAULT_COACH.nudgeAfter);
+  // The Push always comes after the Nudge, and the Takeover after the Push.
+  const pushAfter = Math.max(nudgeAfter + 1, minutesIn(c.pushAfter, DEFAULT_COACH.pushAfter));
   return {
     enabled: c.enabled === true,
     focusHours,
@@ -98,14 +102,15 @@ export function coachFrom(raw: unknown): CoachSettings {
     distractions,
     idleMinutes: minutesIn(c.idleMinutes, DEFAULT_COACH.idleMinutes),
     nudgeAfter,
-    // The Push always comes after the Nudge.
-    pushAfter: Math.max(nudgeAfter + 1, minutesIn(c.pushAfter, DEFAULT_COACH.pushAfter)),
+    pushAfter,
     resetAfter: minutesIn(c.resetAfter, DEFAULT_COACH.resetAfter, 30),
     realTalk: c.realTalk !== false,
     realTalkAfter: minutesIn(c.realTalkAfter, DEFAULT_COACH.realTalkAfter, 240),
     realTalkLines: Array.isArray(c.realTalkLines)
       ? c.realTalkLines.filter((l): l is string => typeof l === "string").map((l) => l.trim()).filter(Boolean).slice(0, 50)
       : [],
+    takeover: c.takeover !== false,
+    takeoverAfter: Math.max(pushAfter + 1, minutesIn(c.takeoverAfter, DEFAULT_COACH.takeoverAfter, 240)),
     speak: c.speak === true,
     voice: typeof c.voice === "string" && voiceIds.has(c.voice) ? c.voice : DEFAULT_COACH.voice,
     realTalkVoice: typeof c.realTalkVoice === "string" && voiceIds.has(c.realTalkVoice) ? c.realTalkVoice : null,

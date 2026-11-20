@@ -118,6 +118,10 @@ export interface CoachSettings {
   realTalk: boolean;
   /** Minutes off track in total, in one focus block, before real talk. */
   realTalkAfter: number;
+  /** Coach's last step: a dimmed overlay that clears only when you choose what to do next. */
+  takeover: boolean;
+  /** Minutes off track without a stop before the Takeover; always after the Push. */
+  takeoverAfter: number;
   /** Your own real-talk lines, added to the built-in ones. */
   realTalkLines: string[];
   /** Coach speaks the Push aloud, in a natural voice that runs on this PC. */

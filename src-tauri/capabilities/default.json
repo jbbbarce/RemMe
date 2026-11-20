@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main, floating and Coach windows",
-  "windows": ["main", "float", "coach"],
+  "description": "Capability for the main, floating, Coach and Takeover windows",
+  "windows": ["main", "float", "coach", "takeover"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",

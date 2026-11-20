@@ -1,6 +1,6 @@
 # RemMe features
 
-Everything RemMe can do, from the first sticky-note version to 0.18.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
+Everything RemMe can do, from the first sticky-note version to 0.19.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Contents
 
@@ -50,6 +50,7 @@ Everything RemMe can do, from the first sticky-note version to 0.18.0, and when 
 | 0.16.0 | 18 Nov | The calendar's repeats as small counts, wrapping titles, dimmed other months and labelled toggles; the floating list's verse as a one-line bar; board columns that share the width with a ⋯ menu per section; the list dialog's labelled fields and even grids; the old CSS the redesign replaced removed. |
 | 0.17.0 | 19 Nov | Coach: focus hours, a distraction list, the Nudge and Push popups, real talk, Pause and the tray marker. Old CSS removed. |
 | 0.18.0 | 20 Nov | Coach's natural voice: the Push and real talk spoken aloud, on your PC. |
+| 0.19.0 | 20 Nov | Coach's Takeover: the screen dims until you start focus, snooze or take a break, with limits on both. **This is for work** for an hour. Coach's popups no longer take the keyboard. |
 
 ## Before the rewrite: the WPF sticky notes
 
@@ -195,11 +196,12 @@ From 0.17.0. Off until you turn it on in **Settings → Coach**. Coach is for pr
 - **Idle**: no mouse or keyboard for 10 minutes (adjustable). A video playing on a distraction counts as the distraction, not as idle.
 - **The ladder**:
   - After **1 minute** off track without a stop, a **Nudge**: a small popup in the bottom-right of the screen you're using, naming what to do. It's silent and goes away by itself after 30 seconds.
-  - After **5 minutes**, a **Push**: bigger, with a sound, and it stays until you answer. It comes back every 5 minutes while you stay off track.
+  - After **5 minutes**, a **Push**: bigger, with a sound, and it stays until you answer. (With the Takeover switched off, it comes back every 5 minutes while you stay off track.)
+  - After **10 minutes**, the **Takeover** (0.19.0; see below).
   - Getting back on track for **2 minutes** in a row starts the ladder over. A quick flick back to your work doesn't.
-  - The popups don't take focus from the app you're in, and Windows' Do Not Disturb doesn't silence them.
+  - The popups don't take focus from the app you're in (from 0.19.0 they're shown without being activated at all), and Windows' Do Not Disturb doesn't silence them. Clicking a popup and leaving it open doesn't count as being back on track.
 - **What it names**: the focus session's reminder, otherwise the most overdue reminder, then the next due today, then a flagged one. With none of those, a general "This is your focus time" line.
-- **Answers**: **Back to it** opens the reminder in the main window. **Start focus** starts a focus session on it and restarts the ladder. **Dismiss** closes the popup.
+- **Answers**: **Back to it** opens the reminder in the main window. **Start focus** starts a focus session on it and restarts the ladder. **Dismiss** closes the popup. **This is for work** (0.19.0) is described below.
 - **Real talk**: after **20 minutes off track in total** in one focus block, the Push switches to a blunt voice, such as "How can you have dreams if you ain't even doing anything?" It goes after your time and choices, never you as a person. It ends after 15 minutes back on track. Add your own lines in Settings (`{reminder}` puts in what's due), or switch real talk off.
 - **Pause**: 15 minutes, 1 hour or the rest of the day, from the tray's **Coach** menu, the sidebar's **Coach** bar or the floating list's Coach button. **Resume** ends a pause early. Coach is switched off only in Settings.
 - **Seeing that it's on**:
@@ -220,8 +222,18 @@ From 0.17.0. Off until you turn it on in **Settings → Coach**. Coach is for pr
   - **Remove voice** deletes the 95 MB.
   - **Privacy**: the voice runs on your PC; nothing is sent anywhere. A line takes about half a second to prepare.
   - **Unusual words**: words the voice doesn't know, such as unusual names in a reminder's title, are sounded out by simple rules, and short all-caps words are spelled. They may now and then sound a little off.
+- **Takeover** (0.19.0): after **10 minutes** off track without a stop (adjustable, always after the Push), the whole screen you're on dims and a card asks you to choose. Other screens stay usable.
+  - **Start focus** starts a focus session on the reminder.
+  - **Snooze 5 min**, at most **2 an hour**. When it ends and you're still off track, the Push shows at once and the Takeover comes back 5 minutes later. Snoozed time still counts toward real talk.
+  - **Take a 15-min break**, at most **3 per focus time**. Coach doesn't watch during a break, and the Coach bar shows "on a break until 3:15 pm" with **End break**. If you're off track when it ends, the Push shows at once.
+  - A used-up choice is greyed out with its reason, such as "No snoozes left until 3:40 pm". The counts are saved, so restarting RemMe doesn't reset them.
+  - It takes the keyboard, and **Esc** and **Alt+F4** don't close it. **Quit** still works; if a Takeover was up and you're still off track after a restart, the Push shows at once.
+  - While it's up, **Settings → Coach** is read-only and **Pause** is greyed out everywhere.
+  - It uses its own lines ("Focus, snooze or a real break. Not more of this."), or real talk once that's on, and it's spoken when Speak is on.
+  - In a game running exclusive full-screen, where the overlay would be hidden, Coach shows the Push with its sound instead.
+  - Switch it off with **Takeover** in **Settings → Coach**; the Push then repeats instead.
+- **This is for work** (0.19.0): a button on the Nudge and Push when you're on a distraction. Coach ignores that list entry (for example the YouTube site or the steam app) for **1 hour**. The Coach bar shows "YouTube allowed for work until 4:10 pm" with **Undo**. Only the entry and its end time are saved, never a window title. It isn't offered on the Takeover.
 - **Coming next**:
-  - 0.19.0: a **Takeover** overlay after 10 minutes, and **This is for work**.
   - 0.20.0: a daily summary.
 
 ## Pomodoro timer
@@ -344,11 +356,11 @@ These were built and tested by simulated input, but not yet seen working on a re
 - The calendar's ↻ tooltip with a real mouse, and how many chips fit in a month cell on other window sizes.
 - Dragging cards between the new shared-width board columns with a real mouse.
 - Coach with a real browser on YouTube (tested with Notepad as the distraction; sites are covered by unit tests), the tray's Coach menu and the amber dot (Windows draws these), the Coach popup on a second monitor, and the floating list's Coach button.
+- Coach's Takeover on a second monitor, its spoken line (the voice wasn't downloaded for the test), the exclusive full-screen fallback (no full-screen game was tried), and the tray menu's greyed-out Pause during a Takeover (Windows draws the menu). Everything else in the Takeover was checked on the real screen with Notepad as the distraction.
 - Hearing Coach's voice out loud (checked by measuring the audio: real speech, about 3 seconds per line), a spoken Push from a real off-track stretch with the speakers on, and the voice on slower PCs.
 
 ## Planned
 
 - **Coach, the rest** (see [Coach](#coach)):
-  - 0.19.0: the Takeover and "This is for work"
   - 0.20.0: the daily summary
 - **Later**, each after its own grilling: an Android version, and a free open-source AI that runs on the PC.

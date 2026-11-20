@@ -4,7 +4,7 @@
  * (and, later, to be spoken). {reminder} is the named reminder's title, {distraction} the distraction's name.
  */
 
-export type LineStep = "nudge" | "push";
+export type LineStep = "nudge" | "push" | "takeover";
 
 const NUDGE = [
   "Hey, {reminder} is due. Back to it?",
@@ -26,6 +26,18 @@ const PUSH = [
   "Not later. Now. {reminder}.",
   "{distraction} again? {reminder} is due.",
   "Get back to {reminder}. The rest can wait.",
+];
+
+/** The Takeover: the screen is dimmed and Coach wants a decision. */
+const TAKEOVER = [
+  "Still on {distraction}. Time to choose.",
+  "Okay. We're stopping here. What's it going to be?",
+  "{reminder} has waited long enough. Pick one.",
+  "This is where today turns around. Start {reminder}.",
+  "You've ignored two warnings. Decide now.",
+  "{distraction} will still be there later. {reminder} needs you now.",
+  "Screen's dimmed. Your plan isn't. Back to {reminder}?",
+  "Focus, snooze or a real break. Not more of this.",
 ];
 
 const REAL_TALK = [
@@ -77,13 +89,15 @@ function short(title: string): string {
 /** Every line that fits this step and what Coach knows right now. */
 export function linesFor(step: LineStep, ctx: LineContext): string[] {
   const base =
-    ctx.realTalk && step === "push"
+    ctx.realTalk && step !== "nudge"
       ? [...REAL_TALK, ...(ctx.ownLines ?? [])]
-      : ctx.distraction === null && ctx.reminder !== null
-        ? IDLE
-        : step === "nudge"
-          ? NUDGE
-          : PUSH;
+      : step === "takeover"
+        ? TAKEOVER
+        : ctx.distraction === null && ctx.reminder !== null
+          ? IDLE
+          : step === "nudge"
+            ? NUDGE
+            : PUSH;
   // Drop lines that need a name Coach doesn't have.
   const fits = base.filter((l) => (ctx.reminder !== null || !l.includes("{reminder}")) && (ctx.distraction !== null || !l.includes("{distraction}")));
   return fits.length ? fits : GENERAL;

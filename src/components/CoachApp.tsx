@@ -7,8 +7,8 @@ import { speak } from "../voice";
 import type { AppData } from "../types";
 
 /** A step of the ladder, as Rust sends it. */
-interface CoachStep {
-  step: "nudge" | "push";
+export interface CoachStep {
+  step: "nudge" | "push" | "takeover";
   named: { id: string; title: string } | null;
   distraction: string | null;
   realTalk: boolean;
@@ -26,8 +26,29 @@ function readRecent(): string[] {
   }
 }
 
+/** Picks a fresh line for a step, filled in, and remembers it so it isn't repeated soon. */
+export function lineFor(payload: CoachStep, ownLines: string[]): string {
+  const recent = readRecent();
+  const ctx = { reminder: payload.named?.title ?? null, distraction: payload.distraction, realTalk: payload.realTalk, ownLines };
+  const next = pickLine(payload.step, ctx, recent);
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify([next, ...recent].slice(0, 3)));
+  } catch {
+    // Not repeating lines is a nicety only.
+  }
+  return fill(next, ctx);
+}
+
+/** Plays the Push sound, then speaks `line` if Speak is on (real talk can have its own voice). Returns a stop function. */
+export function soundAndSpeak(line: string, realTalk: boolean, c: AppData["settings"]["coach"]): () => void {
+  playPush();
+  if (!c.speak) return () => {};
+  const voice = realTalk && c.realTalkVoice ? c.realTalkVoice : c.voice;
+  return speak(line, voice, c.voiceSpeed, c.voiceVolume, 700);
+}
+
 /** Coach's sound: two low notes for the Push, distinct from the timer's chime. */
-function playPush() {
+export function playPush() {
   try {
     const audio = new AudioContext();
     const start = audio.currentTime;
@@ -64,28 +85,12 @@ export function CoachApp({ data }: { data: AppData }) {
 
   useEffect(() => {
     const unlisten = listen<CoachStep>("coach-step", ({ payload }) => {
-      const recent = readRecent();
-      const ctx = { reminder: payload.named?.title ?? null, distraction: payload.distraction, realTalk: payload.realTalk, ownLines: ownRef.current };
-      const next = pickLine(payload.step, ctx, recent);
-      try {
-        localStorage.setItem(RECENT_KEY, JSON.stringify([next, ...recent].slice(0, 3)));
-      } catch {
-        // Not repeating lines is a nicety only.
-      }
+      const filled = lineFor(payload, ownRef.current);
       setStep(payload);
-      const filled = fill(next, ctx);
       setLine(filled);
       window.clearTimeout(timer.current);
       stopSpeech.current();
-      if (payload.step === "push") {
-        playPush();
-        // Speak the Push after its sound; real talk can have its own voice.
-        const c = coachRef.current;
-        if (c.speak) {
-          const voice = payload.realTalk && c.realTalkVoice ? c.realTalkVoice : c.voice;
-          stopSpeech.current = speak(filled, voice, c.voiceSpeed, c.voiceVolume, 700);
-        }
-      }
+      if (payload.step === "push") stopSpeech.current = soundAndSpeak(filled, payload.realTalk, coachRef.current);
       else timer.current = window.setTimeout(() => answer("dismiss", null), NUDGE_MS);
     });
     return () => {
@@ -94,7 +99,7 @@ export function CoachApp({ data }: { data: AppData }) {
     };
   }, []);
 
-  const answer = (kind: "back" | "focus" | "dismiss", taskId: string | null) => {
+  const answer = (kind: "back" | "focus" | "work" | "dismiss", taskId: string | null) => {
     window.clearTimeout(timer.current);
     stopSpeech.current();
     setStep(null);
@@ -132,6 +137,11 @@ export function CoachApp({ data }: { data: AppData }) {
         <button className="btn" onClick={() => answer("focus", id)}>
           Start focus
         </button>
+        {step.distraction && (
+          <button className="btn subtle" onClick={() => answer("work", id)} title={`Coach ignores ${step.distraction} for 1 hour`}>
+            This is for work
+          </button>
+        )}
         {push && (
           <button className="btn subtle" onClick={() => answer("dismiss", id)}>
             Dismiss

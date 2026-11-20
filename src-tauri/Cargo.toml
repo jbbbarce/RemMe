@@ -36,7 +36,7 @@ sha2 = "0.10"
 [target.'cfg(windows)'.dependencies]
 # The same version Tauri uses: handing focus back after showing the floating list, title bar
 # colours, rounded corners and the Windows accent colour.
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading", "Win32_System_SystemInformation", "Win32_UI_Input_KeyboardAndMouse", "Win32_Graphics_Gdi", "UI", "UI_ViewManagement"] }
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading", "Win32_System_SystemInformation", "Win32_UI_Input_KeyboardAndMouse", "Win32_Graphics_Gdi", "Win32_UI_Shell", "UI", "UI_ViewManagement"] }
 sysinfo = { version = "0.40.1", default-features = false, features = ["system"] }
 # The toast library the notification plugin uses; called directly for buttons and reminder-style popups.
 tauri-winrt-notification = "0.8.1"

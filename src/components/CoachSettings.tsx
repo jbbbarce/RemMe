@@ -6,6 +6,7 @@ import { VOICE_DOWNLOAD_MB, megabytes, speak, useVoiceStatus } from "../voice";
 import { Dropdown } from "./ui";
 import type { CoachSettings, Distraction } from "../types";
 import { Switch } from "./Inspector";
+import { useCoachState } from "./CoachStatus";
 
 /** Monday first on screen; the data keeps Sunday first, like `Date.getDay()`. */
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -53,10 +54,19 @@ function Minutes({ label, hint, value, max = 120, onChange }: { label: string; h
 
 /** Settings → Coach. */
 export function CoachSettingsSection({ coach, onChange }: { coach: CoachSettings; onChange(coach: CoachSettings): void }) {
-  const set = (patch: Partial<CoachSettings>) => onChange(coachFrom({ ...coach, ...patch }));
+  // Locked while a Takeover is up, so it can't be talked out of in the moment.
+  const locked = useCoachState().takeoverUp;
+  const set = (patch: Partial<CoachSettings>) => {
+    if (!locked) onChange(coachFrom({ ...coach, ...patch }));
+  };
 
   return (
-    <>
+    <fieldset className="coach-settings" disabled={locked}>
+      {locked && (
+        <p className="coach-locked" role="status">
+          Locked while a Takeover is up. Choose Start focus, a snooze or a break first.
+        </p>
+      )}
       <Row label="Turn on Coach">
         <Switch checked={coach.enabled} onChange={(enabled) => set({ enabled })} />
       </Row>
@@ -85,6 +95,21 @@ export function CoachSettingsSection({ coach, onChange }: { coach: CoachSettings
         <Minutes label="Idle after" hint="No mouse or keyboard for this long counts as idle." value={coach.idleMinutes} onChange={(idleMinutes) => set({ idleMinutes })} />
         <Minutes label="Nudge after" hint="Off track this long without a stop." value={coach.nudgeAfter} onChange={(nudgeAfter) => set({ nudgeAfter })} />
         <Minutes label="Push after" hint="A firmer popup with a sound, which stays until you answer." value={coach.pushAfter} onChange={(pushAfter) => set({ pushAfter })} />
+        <Row
+          label="Takeover"
+          hint="Dims the screen you're on until you choose: start focus, snooze 5 minutes (2 an hour) or take a 15-minute break (3 per focus time)."
+        >
+          <Switch checked={coach.takeover} onChange={(takeover) => set({ takeover })} />
+        </Row>
+        {coach.takeover && (
+          <Minutes
+            label="Takeover after"
+            hint="Off track this long without a stop. Always after the Push."
+            value={coach.takeoverAfter}
+            max={240}
+            onChange={(takeoverAfter) => set({ takeoverAfter })}
+          />
+        )}
       </div>
 
       <div className="settings-block">
@@ -103,7 +128,7 @@ export function CoachSettingsSection({ coach, onChange }: { coach: CoachSettings
       </div>
 
       <VoiceSettings coach={coach} set={set} />
-    </>
+    </fieldset>
   );
 }
 

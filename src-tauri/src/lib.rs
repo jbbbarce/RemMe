@@ -41,6 +41,7 @@ const DEFAULT_POMODORO: &str = "Ctrl+Shift+P";
 const MAIN: &str = "main";
 const FLOAT: &str = "float";
 const COACH: &str = "coach";
+const TAKEOVER: &str = "takeover";
 /// Coach's voice files, inside the data folder.
 const VOICE_DIR: &str = "voice";
 
@@ -66,6 +67,12 @@ struct UiState {
     recovery: Option<Recovery>,
     /// Coach is paused until this Unix time (seconds).
     coach_paused_until: Option<i64>,
+    /// The Takeover's snoozes and breaks, so restarting RemMe doesn't reset their limits.
+    coach_limits: coach::Limits,
+    /// Distractions allowed for work for an hour: list entries only, never window titles.
+    coach_work: Vec<coach::WorkException>,
+    /// A Takeover was up; after a restart, the ladder resumes at the Push.
+    coach_takeover_up: bool,
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -119,6 +126,11 @@ struct CoachRun {
     /// Whether the tray menu has its Coach items, and whether the icon has its marker.
     menu_on: Option<bool>,
     marked: Option<bool>,
+    /// The list entry (key, name) of the last distraction a popup named, for "This is for work".
+    last_entry: Option<(String, String)>,
+    takeover_up: bool,
+    /// What you were doing before Coach's own popup or Takeover came to the front.
+    last_reading: Option<coach::Reading>,
 }
 
 /// What the windows show about Coach: the sidebar bar, the floating list, the tray.
@@ -130,6 +142,25 @@ struct CoachState {
     /// "watching until 5:00 pm", "paused until 3:15 pm", or "on, waiting for focus time".
     label: String,
     paused: bool,
+    /// A Takeover is up: Coach's settings and Pause are locked.
+    takeover_up: bool,
+    snoozes_left: usize,
+    /// With no snoozes left, when the next one frees up ("3:40 pm").
+    next_snooze: Option<String>,
+    breaks_left: u32,
+    /// When the current break ends ("3:15 pm").
+    break_until: Option<String>,
+    /// Distractions allowed for work right now, soonest to end first.
+    work: Vec<WorkView>,
+}
+
+#[derive(Clone, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkView {
+    entry: String,
+    name: String,
+    /// "4:10 pm".
+    until: String,
 }
 
 /// One step of the ladder, for the Coach popup.
@@ -1035,7 +1066,14 @@ fn load_data(state: State<AppState>) -> Value {
 }
 
 #[tauri::command]
-fn save_data(app: AppHandle, window: WebviewWindow, state: State<AppState>, data: Value) -> Result<(), String> {
+fn save_data(app: AppHandle, window: WebviewWindow, state: State<AppState>, mut data: Value) -> Result<(), String> {
+    // Coach's settings are locked while a Takeover is up.
+    if state.coach.lock().unwrap().takeover_up {
+        let current = state.data.lock().unwrap()["settings"]["coach"].clone();
+        if !current.is_null() {
+            data["settings"]["coach"] = current;
+        }
+    }
     ensure_daily_backup(&state);
     write_json(&state.dir.join(DATA_FILE), &data)?;
     *state.data.lock().unwrap() = data.clone();
@@ -1301,7 +1339,8 @@ async fn running_apps() -> Vec<String> {
 
 /// The tray menu. With Coach on it gets a Coach submenu to pause or resume it (Coach is
 /// switched off only in Settings, so it can't be turned off on a whim).
-fn tray_menu(app: &AppHandle, coach_on: bool, paused: bool) -> tauri::Result<Menu<tauri::Wry>> {
+/// While a Takeover is up, Pause is greyed out (`locked`).
+fn tray_menu(app: &AppHandle, coach_on: bool, paused: bool, locked: bool) -> tauri::Result<Menu<tauri::Wry>> {
     let open = MenuItem::with_id(app, "open", "Open RemMe", true, None::<&str>)?;
     let add = MenuItem::with_id(app, "add", "Add reminder…", true, None::<&str>)?;
     let float = MenuItem::with_id(app, "float", "Show or hide floating list", true, None::<&str>)?;
@@ -1311,16 +1350,16 @@ fn tray_menu(app: &AppHandle, coach_on: bool, paused: bool) -> tauri::Result<Men
     if !coach_on {
         return Menu::with_items(app, &[&open, &add, &sep()?, &float, &lock, &sep()?, &quit]);
     }
-    let p15 = MenuItem::with_id(app, "coach-15", "Pause for 15 minutes", true, None::<&str>)?;
-    let p60 = MenuItem::with_id(app, "coach-60", "Pause for 1 hour", true, None::<&str>)?;
-    let pday = MenuItem::with_id(app, "coach-day", "Pause for the rest of the day", true, None::<&str>)?;
+    let p15 = MenuItem::with_id(app, "coach-15", "Pause for 15 minutes", !locked, None::<&str>)?;
+    let p60 = MenuItem::with_id(app, "coach-60", "Pause for 1 hour", !locked, None::<&str>)?;
+    let pday = MenuItem::with_id(app, "coach-day", "Pause for the rest of the day", !locked, None::<&str>)?;
     let resume = MenuItem::with_id(app, "coach-resume", "Resume Coach", paused, None::<&str>)?;
     let coach_menu = Submenu::with_items(app, "Coach", true, &[&p15, &p60, &pday, &sep()?, &resume])?;
     Menu::with_items(app, &[&open, &add, &sep()?, &float, &lock, &sep()?, &coach_menu, &sep()?, &quit])
 }
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let menu = tray_menu(app, false, false)?;
+    let menu = tray_menu(app, false, false, false)?;
 
     TrayIconBuilder::with_id("tray")
         .icon(app.default_window_icon().cloned().expect("app icon is bundled"))
@@ -1424,17 +1463,17 @@ fn publish_coach_state(app: &AppHandle, next: CoachState) {
             return;
         }
         let menu_key = next.enabled;
-        let menu_changed = run.menu_on != Some(menu_key) || run.state.paused != next.paused;
+        let menu_changed = run.menu_on != Some(menu_key) || run.state.paused != next.paused || run.state.takeover_up != next.takeover_up;
         let marker_changed = run.marked != Some(next.watching);
         run.menu_on = Some(menu_key);
         run.marked = Some(next.watching);
         run.state = next.clone();
-        (menu_changed, marker_changed, next.paused)
+        (menu_changed, marker_changed, (next.paused, next.takeover_up))
     };
     let _ = app.emit("coach-state", next.clone());
     if let Some(tray) = app.tray_by_id("tray") {
         if menu_changed {
-            if let Ok(menu) = tray_menu(app, next.enabled, paused) {
+            if let Ok(menu) = tray_menu(app, next.enabled, paused.0, paused.1) {
                 let _ = tray.set_menu(Some(menu));
             }
         }
@@ -1478,19 +1517,25 @@ fn run_coach(app: AppHandle) {
     }
 }
 
+fn local_clock(t: i64) -> String {
+    let at = DateTime::from_timestamp(t, 0).map(|t| t.with_timezone(&Local).naive_local()).unwrap_or_else(local_now);
+    coach::clock(at)
+}
+
 fn coach_check(app: &AppHandle) {
     let state = app.state::<AppState>();
     let data = state.data.lock().unwrap().clone();
     let settings = coach::settings(&data);
     let now = local_now();
+    let now_s = Utc::now().timestamp();
     if !settings.enabled {
         state.coach.lock().unwrap().ladder.leave();
+        set_takeover_up(app, false);
         publish_coach_state(app, CoachState { enabled: false, ..CoachState::default() });
         return;
     }
     let paused_until = {
         let mut ui = state.ui.lock().unwrap();
-        let now_s = Utc::now().timestamp();
         match ui.coach_paused_until {
             Some(until) if until > now_s => Some(until),
             Some(_) => {
@@ -1503,8 +1548,7 @@ fn coach_check(app: &AppHandle) {
     };
     if let Some(until) = paused_until {
         state.coach.lock().unwrap().ladder.restart();
-        let until = DateTime::from_timestamp(until, 0).map(|t| t.with_timezone(&Local).naive_local()).unwrap_or(now);
-        publish_coach_state(app, CoachState { enabled: true, watching: false, paused: true, label: format!("paused until {}", coach::clock(until)) });
+        publish_coach_state(app, CoachState { enabled: true, paused: true, label: format!("paused until {}", local_clock(until)), ..CoachState::default() });
         return;
     }
     let (session_ends, session_task) = {
@@ -1514,33 +1558,160 @@ fn coach_check(app: &AppHandle) {
     let overdue = coach::any_overdue(&data, now);
     let Some(block) = coach::focus_block(&settings, now, session_ends, overdue) else {
         state.coach.lock().unwrap().ladder.leave();
+        set_takeover_up(app, false);
         publish_coach_state(app, CoachState { enabled: true, label: "on, waiting for focus time".into(), ..CoachState::default() });
         return;
     };
-    let label = match block.ends {
-        Some(end) if session_ends == Some(end) && !block.key.starts_with("hours:") => "watching until this focus session ends".into(),
-        Some(end) => format!("watching until {}", coach::clock(end)),
-        None => "watching while something is overdue".into(),
-    };
-    publish_coach_state(app, CoachState { enabled: true, watching: true, paused: false, label });
 
-    let reading = match front_window() {
-        Some((app_name, title)) => coach::classify(&app_name, &title, idle_secs(), &settings),
-        None => coach::classify("", "", idle_secs(), &settings),
+    // Snoozes, breaks and work exceptions: drop what has run out.
+    let (limits, work, break_ended) = {
+        let mut ui = state.ui.lock().unwrap();
+        let mut changed = false;
+        let before = ui.coach_work.len();
+        ui.coach_work.retain(|w| w.until > now_s);
+        changed |= ui.coach_work.len() != before;
+        if ui.coach_limits.snooze_until.is_some_and(|u| u <= now_s) {
+            ui.coach_limits.snooze_until = None;
+            changed = true;
+        }
+        let mut break_ended = false;
+        if let Some(until) = ui.coach_limits.break_until {
+            let here = ui.coach_limits.break_block == block.key;
+            if until <= now_s || !here {
+                ui.coach_limits.break_until = None;
+                break_ended = here;
+                changed = true;
+            }
+        }
+        if changed {
+            save_ui(&state, &ui);
+        }
+        (ui.coach_limits.clone(), ui.coach_work.clone(), break_ended)
+    };
+    if break_ended {
+        state.coach.lock().unwrap().ladder.resume_at_push();
+    }
+
+    let takeover_up = state.coach.lock().unwrap().takeover_up;
+    let mut soonest = work.clone();
+    soonest.sort_by_key(|w| w.until);
+    let label = if let Some(until) = limits.break_until {
+        format!("on a break until {}", local_clock(until))
+    } else if let Some(w) = soonest.first() {
+        let more = if soonest.len() > 1 { format!(" (+{})", soonest.len() - 1) } else { String::new() };
+        format!("{} allowed for work until {}{more}", w.name, local_clock(w.until))
+    } else {
+        match block.ends {
+            Some(end) if session_ends == Some(end) && !block.key.starts_with("hours:") => "watching until this focus session ends".into(),
+            Some(end) => format!("watching until {}", coach::clock(end)),
+            None => "watching while something is overdue".into(),
+        }
+    };
+    publish_coach_state(
+        app,
+        CoachState {
+            enabled: true,
+            watching: limits.break_until.is_none(),
+            paused: false,
+            label,
+            takeover_up,
+            snoozes_left: limits.snoozes_left(now_s),
+            next_snooze: limits.next_snooze(now_s).map(local_clock),
+            breaks_left: limits.breaks_left(&block.key),
+            break_until: limits.break_until.map(local_clock),
+            work: soonest.iter().map(|w| WorkView { entry: w.entry.clone(), name: w.name.clone(), until: local_clock(w.until) }).collect(),
+        },
+    );
+    // On a break, Coach doesn't watch at all.
+    if limits.break_until.is_some() {
+        return;
+    }
+
+    let for_work = coach::active_work(&work, now_s);
+    let reading = if coach_window_in_front(app) {
+        // Clicking Coach's popup (or looking at the Takeover) isn't getting back to work: keep
+        // the reading from before, so leaving a Push open can't stop the climb.
+        state.coach.lock().unwrap().last_reading.clone().unwrap_or(coach::Reading::OnTrack)
+    } else {
+        let reading = match front_window() {
+            Some((app_name, title)) => coach::classify(&app_name, &title, idle_secs(), &settings, &for_work),
+            None => coach::classify("", "", idle_secs(), &settings, &for_work),
+        };
+        state.coach.lock().unwrap().last_reading = Some(reading.clone());
+        reading
     };
     let (step, real_talk) = {
         let mut run = state.coach.lock().unwrap();
-        let step = run.ladder.tick(Utc::now().timestamp(), &block.key, &reading, &settings);
+        if let Some(until) = limits.snooze_until {
+            run.ladder.hold(until);
+        }
+        let step = run.ladder.tick(now_s, &block.key, &reading, &settings);
         (step, run.ladder.real_talk)
     };
-    let Some(step) = step else { return };
+    // While a Takeover is up, it stays the only thing on screen.
+    let Some(step) = step.filter(|_| !takeover_up) else { return };
     let session_task = session_ends.and(session_task);
     let named = coach::pick_reminder(&data, session_task.as_deref(), now);
-    let distraction = match reading {
-        coach::Reading::Distraction(name) => Some(name),
+    let distraction = match &reading {
+        coach::Reading::Distraction { name, entry } => {
+            state.coach.lock().unwrap().last_entry = Some((entry.clone(), name.clone()));
+            Some(name.clone())
+        }
         _ => None,
     };
-    show_coach_popup(app, CoachStep { step, named, distraction, real_talk });
+    let step = CoachStep { step, named, distraction, real_talk };
+    if matches!(step.step, coach::Step::Takeover) {
+        if exclusive_fullscreen() {
+            // A game in exclusive full-screen would hide the overlay: push with a sound instead.
+            show_coach_popup(app, CoachStep { step: coach::Step::Push, ..step });
+        } else {
+            show_takeover(app, step);
+        }
+    } else {
+        show_coach_popup(app, step);
+    }
+}
+
+/// Whether Coach's popup or Takeover is the front window.
+#[cfg(windows)]
+fn coach_window_in_front(app: &AppHandle) -> bool {
+    let front = foreground_window();
+    [COACH, TAKEOVER]
+        .iter()
+        .filter_map(|label| app.get_webview_window(label))
+        .any(|w| w.hwnd().is_ok_and(|h| h.0 as isize == front))
+}
+
+#[cfg(not(windows))]
+fn coach_window_in_front(_app: &AppHandle) -> bool {
+    false
+}
+
+/// Whether a Direct3D app is running exclusive full-screen, which would hide any window on top.
+/// Windows' own signal can be thrown by RemMe's Takeover (a whole-monitor window), so the front
+/// window must also be another app's, covering its whole monitor.
+#[cfg(windows)]
+fn exclusive_fullscreen() -> bool {
+    use windows::Win32::Foundation::{HWND, RECT};
+    use windows::Win32::UI::Shell::{SHQueryUserNotificationState, QUNS_RUNNING_D3D_FULL_SCREEN};
+    use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+    if !unsafe { SHQueryUserNotificationState() }.is_ok_and(|s| s == QUNS_RUNNING_D3D_FULL_SCREEN) {
+        return false;
+    }
+    if front_window().is_none_or(|(name, _)| name.eq_ignore_ascii_case("remme.exe")) {
+        return false;
+    }
+    let front = foreground_window();
+    let mut r = RECT::default();
+    if unsafe { GetWindowRect(HWND(front as *mut _), &mut r) }.is_err() {
+        return false;
+    }
+    monitor_area(front, true).is_some_and(|(left, top, right, bottom)| r.left <= left && r.top <= top && r.right >= right && r.bottom >= bottom)
+}
+
+#[cfg(not(windows))]
+fn exclusive_fullscreen() -> bool {
+    false
 }
 
 /// Shows Coach's popup in the bottom-right of the monitor you're using, without taking focus.
@@ -1548,9 +1719,10 @@ fn show_coach_popup(app: &AppHandle, step: CoachStep) {
     let Some(window) = app.get_webview_window(COACH) else { return };
     let previous = foreground_window();
     let push = matches!(step.step, coach::Step::Push);
-    let (w, h) = if push { (380.0, 184.0) } else { (340.0, 164.0) };
+    // Wide enough for "This is for work" next to the other buttons.
+    let (w, h) = if push { (460.0, 184.0) } else { (400.0, 164.0) };
     let _ = window.set_size(tauri::LogicalSize::new(w, h));
-    if let Some(area) = work_area_of(previous) {
+    if let Some(area) = monitor_area(previous, false) {
         let scale = window.scale_factor().unwrap_or(1.0);
         let (pw, ph) = ((w * scale) as i32, (h * scale) as i32);
         let margin = (16.0 * scale) as i32;
@@ -1558,13 +1730,79 @@ fn show_coach_popup(app: &AppHandle, step: CoachStep) {
     }
     let _ = app.emit_to(COACH, "coach-step", step);
     let _ = window.set_always_on_top(true);
-    let _ = window.show();
+    show_inactive(app, &window);
     restore_foreground(app, previous);
 }
 
-/// The work area (left, top, right, bottom, in pixels) of the monitor showing `hwnd`.
+/// Shows `window` on top without activating it, so the app you're in keeps the keyboard. (Showing
+/// it normally and handing focus back can lose a race, leaving the popup with the keyboard.)
 #[cfg(windows)]
-fn work_area_of(hwnd: isize) -> Option<(i32, i32, i32, i32)> {
+fn show_inactive(app: &AppHandle, window: &tauri::WebviewWindow) {
+    let Ok(hwnd) = window.hwnd() else {
+        let _ = window.show();
+        return;
+    };
+    let hwnd = hwnd.0 as isize;
+    let _ = app.run_on_main_thread(move || {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, ShowWindow, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_SHOWNOACTIVATE};
+        let hwnd = HWND(hwnd as *mut _);
+        unsafe {
+            let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+            let _ = SetWindowPos(hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+        }
+    });
+}
+
+#[cfg(not(windows))]
+fn show_inactive(_app: &AppHandle, window: &tauri::WebviewWindow) {
+    let _ = window.show();
+}
+
+/// Covers the whole monitor you're using with the Takeover, and takes focus. Other monitors stay usable.
+fn show_takeover(app: &AppHandle, step: CoachStep) {
+    let Some(window) = app.get_webview_window(TAKEOVER) else { return };
+    if let Some(popup) = app.get_webview_window(COACH) {
+        let _ = popup.hide();
+    }
+    if let Some((left, top, right, bottom)) = monitor_area(foreground_window(), true) {
+        let _ = window.set_position(tauri::PhysicalPosition::new(left, top));
+        let _ = window.set_size(tauri::PhysicalSize::new((right - left) as u32, (bottom - top) as u32));
+    }
+    set_takeover_up(app, true);
+    let _ = app.emit_to(TAKEOVER, "coach-takeover", step);
+    let _ = window.set_always_on_top(true);
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
+/// Records whether a Takeover is up (saved, so a restart resumes at the Push), tells the windows
+/// (which lock Coach's settings and Pause), and hides the overlay when it's cleared.
+fn set_takeover_up(app: &AppHandle, up: bool) {
+    let state = app.state::<AppState>();
+    let next = {
+        let mut run = state.coach.lock().unwrap();
+        if run.takeover_up == up {
+            return;
+        }
+        run.takeover_up = up;
+        CoachState { takeover_up: up, ..run.state.clone() }
+    };
+    {
+        let mut ui = state.ui.lock().unwrap();
+        ui.coach_takeover_up = up;
+        save_ui(&state, &ui);
+    }
+    if !up && let Some(window) = app.get_webview_window(TAKEOVER) {
+        let _ = window.hide();
+    }
+    publish_coach_state(app, next);
+}
+
+/// The work area, or with `full` the whole monitor (left, top, right, bottom, in pixels), of the
+/// monitor showing `hwnd`.
+#[cfg(windows)]
+fn monitor_area(hwnd: isize, full: bool) -> Option<(i32, i32, i32, i32)> {
     use windows::Win32::Foundation::HWND;
     use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTOPRIMARY};
     unsafe {
@@ -1573,13 +1811,13 @@ fn work_area_of(hwnd: isize) -> Option<(i32, i32, i32, i32)> {
         if !GetMonitorInfoW(monitor, &mut info).as_bool() {
             return None;
         }
-        let r = info.rcWork;
+        let r = if full { info.rcMonitor } else { info.rcWork };
         Some((r.left, r.top, r.right, r.bottom))
     }
 }
 
 #[cfg(not(windows))]
-fn work_area_of(_hwnd: isize) -> Option<(i32, i32, i32, i32)> {
+fn monitor_area(_hwnd: isize, _full: bool) -> Option<(i32, i32, i32, i32)> {
     None
 }
 
@@ -1588,30 +1826,98 @@ fn coach_state(state: State<AppState>) -> CoachState {
     state.coach.lock().unwrap().state.clone()
 }
 
-/// An answer from Coach's popup: "back" (show the reminder), "focus" (start a focus session on it) or "dismiss".
+/// An answer from Coach's popup or the Takeover:
+/// - "back" shows the reminder, and "focus" starts a focus session on it
+/// - "snooze" (5 minutes, 2 an hour) and "break" (15 minutes, 3 a block), from the Takeover
+/// - "work" allows the distraction last named for an hour
+/// - "dismiss"
+///
+/// A snooze or break past its limit is refused and leaves the Takeover up.
 #[tauri::command]
-fn coach_answer(app: AppHandle, answer: String, task_id: Option<String>) {
-    if let Some(window) = app.get_webview_window(COACH) {
-        let _ = window.hide();
-    }
+fn coach_answer(app: AppHandle, answer: String, task_id: Option<String>) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let now_s = Utc::now().timestamp();
     match answer.as_str() {
+        "snooze" => {
+            let until = {
+                let mut ui = state.ui.lock().unwrap();
+                let until = ui.coach_limits.snooze(now_s).ok_or("No snoozes left this hour.")?;
+                save_ui(&state, &ui);
+                until
+            };
+            state.coach.lock().unwrap().ladder.hold(until);
+        }
+        "break" => {
+            let block = state.coach.lock().unwrap().ladder.block().map(String::from).ok_or("It isn't focus time.")?;
+            {
+                let mut ui = state.ui.lock().unwrap();
+                ui.coach_limits.take_break(now_s, &block).ok_or("No breaks left in this focus block.")?;
+                save_ui(&state, &ui);
+            }
+            state.coach.lock().unwrap().ladder.restart();
+        }
+        "work" => {
+            let entry = state.coach.lock().unwrap().last_entry.clone();
+            if let Some((entry, name)) = entry {
+                let mut ui = state.ui.lock().unwrap();
+                coach::allow_for_work(&mut ui.coach_work, &entry, &name, now_s);
+                save_ui(&state, &ui);
+            }
+            state.coach.lock().unwrap().ladder.restart();
+        }
         "back" => {
             show_main_window(&app);
             if task_id.is_some() {
-                let _ = app.emit_to(MAIN, "popup-action", PopupAction { action: "open", task_id, minutes: None });
+                let _ = app.emit_to(MAIN, "popup-action", PopupAction { action: "open", task_id: task_id.clone(), minutes: None });
             }
         }
         "focus" => {
-            app.state::<AppState>().coach.lock().unwrap().ladder.restart();
+            state.coach.lock().unwrap().ladder.restart();
             pomodoro_start(app.clone(), task_id);
         }
         _ => {}
     }
+    if let Some(window) = app.get_webview_window(COACH) {
+        let _ = window.hide();
+    }
+    set_takeover_up(&app, false);
+    coach_check(&app);
+    Ok(())
 }
 
-/// Pauses Coach for `minutes`, or until midnight.
+/// Ends a break early. Off track, the Push shows at once.
+#[tauri::command]
+fn coach_end_break(app: AppHandle) {
+    {
+        let state = app.state::<AppState>();
+        let mut ui = state.ui.lock().unwrap();
+        if ui.coach_limits.break_until.take().is_none() {
+            return;
+        }
+        save_ui(&state, &ui);
+    }
+    app.state::<AppState>().coach.lock().unwrap().ladder.resume_at_push();
+    coach_check(&app);
+}
+
+/// Stops allowing a distraction for work.
+#[tauri::command]
+fn coach_work_undo(app: AppHandle, entry: String) {
+    {
+        let state = app.state::<AppState>();
+        let mut ui = state.ui.lock().unwrap();
+        ui.coach_work.retain(|w| w.entry != entry);
+        save_ui(&state, &ui);
+    }
+    coach_check(&app);
+}
+
+/// Pauses Coach for `minutes`, or until midnight. Refused while a Takeover is up.
 #[tauri::command]
 fn coach_pause(app: AppHandle, minutes: Option<i64>) {
+    if app.state::<AppState>().coach.lock().unwrap().takeover_up {
+        return;
+    }
     let until = match minutes {
         Some(m) => Utc::now().timestamp() + m.clamp(1, 24 * 60) * 60,
         None => coach::end_of_day(local_now()).and_local_timezone(Local).earliest().map_or(Utc::now().timestamp() + 3600, |t| t.timestamp()),
@@ -1777,6 +2083,8 @@ pub fn run() {
             coach_answer,
             coach_pause,
             coach_resume,
+            coach_end_break,
+            coach_work_undo,
             voice_status,
             voice_download,
             voice_remove,
@@ -1816,7 +2124,9 @@ pub fn run() {
             // Closing a window hides it; the app keeps running in the tray until Quit.
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
-                if window.label() == FLOAT {
+                if window.label() == TAKEOVER {
+                    // Alt+F4 doesn't clear a Takeover: only its buttons do.
+                } else if window.label() == FLOAT {
                     set_float_visible(window.app_handle(), false);
                 } else {
                     let _ = window.hide();
@@ -1846,13 +2156,18 @@ pub fn run() {
                 ..Timer::default()
             };
             let (float_visible, float_locked) = (ui.float_visible, ui.float_locked);
+            // A Takeover was up when RemMe last closed: off track, the ladder resumes at the Push.
+            let mut coach_run = CoachRun::default();
+            if std::mem::take(&mut ui.coach_takeover_up) {
+                coach_run.ladder.resume_at_push();
+            }
             app.manage(AppState {
                 dir,
                 data: Mutex::new(data),
                 ui: Mutex::new(ui),
                 shortcuts: Mutex::new(Shortcuts::default()),
                 timer: Mutex::new(timer),
-                coach: Mutex::new(CoachRun::default()),
+                coach: Mutex::new(coach_run),
                 voice: Mutex::new(VoiceRun { engine: None, status: voice::Status::None, verified: false }),
             });
             {

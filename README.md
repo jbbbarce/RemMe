@@ -49,13 +49,15 @@ For every feature with the version it arrived in, a shortcuts table and the app'
 - **Nag mode:** set **Nag** in a reminder's details and its notification repeats every 5, 10, 15, 30 or 60 minutes until you check it off.
 - **Coach** (off until you turn it on in **Settings → Coach**): keeps you on your schedule.
   - **When it watches:** during your **focus hours** (weekly times you set) and any **focus timer** session. It notices when you're on a **distraction** (sites like YouTube in a browser, or apps like Steam, from a list you edit) or **idle**.
-  - **How it escalates:** after 1 minute off track, a small **Nudge** popup names what's due ("Quick check: *Lab report* is waiting."). After 5 minutes, a firmer **Push** with a sound, which stays until you answer and comes back while you stay off track.
+  - **How it escalates:** after 1 minute off track, a small **Nudge** popup names what's due ("Quick check: *Lab report* is waiting."). After 5 minutes, a firmer **Push** with a sound, which stays until you answer.
+  - **Takeover:** after 10 minutes, the screen you're on dims and Coach waits for a choice: **Start focus**, **Snooze 5 min** (2 an hour) or **Take a 15-min break** (3 per focus time). Esc and Alt+F4 don't close it, and Coach's settings and Pause are locked while it's up. You can switch it off in Settings.
   - **Real talk:** after 20 minutes off track in total in one focus block, it gets blunt. For example: "You're not tired. You're avoiding *Lab report*." You can add your own lines.
-  - **Answering:** **Back to it** opens the reminder, and **Start focus** starts a focus session on it.
+  - **Answering:** **Back to it** opens the reminder, and **Start focus** starts a focus session on it. **This is for work** tells Coach to ignore that app or site for an hour (with **Undo** in the Coach bar).
   - **Voice:** turn on **Speak** in **Settings → Coach → Voice** and Coach reads the Push and real talk aloud in a natural voice, which runs on your PC.
     - The first time, it downloads the voice once (about 95 MB). Every file is checked against a fingerprint built into RemMe.
     - Choose Heart, Bella, Emma, Michael or Fenrir, optionally a different voice for real talk, plus speed and volume. **Test** plays a sample.
     - **Remove voice** frees the space.
+    - With Speak on, the Takeover is spoken too.
   - **Pausing:** pause it for 15 minutes, an hour or the rest of the day from the tray's **Coach** menu, the sidebar's Coach bar or the floating list. The tray tooltip says whether it's watching.
   - **Privacy:** it reads only the front window's app and title and how long since you last used the mouse or keyboard. It never takes screenshots, never stores what it reads, sends nothing anywhere, and never closes your apps.
 - **Pomodoro timer:** 25-minute focus sessions with 5-minute breaks, and a 15-minute long break after every fourth. The timer is at the bottom of the sidebar and in the floating list's header.
