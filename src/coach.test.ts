@@ -61,6 +61,17 @@ describe("Coach settings", () => {
     expect(coachFrom({ realTalkLines: [" Get up. ", "", 4] }).realTalkLines).toEqual(["Get up."]);
   });
 
+  it("keep the voice choices to the offered voices and sensible ranges", () => {
+    const c = coachFrom({ speak: true, voice: "am_fenrir", realTalkVoice: "nope", voiceSpeed: 2, voiceVolume: 55.4 });
+    expect(c.speak).toBe(true);
+    expect(c.voice).toBe("am_fenrir");
+    expect(c.realTalkVoice).toBeNull();
+    expect(c.voiceSpeed).toBe(1);
+    expect(c.voiceVolume).toBe(55);
+    expect(coachFrom({}).speak).toBe(false);
+    expect(coachFrom({ voice: "xx" }).voice).toBe("af_heart");
+  });
+
   it("have presets for weekdays and evenings", () => {
     const [weekdays, evenings] = FOCUS_PRESETS;
     expect(weekdays.hours[0]).toEqual([]);

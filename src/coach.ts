@@ -20,7 +20,23 @@ export const DEFAULT_COACH: CoachSettings = {
   realTalk: true,
   realTalkAfter: 20,
   realTalkLines: [],
+  speak: false,
+  voice: "af_heart",
+  realTalkVoice: null,
+  voiceSpeed: 1,
+  voiceVolume: 80,
 };
+
+/** The voices offered, best-rated first (grades from Kokoro's VOICES.md). */
+export const VOICE_OPTIONS: { id: string; name: string; note: string }[] = [
+  { id: "af_heart", name: "Heart", note: "American, warm" },
+  { id: "af_bella", name: "Bella", note: "American, bright" },
+  { id: "bf_emma", name: "Emma", note: "British" },
+  { id: "am_michael", name: "Michael", note: "American, calm" },
+  { id: "am_fenrir", name: "Fenrir", note: "American, deeper" },
+];
+
+const voiceIds = new Set(VOICE_OPTIONS.map((v) => v.id));
 
 export const MAX_RANGES_PER_DAY = 3;
 export const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -90,6 +106,11 @@ export function coachFrom(raw: unknown): CoachSettings {
     realTalkLines: Array.isArray(c.realTalkLines)
       ? c.realTalkLines.filter((l): l is string => typeof l === "string").map((l) => l.trim()).filter(Boolean).slice(0, 50)
       : [],
+    speak: c.speak === true,
+    voice: typeof c.voice === "string" && voiceIds.has(c.voice) ? c.voice : DEFAULT_COACH.voice,
+    realTalkVoice: typeof c.realTalkVoice === "string" && voiceIds.has(c.realTalkVoice) ? c.realTalkVoice : null,
+    voiceSpeed: typeof c.voiceSpeed === "number" && c.voiceSpeed >= 0.8 && c.voiceSpeed <= 1.3 ? Math.round(c.voiceSpeed * 20) / 20 : DEFAULT_COACH.voiceSpeed,
+    voiceVolume: typeof c.voiceVolume === "number" && c.voiceVolume >= 0 && c.voiceVolume <= 100 ? Math.round(c.voiceVolume) : DEFAULT_COACH.voiceVolume,
   };
 }
 

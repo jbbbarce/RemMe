@@ -1,7 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Add, Dismiss } from "../icons";
-import { DEFAULT_DISTRACTIONS, FOCUS_PRESETS, MAX_RANGES_PER_DAY, WEEKDAY_NAMES, coachFrom } from "../coach";
+import { DEFAULT_DISTRACTIONS, FOCUS_PRESETS, MAX_RANGES_PER_DAY, VOICE_OPTIONS, WEEKDAY_NAMES, coachFrom } from "../coach";
+import { VOICE_DOWNLOAD_MB, megabytes, speak, useVoiceStatus } from "../voice";
+import { Dropdown } from "./ui";
 import type { CoachSettings, Distraction } from "../types";
 import { Switch } from "./Inspector";
 
@@ -99,7 +101,120 @@ export function CoachSettingsSection({ coach, onChange }: { coach: CoachSettings
         />
         <RealTalkLines lines={coach.realTalkLines} onChange={(realTalkLines) => set({ realTalkLines })} />
       </div>
+
+      <VoiceSettings coach={coach} set={set} />
     </>
+  );
+}
+
+const voiceOptions = VOICE_OPTIONS.map((v) => ({ value: v.id, label: `${v.name} (${v.note})` }));
+
+/** Speak, the voice choices and the download. */
+function VoiceSettings({ coach, set }: { coach: CoachSettings; set(patch: Partial<CoachSettings>): void }) {
+  const status = useVoiceStatus();
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  // A failed download turns Speak back off.
+  useEffect(() => {
+    if (status.state === "error" && coach.speak) set({ speak: false });
+  }, [status.state]);
+
+  const turnOn = (on: boolean) => {
+    set({ speak: on });
+    if (on && status.state !== "ready") invoke("voice_download").catch(() => {});
+  };
+
+  return (
+    <div className="settings-block">
+      <span className="settings-label">Voice</span>
+      <Row label="Speak" hint="Coach reads the Push and real talk aloud in a natural voice. It runs on this PC; nothing is sent anywhere.">
+        <Switch checked={coach.speak} onChange={turnOn} />
+      </Row>
+      {status.state === "none" && (
+        <p className="hint">Turning on Speak downloads the voice once, about {VOICE_DOWNLOAD_MB} MB.</p>
+      )}
+      {status.state === "downloading" && (
+        <div className="voice-progress" role="status">
+          <progress max={status.total} value={status.done} />
+          <span className="hint">
+            Downloading the voice… {megabytes(status.done)} of {megabytes(status.total)}
+          </span>
+        </div>
+      )}
+      {status.state === "error" && (
+        <div className="voice-progress" role="alert">
+          <p className="hint error-text">{status.message}</p>
+          <div className="row-actions">
+            <button onClick={() => turnOn(true)}>Try again</button>
+          </div>
+        </div>
+      )}
+      <Row label="Voice">
+        <Dropdown label="Voice" value={coach.voice} options={voiceOptions} onChange={(voice) => set({ voice })} />
+      </Row>
+      <Row label="Real talk voice">
+        <Dropdown
+          label="Real talk voice"
+          value={coach.realTalkVoice ?? ""}
+          options={[{ value: "", label: "Same as above" }, ...voiceOptions]}
+          onChange={(v) => set({ realTalkVoice: v || null })}
+        />
+      </Row>
+      <Row label="Speed">
+        <span className="range-row">
+          <input
+            type="range"
+            min={0.8}
+            max={1.3}
+            step={0.05}
+            value={coach.voiceSpeed}
+            aria-label="Speed"
+            onChange={(e) => set({ voiceSpeed: Number(e.target.value) })}
+          />
+          <output>{coach.voiceSpeed.toFixed(2)}×</output>
+        </span>
+      </Row>
+      <Row label="Volume">
+        <span className="range-row">
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={coach.voiceVolume}
+            aria-label="Volume"
+            onChange={(e) => set({ voiceVolume: Number(e.target.value) })}
+          />
+          <output>{coach.voiceVolume}%</output>
+        </span>
+      </Row>
+      {status.state === "ready" && (
+        <div className="row-actions">
+          <button onClick={() => speak("This is Coach. Your lab report is waiting. Back to it.", coach.voice, coach.voiceSpeed, coach.voiceVolume)}>
+            Test
+          </button>
+          {coach.realTalkVoice && (
+            <button onClick={() => speak("You said this mattered. Act like it.", coach.realTalkVoice!, coach.voiceSpeed, coach.voiceVolume)}>
+              Test real talk
+            </button>
+          )}
+          <button
+            className={confirmRemove ? "danger" : undefined}
+            onBlur={() => setConfirmRemove(false)}
+            onClick={() => {
+              if (!confirmRemove) return setConfirmRemove(true);
+              setConfirmRemove(false);
+              set({ speak: false });
+              invoke("voice_remove").then(() => setRemoveError(null), (e) => setRemoveError(String(e)));
+            }}
+          >
+            {confirmRemove ? `Remove ${VOICE_DOWNLOAD_MB} MB?` : "Remove voice"}
+          </button>
+        </div>
+      )}
+      {removeError && <p className="hint error-text">{removeError}</p>}
+    </div>
   );
 }
 

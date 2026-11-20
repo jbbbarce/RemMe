@@ -35,7 +35,7 @@ The developer side of RemMe: the stack, how the pieces fit, and where each featu
 | Icons | `@fluentui/react-icons`, wrapped in `src/icons.tsx` |
 | Fonts | Segoe UI (Windows), Fraunces for Paper and ink headings (`@fontsource/fraunces`) |
 | Tauri plugins | autostart, global-shortcut, notification, single-instance, window-state, updater, process, dialog |
-| Other Rust crates | `serde_json`, `chrono`, `windows` (Win32 and WinRT calls), `sysinfo` (running apps), `tauri-winrt-notification` (popups with buttons) |
+| Other Rust crates | `serde_json`, `chrono`, `windows` (Win32 and WinRT calls), `sysinfo` (running apps), `tauri-winrt-notification` (popups with buttons). Coach's voice: `ort` (ONNX Runtime, built in statically from pyke's prebuilt binaries at build time), `misaki-rs` without espeak (text to phonemes, with its dictionaries built in), `reqwest` (blocking, Windows TLS) and `sha2` (the download and its fingerprints). Together these take `remme.exe` from 7.7 MB to about 52 MB (ONNX Runtime about 23 MB, misaki-rs's dictionaries about 19 MB) |
 | Tests | Vitest (TypeScript), `cargo test` (Rust) |
 | Package manager | pnpm |
 | CI | GitHub Actions `release.yml` with `tauri-action`; Dependabot for the actions |
@@ -98,6 +98,7 @@ Everything is in `src-tauri/src/`:
 | Look | `set_title_bar`, `get_accent` (Windows accent via `UISettings`), `set_round_corners` |
 | Tray | `set_tray_status` (the due counts for the tooltip; Coach adds its line) |
 | Coach | `coach_state`, `coach_answer` (Back to it, Start focus, Dismiss), `coach_pause`, `coach_resume` |
+| Coach's voice | `voice_status`, `voice_download` (in the background), `voice_remove`, `voice_speak` (returns 24 kHz mono f32 samples as raw bytes) |
 | Timer | `pomodoro_state`, `pomodoro_start`, `pomodoro_toggle`, `pomodoro_skip`, `pomodoro_reset` |
 | Backups | `list_backups`, `backup_now`, `restore_backup`, `delete_backup`, `open_backup_folder`, `get_backup_folder`, `choose_backup_folder`, `clear_backup_folder`, `get_recovery`, `dismiss_recovery` |
 | Export and import | `export_data`, `pick_import_file`, `import_data` |
@@ -114,6 +115,7 @@ Everything is in `src-tauri/src/`:
 | `popup-action` | `main` | Snooze, Done or a click on a popup |
 | `new-reminder` | `main` | **Add reminder…** in the tray menu |
 | `coach-state` | all | Coach on or off, watching or paused, and its label |
+| `voice-status` | all | The voice's download state: none, downloading (done and total bytes), ready, or error |
 | `coach-step` | `coach` | A Nudge or Push: the step, the reminder named, the distraction, and whether real talk is on |
 
 **Windows-specific parts**
@@ -254,6 +256,7 @@ Everything is in `src-tauri/src/`:
 | Undo for changes | 0.13.0 | `Undo.track`, `snapshot`, `restoreSnapshot`, `changeMessage` |
 | Sidebar rail | 0.13.0 | `MainApp.tsx` (`useMedia`, `railChoice`), `Sidebar.tsx` |
 | Float opacity | 0.13.0 | `Settings.floatOpacity`, `FloatApp.tsx` |
+| Coach's voice | 0.18.0 | `voice.rs` (the pinned manifest and SHA-256s, `download`, `verify_all`, the `rules` fallback for unknown words, `token_ids`, `Engine` on ONNX Runtime), `kokoro_vocab.rs` (Kokoro's 115 token ids), the voice commands in `lib.rs`; `voice.ts` (`useVoiceStatus`, `speak`), the Voice block in `CoachSettings.tsx`, speaking the Push in `CoachApp.tsx`. Decisions: `docs/adr/0002`, `0003`. Files: `%APPDATA%\com.remme.app\voice\` |
 | Coach | 0.17.0 | `coach.rs` (the pure part: `classify`, `focus_block`, `pick_reminder`, `Ladder`); in `lib.rs` `run_coach` / `coach_check` (every 5 s), `front_window` and `idle_secs` (Win32), `show_coach_popup`, `tray_menu`, `tray_icon`, the coach commands; `coach.ts` (settings, defaults, `coachFrom`), `coachLines.ts` (the lines and `pickLine`), `CoachApp.tsx`, `CoachSettings.tsx`, `CoachStatus.tsx`. Decisions: `docs/adr/0001`, `0002` (on the owner's PC) |
 | Tray tooltip, Add reminder | 0.13.0 | `set_tray_status`, the tray menu in `lib.rs`; `new-reminder` in `MainApp.tsx` |
 | Day groups | 0.14.0 | `dayGroups`, `dayGroupTitle` in `model.ts`; `TaskViews.tsx` |
@@ -266,8 +269,8 @@ Everything is in `src-tauri/src/`:
 
 | Command | What it covers |
 |---|---|
-| `pnpm test` (Vitest, 126 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts`, `coach.test.ts` (Coach settings and their checks), `coachLines.test.ts` (filling in, no repeats, real talk, line rules) |
-| `cargo test --manifest-path src-tauri/Cargo.toml` (41 tests) | Coach (classification, focus time, which reminder it names, the ladder and real talk); due-reminder detection, nagging and snooze; popup clicks; app triggers; copying data from the old folder; first-run examples; recovery from a damaged file; backup naming, pruning and the second folder; shortcut parsing; title bar colours; the Pomodoro state machine |
+| `pnpm test` (Vitest, 127 tests) | `model.test.ts` (smart lists, sections, sorting, repeats, normalize), `quickAdd.test.ts`, `calendar.test.ts`, `verse.test.ts`, `deleted.test.ts` (Recently deleted and Undo), `changes.test.ts` (moves, snapshots, toast wording, multi-change, day groups), `selection.test.ts`, `coach.test.ts` (Coach settings and their checks), `coachLines.test.ts` (filling in, no repeats, real talk, line rules) |
+| `cargo test --manifest-path src-tauri/Cargo.toml` (47 tests, plus one ignored end-to-end voice test run by hand) | Coach (classification, focus time, which reminder it names, the ladder and real talk); the voice (the manifest, fingerprint checks, the fallback rules, token ids); due-reminder detection, nagging and snooze; popup clicks; app triggers; copying data from the old folder; first-run examples; recovery from a damaged file; backup naming, pruning and the second folder; shortcut parsing; title bar colours; the Pomodoro state machine |
 
 Pure logic sits in `model.ts`, `dates.ts`, `quickAdd.ts`, `calendar.ts` and `selection.ts` so it can be tested without React. UI behaviour is checked by running the dev build and scripting it through WebView2's remote debugging port (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9333" pnpm tauri dev`), against a backed-up and then restored data file.
 

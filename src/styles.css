@@ -4222,3 +4222,14 @@ button.side-strip:hover,
   font-size: 12px;
   font-weight: 600;
 }
+
+.voice-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.voice-progress progress {
+  width: 100%;
+  accent-color: var(--ui);
+}

@@ -27,6 +27,11 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-dialog = "2"
+# Coach's voice (0.18.0): Kokoro on ONNX Runtime, built in; misaki-rs without espeak-ng (docs/adr/0003).
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "download-binaries", "api-22", "tls-native"] }
+misaki-rs = { version = "=0.11.0", default-features = false }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "native-tls"] }
+sha2 = "0.10"
 
 [target.'cfg(windows)'.dependencies]
 # The same version Tauri uses: handing focus back after showing the floating list, title bar

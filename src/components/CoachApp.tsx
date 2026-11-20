@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Coach, Dismiss } from "../icons";
 import { fill, pickLine } from "../coachLines";
+import { speak } from "../voice";
 import type { AppData } from "../types";
 
 /** A step of the ladder, as Rust sends it. */
@@ -54,9 +55,12 @@ export function CoachApp({ data }: { data: AppData }) {
   const [step, setStep] = useState<CoachStep | null>(null);
   const [line, setLine] = useState("");
   const timer = useRef<number | undefined>(undefined);
-  const ownLines = data.settings.coach.realTalkLines;
-  const ownRef = useRef(ownLines);
-  ownRef.current = ownLines;
+  const coach = data.settings.coach;
+  const ownRef = useRef(coach.realTalkLines);
+  ownRef.current = coach.realTalkLines;
+  const coachRef = useRef(coach);
+  coachRef.current = coach;
+  const stopSpeech = useRef<() => void>(() => {});
 
   useEffect(() => {
     const unlisten = listen<CoachStep>("coach-step", ({ payload }) => {
@@ -69,9 +73,19 @@ export function CoachApp({ data }: { data: AppData }) {
         // Not repeating lines is a nicety only.
       }
       setStep(payload);
-      setLine(fill(next, ctx));
+      const filled = fill(next, ctx);
+      setLine(filled);
       window.clearTimeout(timer.current);
-      if (payload.step === "push") playPush();
+      stopSpeech.current();
+      if (payload.step === "push") {
+        playPush();
+        // Speak the Push after its sound; real talk can have its own voice.
+        const c = coachRef.current;
+        if (c.speak) {
+          const voice = payload.realTalk && c.realTalkVoice ? c.realTalkVoice : c.voice;
+          stopSpeech.current = speak(filled, voice, c.voiceSpeed, c.voiceVolume, 700);
+        }
+      }
       else timer.current = window.setTimeout(() => answer("dismiss", null), NUDGE_MS);
     });
     return () => {
@@ -82,6 +96,7 @@ export function CoachApp({ data }: { data: AppData }) {
 
   const answer = (kind: "back" | "focus" | "dismiss", taskId: string | null) => {
     window.clearTimeout(timer.current);
+    stopSpeech.current();
     setStep(null);
     invoke("coach_answer", { answer: kind, taskId }).catch(() => {});
   };

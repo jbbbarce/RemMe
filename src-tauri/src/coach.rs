@@ -96,7 +96,10 @@ pub fn classify(app: &str, title: &str, idle_secs: u64, s: &Settings) -> Reading
                 _ => false,
             };
             if hit {
-                return Reading::Distraction(d.matches.clone());
+                // An app reads better without ".exe": "Close steam", not "Close steam.exe".
+                let name = d.matches.trim();
+                let name = if d.kind == "app" { name.strip_suffix(".exe").or_else(|| name.strip_suffix(".EXE")).unwrap_or(name) } else { name };
+                return Reading::Distraction(name.to_string());
             }
         }
     }
@@ -314,7 +317,7 @@ mod tests {
         // "X" must not match the x in "Excel" or "Box".
         assert_eq!(classify("msedge.exe", "Box - Excel online - Microsoft Edge", 0, &s), Reading::OnTrack);
         assert_eq!(classify("msedge.exe", "Home / X - Microsoft Edge", 0, &s), Reading::Distraction("X".into()));
-        assert_eq!(classify("Steam.exe", "Steam", 0, &s), Reading::Distraction("steam.exe".into()));
+        assert_eq!(classify("Steam.exe", "Steam", 0, &s), Reading::Distraction("steam".into()));
     }
 
     #[test]

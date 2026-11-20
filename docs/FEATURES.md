@@ -1,6 +1,6 @@
 # RemMe features
 
-Everything RemMe can do, from the first sticky-note version to 0.17.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
+Everything RemMe can do, from the first sticky-note version to 0.18.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Contents
 
@@ -49,6 +49,7 @@ Everything RemMe can do, from the first sticky-note version to 0.17.0, and when 
 | 0.15.0 | 18 Nov | Friendlier empty views, a Getting started list on first run, Snooze in the reminder menu, a redesigned details panel, Settings as a two-pane page, and the sidebar's verse and timer as one-line bars. |
 | 0.16.0 | 18 Nov | The calendar's repeats as small counts, wrapping titles, dimmed other months and labelled toggles; the floating list's verse as a one-line bar; board columns that share the width with a ⋯ menu per section; the list dialog's labelled fields and even grids; the old CSS the redesign replaced removed. |
 | 0.17.0 | 19 Nov | Coach: focus hours, a distraction list, the Nudge and Push popups, real talk, Pause and the tray marker. Old CSS removed. |
+| 0.18.0 | 20 Nov | Coach's natural voice: the Push and real talk spoken aloud, on your PC. |
 
 ## Before the rewrite: the WPF sticky notes
 
@@ -213,8 +214,13 @@ From 0.17.0. Off until you turn it on in **Settings → Coach**. Coach is for pr
   - Coach only sees window titles, so a distraction whose window title doesn't name it isn't caught.
   - Coach can't tell when you're in a call; use Pause.
   - Coach only works while RemMe is running.
+- **Voice** (0.18.0): turn on **Speak** in **Settings → Coach → Voice** and Coach reads the Push and real talk aloud. The Nudge stays silent.
+  - **Download**: the first time, it downloads the voice once, about 95 MB, from Kokoro's official files (pinned to one version). Every file is checked against a fingerprint built into RemMe, and a file that doesn't match is thrown away. If anything is off, Speak turns off with a message and **Try again**.
+  - **Voices**: **Heart** (the default), **Bella**, **Emma** (British), **Michael** and **Fenrir**, with an optional separate **real talk voice**. **Speed** and **Volume** sliders, and **Test** plays a sample.
+  - **Remove voice** deletes the 95 MB.
+  - **Privacy**: the voice runs on your PC; nothing is sent anywhere. A line takes about half a second to prepare.
+  - **Unusual words**: words the voice doesn't know, such as unusual names in a reminder's title, are sounded out by simple rules, and short all-caps words are spelled. They may now and then sound a little off.
 - **Coming next**:
-  - 0.18.0: a natural voice that runs on your PC.
   - 0.19.0: a **Takeover** overlay after 10 minutes, and **This is for work**.
   - 0.20.0: a daily summary.
 
@@ -338,11 +344,11 @@ These were built and tested by simulated input, but not yet seen working on a re
 - The calendar's ↻ tooltip with a real mouse, and how many chips fit in a month cell on other window sizes.
 - Dragging cards between the new shared-width board columns with a real mouse.
 - Coach with a real browser on YouTube (tested with Notepad as the distraction; sites are covered by unit tests), the tray's Coach menu and the amber dot (Windows draws these), the Coach popup on a second monitor, and the floating list's Coach button.
+- Hearing Coach's voice out loud (checked by measuring the audio: real speech, about 3 seconds per line), a spoken Push from a real off-track stretch with the speakers on, and the voice on slower PCs.
 
 ## Planned
 
 - **Coach, the rest** (see [Coach](#coach)):
-  - 0.18.0: a natural voice that runs on your PC (Kokoro)
   - 0.19.0: the Takeover and "This is for work"
   - 0.20.0: the daily summary
 - **Later**, each after its own grilling: an Android version, and a free open-source AI that runs on the PC.

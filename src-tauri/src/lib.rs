@@ -10,7 +10,9 @@ use std::{
 
 mod backup;
 mod coach;
+mod kokoro_vocab;
 mod pomodoro;
+mod voice;
 
 use backup::Kind;
 use chrono::{DateTime, Local, NaiveDateTime, Utc};
@@ -39,6 +41,8 @@ const DEFAULT_POMODORO: &str = "Ctrl+Shift+P";
 const MAIN: &str = "main";
 const FLOAT: &str = "float";
 const COACH: &str = "coach";
+/// Coach's voice files, inside the data folder.
+const VOICE_DIR: &str = "voice";
 
 /// Window state the backend owns, kept apart from the task data the UI saves.
 #[derive(Default, Serialize, Deserialize)]
@@ -93,6 +97,15 @@ struct AppState {
     shortcuts: Mutex<Shortcuts>,
     timer: Mutex<Timer>,
     coach: Mutex<CoachRun>,
+    voice: Mutex<VoiceRun>,
+}
+
+/// Coach's voice while RemMe runs: the loaded engine, and what Settings was last told.
+struct VoiceRun {
+    engine: Option<voice::Engine>,
+    status: voice::Status,
+    /// Every file has passed its fingerprint check this session.
+    verified: bool,
 }
 
 /// Coach while RemMe runs: the ladder, what the windows were last told, and the tray's counts.
@@ -1626,6 +1639,97 @@ fn coach_resume(app: AppHandle) {
     coach_check(&app);
 }
 
+// ---------- Coach's voice ----------
+
+fn set_voice_status(app: &AppHandle, status: voice::Status) {
+    app.state::<AppState>().voice.lock().unwrap().status = status.clone();
+    let _ = app.emit("voice-status", status);
+}
+
+#[tauri::command]
+fn voice_status(state: State<AppState>) -> voice::Status {
+    state.voice.lock().unwrap().status.clone()
+}
+
+/// Downloads the voice in the background, reporting progress as `voice-status` events.
+#[tauri::command]
+fn voice_download(app: AppHandle) {
+    {
+        let state = app.state::<AppState>();
+        let run = state.voice.lock().unwrap();
+        if matches!(run.status, voice::Status::Downloading { .. }) {
+            return;
+        }
+    }
+    let total = voice::total_size();
+    set_voice_status(&app, voice::Status::Downloading { done: 0, total });
+    thread::spawn(move || {
+        let dir = app.state::<AppState>().dir.join(VOICE_DIR);
+        let mut last = std::time::Instant::now();
+        let result = voice::download(&dir, |done, total| {
+            if last.elapsed() >= Duration::from_millis(250) {
+                last = std::time::Instant::now();
+                set_voice_status(&app, voice::Status::Downloading { done, total });
+            }
+        });
+        match result {
+            Ok(()) => {
+                app.state::<AppState>().voice.lock().unwrap().verified = true;
+                set_voice_status(&app, voice::Status::Ready);
+            }
+            Err(message) => set_voice_status(&app, voice::Status::Error { message }),
+        }
+    });
+}
+
+/// Deletes the voice files and frees the space.
+#[tauri::command]
+fn voice_remove(app: AppHandle) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    {
+        let mut run = state.voice.lock().unwrap();
+        if matches!(run.status, voice::Status::Downloading { .. }) {
+            return Err("Wait for the download to finish first.".into());
+        }
+        run.engine = None;
+        run.verified = false;
+    }
+    voice::remove(&state.dir.join(VOICE_DIR)).map_err(|e| format!("Couldn't remove the voice: {e}"))?;
+    set_voice_status(&app, voice::Status::None);
+    Ok(())
+}
+
+/// Speaks a line: 24 kHz mono samples as little-endian f32 bytes. The first call in a session
+/// checks every file's fingerprint and loads the model.
+#[tauri::command]
+async fn voice_speak(app: AppHandle, text: String, voice: String, speed: f32) -> Result<tauri::ipc::Response, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let dir = state.dir.join(VOICE_DIR);
+        let mut run = state.voice.lock().unwrap();
+        if run.status != voice::Status::Ready {
+            return Err("The voice isn't downloaded.".to_string());
+        }
+        if !run.verified {
+            if !voice::verify_all(&dir) {
+                drop(run);
+                let _ = voice::remove(&dir);
+                set_voice_status(&app, voice::Status::Error { message: "The voice files didn't match their fingerprints, so they were removed. Download them again.".into() });
+                return Err("The voice files failed their check.".into());
+            }
+            run.verified = true;
+        }
+        if run.engine.is_none() {
+            run.engine = Some(voice::Engine::load(&dir)?);
+        }
+        let samples = run.engine.as_mut().unwrap().speak(&dir, &text, &voice, speed)?;
+        let bytes: Vec<u8> = samples.iter().flat_map(|s| s.to_le_bytes()).collect();
+        Ok(tauri::ipc::Response::new(bytes))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
@@ -1673,6 +1777,10 @@ pub fn run() {
             coach_answer,
             coach_pause,
             coach_resume,
+            voice_status,
+            voice_download,
+            voice_remove,
+            voice_speak,
             load_data,
             save_data,
             set_shortcuts,
@@ -1745,7 +1853,13 @@ pub fn run() {
                 shortcuts: Mutex::new(Shortcuts::default()),
                 timer: Mutex::new(timer),
                 coach: Mutex::new(CoachRun::default()),
+                voice: Mutex::new(VoiceRun { engine: None, status: voice::Status::None, verified: false }),
             });
+            {
+                let state = app.state::<AppState>();
+                let status = voice::status_from_disk(&state.dir.join(VOICE_DIR));
+                state.voice.lock().unwrap().status = status;
+            }
 
             let handle = app.handle().clone();
             ensure_daily_backup(&handle.state::<AppState>());
@@ -1967,6 +2081,7 @@ mod tests {
             shortcuts: Mutex::new(Shortcuts::default()),
             timer: Mutex::new(Timer::default()),
             coach: Mutex::new(CoachRun::default()),
+            voice: Mutex::new(VoiceRun { engine: None, status: voice::Status::None, verified: false }),
         }
     }
 

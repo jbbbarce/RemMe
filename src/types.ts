@@ -120,6 +120,16 @@ export interface CoachSettings {
   realTalkAfter: number;
   /** Your own real-talk lines, added to the built-in ones. */
   realTalkLines: string[];
+  /** Coach speaks the Push aloud, in a natural voice that runs on this PC. */
+  speak: boolean;
+  /** Kokoro's name for the voice, such as "af_heart". */
+  voice: string;
+  /** A different voice for real talk, or null for the same one. */
+  realTalkVoice: string | null;
+  /** 0.8 to 1.3. */
+  voiceSpeed: number;
+  /** Percent, 0 to 100. */
+  voiceVolume: number;
 }
 
 export type TimerPhase = "idle" | "focus" | "shortBreak" | "longBreak";

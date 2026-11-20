@@ -52,6 +52,10 @@ For every feature with the version it arrived in, a shortcuts table and the app'
   - **How it escalates:** after 1 minute off track, a small **Nudge** popup names what's due ("Quick check: *Lab report* is waiting."). After 5 minutes, a firmer **Push** with a sound, which stays until you answer and comes back while you stay off track.
   - **Real talk:** after 20 minutes off track in total in one focus block, it gets blunt. For example: "You're not tired. You're avoiding *Lab report*." You can add your own lines.
   - **Answering:** **Back to it** opens the reminder, and **Start focus** starts a focus session on it.
+  - **Voice:** turn on **Speak** in **Settings → Coach → Voice** and Coach reads the Push and real talk aloud in a natural voice, which runs on your PC.
+    - The first time, it downloads the voice once (about 95 MB). Every file is checked against a fingerprint built into RemMe.
+    - Choose Heart, Bella, Emma, Michael or Fenrir, optionally a different voice for real talk, plus speed and volume. **Test** plays a sample.
+    - **Remove voice** frees the space.
   - **Pausing:** pause it for 15 minutes, an hour or the rest of the day from the tray's **Coach** menu, the sidebar's Coach bar or the floating list. The tray tooltip says whether it's watching.
   - **Privacy:** it reads only the front window's app and title and how long since you last used the mouse or keyboard. It never takes screenshots, never stores what it reads, sends nothing anywhere, and never closes your apps.
 - **Pomodoro timer:** 25-minute focus sessions with 5-minute breaks, and a 15-minute long break after every fourth. The timer is at the bottom of the sidebar and in the floating list's header.
@@ -162,6 +166,7 @@ One-time setup: the signing key lives at `%USERPROFILE%\.tauri\remme.key` and in
 - Icons: [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons) by Microsoft (MIT).
 - Menus, dialogs, drop-downs and tooltips: [Radix UI](https://www.radix-ui.com) primitives (MIT).
 - Layout and control sizes follow Microsoft's [Fluent 2](https://fluent2.microsoft.design) design system.
+- Coach's voice: the [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) model by hexgrad, in [onnx-community](https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX)'s ONNX version (Apache-2.0), downloaded only when you turn on Speak. It runs on [ONNX Runtime](https://onnxruntime.ai) by Microsoft (MIT), through [ort](https://github.com/pykeio/ort) (MIT or Apache-2.0). Text becomes speech sounds with [misaki-rs](https://github.com/MicheleYin/misaki-rs) (MIT), a Rust port of hexgrad's [Misaki](https://github.com/hexgrad/misaki) (Apache-2.0).
 
 ## License
 
