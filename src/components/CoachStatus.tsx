@@ -20,6 +20,8 @@ export interface CoachState {
   breakUntil: string | null;
   /** Distractions allowed for work right now, soonest to end first. */
   work: { entry: string; name: string; until: string }[];
+  /** Yesterday's daily summary hasn't been seen. */
+  yesterdayUnseen: boolean;
 }
 
 const OFF: CoachState = {
@@ -33,6 +35,7 @@ const OFF: CoachState = {
   breaksLeft: 3,
   breakUntil: null,
   work: [],
+  yesterdayUnseen: false,
 };
 
 /** Coach's state, kept up to date. */
@@ -51,6 +54,12 @@ export function useCoachState(): CoachState {
 /** Ending a break, undoing "This is for work", then the Pause choices (or Resume while paused). */
 function coachItems(state: CoachState) {
   const pause = (minutes: number | null) => invoke("coach_pause", { minutes }).catch(() => {});
+  const summaries = [
+    { label: "Today's summary", onSelect: () => invoke("coach_summary", { which: "today" }).catch(() => {}) },
+    ...(state.yesterdayUnseen
+      ? [{ label: "Yesterday's summary", onSelect: () => invoke("coach_summary", { which: "yesterday" }).catch(() => {}) }]
+      : []),
+  ];
   const extras = [
     ...(state.breakUntil ? [{ label: "End break", onSelect: () => invoke("coach_end_break").catch(() => {}) }] : []),
     ...state.work.map((w) => ({
@@ -67,7 +76,11 @@ function coachItems(state: CoachState) {
         { label: "Pause for 1 hour", onSelect: () => pause(60), disabled: locked },
         { label: "Pause for the rest of the day", onSelect: () => pause(null), disabled: locked },
       ];
-  return [...extras, ...pausing.map((it, i) => ({ ...it, separated: i === 0 && extras.length > 0 }))];
+  return [
+    ...summaries,
+    ...extras.map((it, i) => ({ ...it, separated: i === 0 })),
+    ...pausing.map((it, i) => ({ ...it, separated: i === 0 })),
+  ];
 }
 
 /** The bar's action word: what its menu mainly does right now. */

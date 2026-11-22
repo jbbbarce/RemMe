@@ -80,6 +80,7 @@ export function CoachSettingsSection({ coach, onChange }: { coach: CoachSettings
           never takes screenshots, never stores what it reads, sends nothing anywhere and never closes your apps. Pause
           it from the tray.
         </p>
+        <p>Keeps today's and yesterday's totals: minutes per distraction and counts, never window titles.</p>
       </div>
 
       <FocusHours coach={coach} set={set} />
@@ -110,6 +111,16 @@ export function CoachSettingsSection({ coach, onChange }: { coach: CoachSettings
             onChange={(takeoverAfter) => set({ takeoverAfter })}
           />
         )}
+      </div>
+
+      <div className="settings-block">
+        <span className="settings-label">Daily summary</span>
+        <Row
+          label="Show a summary when focus hours end"
+          hint="Once a day: your time on track, your top distractions and Coach's counts. Also in the tray's Coach menu any time."
+        >
+          <Switch checked={coach.dailySummary} onChange={(dailySummary) => set({ dailySummary })} />
+        </Row>
       </div>
 
       <div className="settings-block">

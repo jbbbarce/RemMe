@@ -2,6 +2,8 @@
 //! Pure logic only; lib.rs reads the front window and idle time and drives it every few seconds.
 //! Window titles go into `classify` and nowhere else: they are never stored (docs/adr/0001).
 
+use std::collections::BTreeMap;
+
 use chrono::{DateTime, Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime, Timelike};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -22,6 +24,7 @@ pub struct Settings {
     pub real_talk_after: i64,
     pub takeover: bool,
     pub takeover_after: i64,
+    pub daily_summary: bool,
 }
 
 impl Default for Settings {
@@ -39,6 +42,7 @@ impl Default for Settings {
             real_talk_after: 20,
             takeover: true,
             takeover_after: 10,
+            daily_summary: true,
         }
     }
 }
@@ -68,6 +72,15 @@ pub enum Reading {
     /// On a distraction: its name as listed (such as "YouTube"), and its list entry's key.
     Distraction { name: String, entry: String },
     Idle,
+    /// On a distraction allowed with "This is for work": on track for the ladder, counted as work.
+    Work { name: String },
+}
+
+impl Reading {
+    /// Off track, for the ladder: a distraction or idle. Work isn't.
+    pub fn is_off(&self) -> bool {
+        matches!(self, Reading::Distraction { .. } | Reading::Idle)
+    }
 }
 
 /// A list entry's key, such as "site:youtube" or "app:steam", for work exceptions.
@@ -108,12 +121,12 @@ pub fn classify(app: &str, title: &str, idle_secs: u64, s: &Settings, for_work: 
             };
             if hit {
                 let entry = entry_key(d);
-                if for_work.contains(&entry) {
-                    return Reading::OnTrack;
-                }
                 // An app reads better without ".exe": "Close steam", not "Close steam.exe".
                 let name = d.matches.trim();
                 let name = if d.kind == "app" { name.strip_suffix(".exe").or_else(|| name.strip_suffix(".EXE")).unwrap_or(name) } else { name };
+                if for_work.contains(&entry) {
+                    return Reading::Work { name: name.to_string() };
+                }
                 return Reading::Distraction { name: name.to_string(), entry };
             }
         }
@@ -212,7 +225,7 @@ pub enum Step {
 }
 
 /// The longest gap between two checks that still counts; a longer one (the PC slept) counts as this.
-const MAX_TICK_SECS: i64 = 15;
+pub const MAX_TICK_SECS: i64 = 15;
 /// Being back on track this long in a row ends real talk.
 const REAL_TALK_ENDS_SECS: i64 = 15 * 60;
 
@@ -290,7 +303,7 @@ impl Ladder {
         let push_mins = s.push_after.max(s.nudge_after + 1);
         let push_after = push_mins * 60;
         let takeover_after = s.takeover_after.max(push_mins + 1) * 60;
-        let off = *reading != Reading::OnTrack;
+        let off = reading.is_off();
 
         if let Some(until) = self.hold_until {
             if now < until {
@@ -458,6 +471,180 @@ pub fn allow_for_work(list: &mut Vec<WorkException>, entry: &str, name: &str, no
 /// The keys of the exceptions still running.
 pub fn active_work(list: &[WorkException], now: i64) -> Vec<String> {
     list.iter().filter(|w| w.until > now).map(|w| w.entry.clone()).collect()
+}
+
+// ---------- The daily summary ----------
+
+/// How many of each step and escape hatch, for the daily summary.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Counts {
+    pub nudges: u32,
+    pub pushes: u32,
+    pub takeovers: u32,
+    pub snoozes: u32,
+    pub breaks: u32,
+}
+
+/// One day's totals, in seconds. Distractions and work are keyed by list name: never window titles.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Day {
+    /// Local "yyyy-mm-dd".
+    pub date: String,
+    /// All focus time, breaks included.
+    pub focus: i64,
+    pub on_track: i64,
+    pub distractions: BTreeMap<String, i64>,
+    pub idle: i64,
+    pub work: BTreeMap<String, i64>,
+    pub breaks: i64,
+    /// Gaps inside focus hours: Coach paused, or switched off in Settings while RemMe ran.
+    pub paused: i64,
+    pub off: i64,
+    /// Time inside focus hours with RemMe running (watching, on a break, paused or off).
+    pub hours_seen: i64,
+    /// Inside focus hours with no check at all; set when the day closes.
+    pub not_running: i64,
+    pub counts: Counts,
+    pub real_talk: bool,
+    /// The card has shown itself for this day.
+    pub shown: bool,
+    /// The card has been closed, or opened from the menu, for this day once it's finished.
+    pub seen: bool,
+}
+
+/// What the day's time went to, for one check.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Spent {
+    Watching(Reading),
+    Break,
+    Paused,
+    Off,
+}
+
+impl Day {
+    pub fn new(date: &str) -> Day {
+        Day { date: date.to_string(), ..Day::default() }
+    }
+
+    /// Adds `secs` of one check. `in_hours` says whether it fell inside focus hours (for the gaps).
+    pub fn add(&mut self, spent: &Spent, secs: i64, in_hours: bool) {
+        if secs <= 0 {
+            return;
+        }
+        if in_hours {
+            self.hours_seen += secs;
+        }
+        match spent {
+            Spent::Paused => self.paused += if in_hours { secs } else { 0 },
+            Spent::Off => self.off += if in_hours { secs } else { 0 },
+            Spent::Break => {
+                self.focus += secs;
+                self.breaks += secs;
+            }
+            Spent::Watching(reading) => {
+                self.focus += secs;
+                match reading {
+                    Reading::OnTrack => self.on_track += secs,
+                    Reading::Idle => self.idle += secs,
+                    Reading::Distraction { name, .. } => *self.distractions.entry(name.clone()).or_default() += secs,
+                    Reading::Work { name } => *self.work.entry(name.clone()).or_default() += secs,
+                }
+            }
+        }
+    }
+
+    pub fn count(&mut self, step: Step) {
+        match step {
+            Step::Nudge => self.counts.nudges += 1,
+            Step::Push => self.counts.pushes += 1,
+            Step::Takeover => self.counts.takeovers += 1,
+        }
+    }
+
+    /// The time Coach watched: focus time without breaks.
+    pub fn watched(&self) -> i64 {
+        self.focus - self.breaks
+    }
+
+    /// On track (work counts as on track) as a share of the time Coach watched, 0 to 100.
+    pub fn percent_on_track(&self) -> Option<i64> {
+        let watched = self.watched();
+        let good = self.on_track + self.work.values().sum::<i64>();
+        (watched > 0).then(|| (good * 100 + watched / 2) / watched)
+    }
+
+    /// Inside focus hours up to `hours_so_far` seconds, how long RemMe wasn't running.
+    pub fn not_running_by(&self, hours_so_far: i64) -> i64 {
+        (hours_so_far - self.hours_seen).max(0)
+    }
+}
+
+/// Today's totals as they build, and the last finished day until its summary is seen.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Days {
+    pub today: Day,
+    pub last: Option<Day>,
+}
+
+/// The least focus time for a day to get a summary card by itself.
+pub const SUMMARY_MIN_SECS: i64 = 15 * 60;
+
+impl Days {
+    /// Moves on to `date` if it's a new day: today is closed (its "not running" worked out from
+    /// `hours_of`, the focus-hours seconds of a whole day) and kept as the last day if it has
+    /// anything in it. Returns whether the day changed.
+    pub fn roll(&mut self, date: &str, hours_of: impl Fn(&str) -> i64) -> bool {
+        if self.today.date == date {
+            return false;
+        }
+        let mut done = std::mem::replace(&mut self.today, Day::new(date));
+        if !done.date.is_empty() {
+            done.not_running = done.not_running_by(hours_of(&done.date));
+            if done.focus > 0 || done.hours_seen > 0 || done.not_running > 0 {
+                self.last = Some(done);
+            }
+        }
+        true
+    }
+}
+
+/// Focus-hours seconds on `date` from midnight until `until` (a whole day with `until` None).
+pub fn focus_hours_until(s: &Settings, date: NaiveDate, until: Option<NaiveDateTime>) -> i64 {
+    let day = date.weekday().num_days_from_sunday() as usize;
+    s.focus_hours
+        .get(day)
+        .into_iter()
+        .flatten()
+        .filter_map(|r| Some((date.and_time(time(&r.start)?), date.and_time(time(&r.end)?))))
+        .map(|(start, end)| {
+            let end = until.map_or(end, |u| end.min(u));
+            (end - start).num_seconds().max(0)
+        })
+        .sum()
+}
+
+/// Whether `now` is inside focus hours (not a session, not overdue time).
+pub fn in_focus_hours(s: &Settings, now: NaiveDateTime) -> bool {
+    let day = now.weekday().num_days_from_sunday() as usize;
+    s.focus_hours.get(day).into_iter().flatten().any(|r| match (time(&r.start), time(&r.end)) {
+        (Some(start), Some(end)) => now.time() >= start && now.time() < end,
+        _ => false,
+    })
+}
+
+/// When the day's last focus-hours range ends, if it has any.
+pub fn last_range_end(s: &Settings, date: NaiveDate) -> Option<NaiveDateTime> {
+    let day = date.weekday().num_days_from_sunday() as usize;
+    s.focus_hours.get(day).into_iter().flatten().filter_map(|r| time(&r.end)).max().map(|end| date.and_time(end))
+}
+
+/// Whether today's card should show itself now: once the last focus range has ended, with nothing
+/// in the way (a Takeover up or a focus session running), enough focus time, and not shown yet.
+pub fn summary_due(day: &Day, now: NaiveDateTime, last_end: Option<NaiveDateTime>, blocked: bool) -> bool {
+    !day.shown && !blocked && day.focus >= SUMMARY_MIN_SECS && last_end.is_some_and(|end| now >= end)
 }
 
 /// "5:00 pm"-style local time for the tray and sidebar.
@@ -670,9 +857,11 @@ mod tests {
         let mut work = Vec::new();
         allow_for_work(&mut work, "site:youtube", "YouTube", 0);
         let keys = active_work(&work, 100);
-        assert_eq!(classify("chrome.exe", "Tutorial - YouTube", 0, &s, &keys), Reading::OnTrack);
+        let as_work = Reading::Work { name: "YouTube".into() };
+        assert_eq!(classify("chrome.exe", "Tutorial - YouTube", 0, &s, &keys), as_work);
+        assert!(!as_work.is_off());
         // Even idle on it: a work video playing isn't idle.
-        assert_eq!(classify("chrome.exe", "Tutorial - YouTube", 3600, &s, &keys), Reading::OnTrack);
+        assert_eq!(classify("chrome.exe", "Tutorial - YouTube", 3600, &s, &keys), as_work);
         assert_eq!(classify("steam.exe", "Steam", 0, &s, &keys), Reading::Distraction { name: "steam".into(), entry: "app:steam".into() });
         assert!(active_work(&work, WORK_SECS).is_empty());
         assert_eq!(entry_key(&Distraction { kind: "app".into(), matches: "Steam.EXE".into() }), "app:steam");
@@ -724,6 +913,77 @@ mod tests {
         assert_eq!(l.tick(t + 3600, "b", &yt, &s), None);
         assert_eq!(l.tick(t + 3605, "other", &yt, &s), None);
         assert!(!l.real_talk);
+    }
+
+    #[test]
+    fn the_day_adds_each_check_to_one_bucket() {
+        let mut d = Day::new("2026-11-23");
+        d.add(&Spent::Watching(Reading::OnTrack), 600, true);
+        d.add(&Spent::Watching(yt()), 120, true);
+        d.add(&Spent::Watching(yt()), 60, false);
+        d.add(&Spent::Watching(Reading::Work { name: "YouTube".into() }), 300, true);
+        d.add(&Spent::Watching(Reading::Idle), 30, true);
+        d.add(&Spent::Break, 900, true);
+        d.add(&Spent::Paused, 45, true);
+        d.add(&Spent::Paused, 45, false);
+        d.add(&Spent::Off, 20, true);
+        assert_eq!(d.focus, 600 + 180 + 300 + 30 + 900);
+        assert_eq!(d.distractions["YouTube"], 180);
+        assert_eq!(d.work["YouTube"], 300);
+        assert_eq!((d.idle, d.breaks, d.paused, d.off), (30, 900, 45, 20));
+        // Only time inside focus hours counts toward what RemMe saw of them.
+        assert_eq!(d.hours_seen, 600 + 120 + 300 + 30 + 900 + 45 + 20);
+        // Breaks don't lower the score, and work counts as on track: (600 + 300) of 1110 watched.
+        assert_eq!(d.watched(), 1110);
+        assert_eq!(d.percent_on_track(), Some(81));
+        d.count(Step::Nudge);
+        d.count(Step::Takeover);
+        assert_eq!((d.counts.nudges, d.counts.takeovers), (1, 1));
+    }
+
+    #[test]
+    fn a_new_day_closes_today_and_keeps_it_as_the_last_day() {
+        let mut days = Days::default();
+        assert!(days.roll("2026-11-23", |_| 0));
+        assert!(days.last.is_none());
+        days.today.add(&Spent::Watching(Reading::OnTrack), 3600, true);
+        assert!(!days.roll("2026-11-23", |_| 0));
+        // 4 hours of focus hours, RemMe saw 1: 3 hours not running.
+        assert!(days.roll("2026-11-24", |date| if date == "2026-11-23" { 4 * 3600 } else { 0 }));
+        let last = days.last.clone().unwrap();
+        assert_eq!((last.date.as_str(), last.not_running), ("2026-11-23", 3 * 3600));
+        assert_eq!(days.today.date, "2026-11-24");
+        // An empty day doesn't replace the last one.
+        days.roll("2026-11-25", |_| 0);
+        assert_eq!(days.last.unwrap().date, "2026-11-23");
+    }
+
+    #[test]
+    fn focus_hours_are_measured_up_to_a_time() {
+        let mut s = s();
+        s.focus_hours[1] = vec![Range { start: "09:00".into(), end: "12:00".into() }, Range { start: "13:00".into(), end: "14:30".into() }];
+        let monday = NaiveDate::from_ymd_opt(2026, 11, 16).unwrap();
+        assert_eq!(focus_hours_until(&s, monday, None), (3 * 60 + 90) * 60);
+        assert_eq!(focus_hours_until(&s, monday, Some(at(2026, 11, 16, 10, 0))), 3600);
+        assert_eq!(last_range_end(&s, monday), Some(at(2026, 11, 16, 14, 30)));
+        assert!(in_focus_hours(&s, at(2026, 11, 16, 13, 5)));
+        assert!(!in_focus_hours(&s, at(2026, 11, 16, 12, 30)));
+        assert_eq!(last_range_end(&s, NaiveDate::from_ymd_opt(2026, 11, 17).unwrap()), None);
+    }
+
+    #[test]
+    fn the_summary_is_due_once_after_the_last_range_with_enough_focus_time() {
+        let end = Some(at(2026, 11, 16, 17, 0));
+        let mut d = Day::new("2026-11-16");
+        d.add(&Spent::Watching(Reading::OnTrack), 10 * 60, true);
+        assert!(!summary_due(&d, at(2026, 11, 16, 17, 1), end, false), "under 15 minutes");
+        d.add(&Spent::Watching(Reading::OnTrack), 5 * 60, true);
+        assert!(!summary_due(&d, at(2026, 11, 16, 16, 59), end, false), "before the end");
+        assert!(!summary_due(&d, at(2026, 11, 16, 17, 1), end, true), "a Takeover or session in the way");
+        assert!(!summary_due(&d, at(2026, 11, 16, 17, 1), None, false), "no focus hours today");
+        assert!(summary_due(&d, at(2026, 11, 16, 17, 1), end, false));
+        d.shown = true;
+        assert!(!summary_due(&d, at(2026, 11, 16, 18, 0), end, false), "once a day");
     }
 
     #[test]

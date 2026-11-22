@@ -15,7 +15,7 @@ mod pomodoro;
 mod voice;
 
 use backup::Kind;
-use chrono::{DateTime, Local, NaiveDateTime, Utc};
+use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, Utc};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
@@ -73,6 +73,8 @@ struct UiState {
     coach_work: Vec<coach::WorkException>,
     /// A Takeover was up; after a restart, the ladder resumes at the Push.
     coach_takeover_up: bool,
+    /// Today's totals for the daily summary, and the last finished day until it's seen.
+    coach_days: coach::Days,
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -131,6 +133,11 @@ struct CoachRun {
     takeover_up: bool,
     /// What you were doing before Coach's own popup or Takeover came to the front.
     last_reading: Option<coach::Reading>,
+    /// The last check that counted toward today's totals, and when they were last saved (Unix seconds).
+    day_last: Option<i64>,
+    days_saved: i64,
+    /// The first check since RemMe started has looked for a missed day's summary.
+    summary_checked: bool,
 }
 
 /// What the windows show about Coach: the sidebar bar, the floating list, the tray.
@@ -152,6 +159,8 @@ struct CoachState {
     break_until: Option<String>,
     /// Distractions allowed for work right now, soonest to end first.
     work: Vec<WorkView>,
+    /// Yesterday's summary hasn't been seen: the menus offer it.
+    yesterday_unseen: bool,
 }
 
 #[derive(Clone, Default, PartialEq, Serialize)]
@@ -1340,7 +1349,7 @@ async fn running_apps() -> Vec<String> {
 /// The tray menu. With Coach on it gets a Coach submenu to pause or resume it (Coach is
 /// switched off only in Settings, so it can't be turned off on a whim).
 /// While a Takeover is up, Pause is greyed out (`locked`).
-fn tray_menu(app: &AppHandle, coach_on: bool, paused: bool, locked: bool) -> tauri::Result<Menu<tauri::Wry>> {
+fn tray_menu(app: &AppHandle, coach_on: bool, paused: bool, locked: bool, yesterday: bool) -> tauri::Result<Menu<tauri::Wry>> {
     let open = MenuItem::with_id(app, "open", "Open RemMe", true, None::<&str>)?;
     let add = MenuItem::with_id(app, "add", "Add reminder…", true, None::<&str>)?;
     let float = MenuItem::with_id(app, "float", "Show or hide floating list", true, None::<&str>)?;
@@ -1354,12 +1363,18 @@ fn tray_menu(app: &AppHandle, coach_on: bool, paused: bool, locked: bool) -> tau
     let p60 = MenuItem::with_id(app, "coach-60", "Pause for 1 hour", !locked, None::<&str>)?;
     let pday = MenuItem::with_id(app, "coach-day", "Pause for the rest of the day", !locked, None::<&str>)?;
     let resume = MenuItem::with_id(app, "coach-resume", "Resume Coach", paused, None::<&str>)?;
-    let coach_menu = Submenu::with_items(app, "Coach", true, &[&p15, &p60, &pday, &sep()?, &resume])?;
+    let today = MenuItem::with_id(app, "coach-today", "Today's summary", true, None::<&str>)?;
+    let last = MenuItem::with_id(app, "coach-yesterday", "Yesterday's summary", true, None::<&str>)?;
+    let coach_menu = if yesterday {
+        Submenu::with_items(app, "Coach", true, &[&today, &last, &sep()?, &p15, &p60, &pday, &sep()?, &resume])?
+    } else {
+        Submenu::with_items(app, "Coach", true, &[&today, &sep()?, &p15, &p60, &pday, &sep()?, &resume])?
+    };
     Menu::with_items(app, &[&open, &add, &sep()?, &float, &lock, &sep()?, &coach_menu, &sep()?, &quit])
 }
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let menu = tray_menu(app, false, false, false)?;
+    let menu = tray_menu(app, false, false, false, false)?;
 
     TrayIconBuilder::with_id("tray")
         .icon(app.default_window_icon().cloned().expect("app icon is bundled"))
@@ -1378,7 +1393,14 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
             "coach-60" => coach_pause(app.clone(), Some(60)),
             "coach-day" => coach_pause(app.clone(), None),
             "coach-resume" => coach_resume(app.clone()),
-            "quit" => app.exit(0),
+            "coach-today" => coach_summary(app.clone(), "today".into()),
+            "coach-yesterday" => coach_summary(app.clone(), "yesterday".into()),
+            "quit" => {
+                // Today's totals are saved once a minute; save the rest before leaving.
+                let state = app.state::<AppState>();
+                save_ui(&state, &state.ui.lock().unwrap());
+                app.exit(0)
+            }
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
@@ -1455,7 +1477,8 @@ fn session_end(timer: &Timer, now_ms: i64) -> Option<NaiveDateTime> {
 }
 
 /// Tells the windows and the tray about Coach's state when it changes.
-fn publish_coach_state(app: &AppHandle, next: CoachState) {
+fn publish_coach_state(app: &AppHandle, mut next: CoachState) {
+    next.yesterday_unseen = next.enabled && app.state::<AppState>().ui.lock().unwrap().coach_days.last.as_ref().is_some_and(|d| !d.seen);
     let (menu_changed, marker_changed, paused) = {
         let state = app.state::<AppState>();
         let mut run = state.coach.lock().unwrap();
@@ -1463,17 +1486,20 @@ fn publish_coach_state(app: &AppHandle, next: CoachState) {
             return;
         }
         let menu_key = next.enabled;
-        let menu_changed = run.menu_on != Some(menu_key) || run.state.paused != next.paused || run.state.takeover_up != next.takeover_up;
+        let menu_changed = run.menu_on != Some(menu_key)
+            || run.state.paused != next.paused
+            || run.state.takeover_up != next.takeover_up
+            || run.state.yesterday_unseen != next.yesterday_unseen;
         let marker_changed = run.marked != Some(next.watching);
         run.menu_on = Some(menu_key);
         run.marked = Some(next.watching);
         run.state = next.clone();
-        (menu_changed, marker_changed, (next.paused, next.takeover_up))
+        (menu_changed, marker_changed, (next.paused, next.takeover_up, next.yesterday_unseen))
     };
     let _ = app.emit("coach-state", next.clone());
     if let Some(tray) = app.tray_by_id("tray") {
         if menu_changed {
-            if let Ok(menu) = tray_menu(app, next.enabled, paused.0, paused.1) {
+            if let Ok(menu) = tray_menu(app, next.enabled, paused.0, paused.1, paused.2) {
                 let _ = tray.set_menu(Some(menu));
             }
         }
@@ -1531,9 +1557,11 @@ fn coach_check(app: &AppHandle) {
     if !settings.enabled {
         state.coach.lock().unwrap().ladder.leave();
         set_takeover_up(app, false);
+        tally(app, &settings, now, Some(coach::Spent::Off));
         publish_coach_state(app, CoachState { enabled: false, ..CoachState::default() });
         return;
     }
+    maybe_show_summary(app, &settings, now);
     let paused_until = {
         let mut ui = state.ui.lock().unwrap();
         match ui.coach_paused_until {
@@ -1548,6 +1576,7 @@ fn coach_check(app: &AppHandle) {
     };
     if let Some(until) = paused_until {
         state.coach.lock().unwrap().ladder.restart();
+        tally(app, &settings, now, Some(coach::Spent::Paused));
         publish_coach_state(app, CoachState { enabled: true, paused: true, label: format!("paused until {}", local_clock(until)), ..CoachState::default() });
         return;
     }
@@ -1559,6 +1588,7 @@ fn coach_check(app: &AppHandle) {
     let Some(block) = coach::focus_block(&settings, now, session_ends, overdue) else {
         state.coach.lock().unwrap().ladder.leave();
         set_takeover_up(app, false);
+        tally(app, &settings, now, None);
         publish_coach_state(app, CoachState { enabled: true, label: "on, waiting for focus time".into(), ..CoachState::default() });
         return;
     };
@@ -1620,10 +1650,13 @@ fn coach_check(app: &AppHandle) {
             breaks_left: limits.breaks_left(&block.key),
             break_until: limits.break_until.map(local_clock),
             work: soonest.iter().map(|w| WorkView { entry: w.entry.clone(), name: w.name.clone(), until: local_clock(w.until) }).collect(),
+            // Filled in by `publish_coach_state`.
+            yesterday_unseen: false,
         },
     );
     // On a break, Coach doesn't watch at all.
     if limits.break_until.is_some() {
+        tally(app, &settings, now, Some(coach::Spent::Break));
         return;
     }
 
@@ -1648,6 +1681,10 @@ fn coach_check(app: &AppHandle) {
         let step = run.ladder.tick(now_s, &block.key, &reading, &settings);
         (step, run.ladder.real_talk)
     };
+    tally(app, &settings, now, Some(coach::Spent::Watching(reading.clone())));
+    if real_talk {
+        state.ui.lock().unwrap().coach_days.today.real_talk = true;
+    }
     // While a Takeover is up, it stays the only thing on screen.
     let Some(step) = step.filter(|_| !takeover_up) else { return };
     let session_task = session_ends.and(session_task);
@@ -1659,17 +1696,186 @@ fn coach_check(app: &AppHandle) {
         }
         _ => None,
     };
-    let step = CoachStep { step, named, distraction, real_talk };
+    let mut step = CoachStep { step, named, distraction, real_talk };
+    if matches!(step.step, coach::Step::Takeover) && exclusive_fullscreen() {
+        // A game in exclusive full-screen would hide the overlay: push with a sound instead.
+        step.step = coach::Step::Push;
+    }
+    state.ui.lock().unwrap().coach_days.today.count(step.step);
     if matches!(step.step, coach::Step::Takeover) {
-        if exclusive_fullscreen() {
-            // A game in exclusive full-screen would hide the overlay: push with a sound instead.
-            show_coach_popup(app, CoachStep { step: coach::Step::Push, ..step });
-        } else {
-            show_takeover(app, step);
-        }
+        show_takeover(app, step);
     } else {
         show_coach_popup(app, step);
     }
+}
+
+/// Moves today's totals on to a new day if the date has changed.
+fn roll_days(settings: &coach::Settings, ui: &mut UiState, now: NaiveDateTime) -> bool {
+    ui.coach_days.roll(&now.date().format("%Y-%m-%d").to_string(), |date| {
+        NaiveDate::parse_from_str(date, "%Y-%m-%d").map_or(0, |d| coach::focus_hours_until(settings, d, None))
+    })
+}
+
+/// Adds the time since the last check to today's totals (`None`: outside focus time, nothing to
+/// add). Saved at most once a minute, and when the day changes.
+fn tally(app: &AppHandle, settings: &coach::Settings, now: NaiveDateTime, spent: Option<coach::Spent>) {
+    let state = app.state::<AppState>();
+    let now_s = Utc::now().timestamp();
+    let (dt, save_due) = {
+        let mut run = state.coach.lock().unwrap();
+        let dt = run.day_last.map_or(0, |last| (now_s - last).clamp(0, coach::MAX_TICK_SECS));
+        run.day_last = Some(now_s);
+        (dt, now_s - run.days_saved >= 60)
+    };
+    let saved = {
+        let mut ui = state.ui.lock().unwrap();
+        let rolled = roll_days(settings, &mut ui, now);
+        if let Some(spent) = &spent {
+            ui.coach_days.today.add(spent, dt, coach::in_focus_hours(settings, now));
+        }
+        if rolled || save_due {
+            save_ui(&state, &ui);
+        }
+        rolled || save_due
+    };
+    if saved {
+        state.coach.lock().unwrap().days_saved = now_s;
+    }
+}
+
+/// Shows the daily summary by itself: today's once the last focus range has ended (waiting for a
+/// Takeover or a focus session), or, at the first check after RemMe starts, a missed last day.
+fn maybe_show_summary(app: &AppHandle, settings: &coach::Settings, now: NaiveDateTime) {
+    let state = app.state::<AppState>();
+    let (first, takeover_up) = {
+        let mut run = state.coach.lock().unwrap();
+        (!std::mem::replace(&mut run.summary_checked, true), run.takeover_up)
+    };
+    if !settings.daily_summary {
+        return;
+    }
+    let session = state.timer.lock().unwrap().phase == Phase::Focus;
+    let which = {
+        let mut ui = state.ui.lock().unwrap();
+        roll_days(settings, &mut ui, now);
+        let days = &mut ui.coach_days;
+        let which = if coach::summary_due(&days.today, now, coach::last_range_end(settings, now.date()), takeover_up || session) {
+            days.today.shown = true;
+            Some("today")
+        } else if first && days.last.as_ref().is_some_and(|d| !d.shown && !d.seen && d.focus >= coach::SUMMARY_MIN_SECS) {
+            days.last.as_mut().unwrap().shown = true;
+            Some("yesterday")
+        } else {
+            None
+        };
+        if which.is_some() {
+            save_ui(&state, &ui);
+        }
+        which
+    };
+    if let Some(which) = which {
+        show_summary(app, which);
+    }
+}
+
+/// The daily summary card's data.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Summary {
+    /// "today" or "yesterday".
+    which: &'static str,
+    /// Today, with focus hours still to come (or none): "Today so far".
+    so_far: bool,
+    /// "Monday 23 November".
+    date: String,
+    day: coach::Day,
+    not_running: i64,
+    percent: Option<i64>,
+    /// Real talk is on in Settings: a low day gets real-talk lines.
+    real_talk: bool,
+}
+
+/// Shows today's (so far) or the last day's summary in Coach's popup, without taking the keyboard.
+fn show_summary(app: &AppHandle, which: &str) {
+    let state = app.state::<AppState>();
+    let settings = coach::settings(&state.data.lock().unwrap());
+    let now = local_now();
+    let summary = {
+        let mut ui = state.ui.lock().unwrap();
+        roll_days(&settings, &mut ui, now);
+        let (which, day, not_running) = if which == "yesterday" {
+            let Some(day) = ui.coach_days.last.clone() else { return };
+            let not_running = day.not_running;
+            ("yesterday", day, not_running)
+        } else {
+            let day = ui.coach_days.today.clone();
+            let not_running = day.not_running_by(coach::focus_hours_until(&settings, now.date(), Some(now)));
+            ("today", day, not_running)
+        };
+        let date = NaiveDate::parse_from_str(&day.date, "%Y-%m-%d").map_or(day.date.clone(), |d| d.format("%A %-d %B").to_string());
+        let so_far = which == "today" && coach::last_range_end(&settings, now.date()).is_none_or(|end| now < end);
+        Summary { which, so_far, date, percent: day.percent_on_track(), not_running, real_talk: settings.real_talk, day }
+    };
+    let Some(window) = app.get_webview_window(COACH) else { return };
+    let previous = foreground_window();
+    let (w, h) = (420.0, 380.0);
+    let _ = window.set_size(tauri::LogicalSize::new(w, h));
+    if let Some(area) = monitor_area(previous, false) {
+        let scale = window.scale_factor().unwrap_or(1.0);
+        let margin = (16.0 * scale) as i32;
+        let _ = window.set_position(tauri::PhysicalPosition::new(area.2 - (w * scale) as i32 - margin, area.3 - (h * scale) as i32 - margin));
+    }
+    let _ = app.emit_to(COACH, "coach-summary", summary);
+    let _ = window.set_always_on_top(true);
+    show_inactive(app, &window);
+    restore_foreground(app, previous);
+}
+
+/// Opens the daily summary from a menu: "today" (so far) or "yesterday", which then counts as seen.
+#[tauri::command]
+fn coach_summary(app: AppHandle, which: String) {
+    show_summary(&app, &which);
+    if which == "yesterday" {
+        summary_seen(&app);
+    }
+}
+
+/// Closes the summary card. Closing yesterday's counts as seeing it. Only hides the popup, so it
+/// can't clear a Takeover.
+#[tauri::command]
+fn coach_summary_close(app: AppHandle, which: String) {
+    hide_popup(&app);
+    if which == "yesterday" {
+        summary_seen(&app);
+    }
+}
+
+/// The last day's summary has been seen (closed, or opened from a menu).
+fn summary_seen(app: &AppHandle) {
+    {
+        let state = app.state::<AppState>();
+        let mut ui = state.ui.lock().unwrap();
+        let Some(day) = ui.coach_days.last.as_mut() else { return };
+        if day.seen {
+            return;
+        }
+        day.seen = true;
+        save_ui(&state, &ui);
+    }
+    let current = app.state::<AppState>().coach.lock().unwrap().state.clone();
+    publish_coach_state(app, current);
+}
+
+/// Fits Coach's popup to the summary card's height, keeping its bottom edge where it is.
+#[tauri::command]
+fn coach_fit(app: AppHandle, height: f64) {
+    let Some(window) = app.get_webview_window(COACH) else { return };
+    let (Ok(pos), Ok(size), Ok(scale)) = (window.outer_position(), window.outer_size(), window.scale_factor()) else { return };
+    let height = height.clamp(160.0, 720.0);
+    let new_h = (height * scale) as i32;
+    let bottom = pos.y + size.height as i32;
+    let _ = window.set_size(tauri::PhysicalSize::new(size.width, new_h as u32));
+    let _ = window.set_position(tauri::PhysicalPosition::new(pos.x, bottom - new_h));
 }
 
 /// Whether Coach's popup or Takeover is the front window.
@@ -1759,12 +1965,34 @@ fn show_inactive(_app: &AppHandle, window: &tauri::WebviewWindow) {
     let _ = window.show();
 }
 
+/// Hides Coach's popup. It's shown with a raw Windows call (`show_inactive`), which Tauri doesn't
+/// see, so Tauri's own `hide` would think it's already hidden and do nothing: hide it the same way.
+#[cfg(windows)]
+fn hide_popup(app: &AppHandle) {
+    let Some(window) = app.get_webview_window(COACH) else { return };
+    let Ok(hwnd) = window.hwnd() else {
+        let _ = window.hide();
+        return;
+    };
+    let hwnd = hwnd.0 as isize;
+    let _ = app.run_on_main_thread(move || {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE};
+        let _ = unsafe { ShowWindow(HWND(hwnd as *mut _), SW_HIDE) };
+    });
+}
+
+#[cfg(not(windows))]
+fn hide_popup(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window(COACH) {
+        let _ = window.hide();
+    }
+}
+
 /// Covers the whole monitor you're using with the Takeover, and takes focus. Other monitors stay usable.
 fn show_takeover(app: &AppHandle, step: CoachStep) {
     let Some(window) = app.get_webview_window(TAKEOVER) else { return };
-    if let Some(popup) = app.get_webview_window(COACH) {
-        let _ = popup.hide();
-    }
+    hide_popup(app);
     if let Some((left, top, right, bottom)) = monitor_area(foreground_window(), true) {
         let _ = window.set_position(tauri::PhysicalPosition::new(left, top));
         let _ = window.set_size(tauri::PhysicalSize::new((right - left) as u32, (bottom - top) as u32));
@@ -1842,6 +2070,7 @@ fn coach_answer(app: AppHandle, answer: String, task_id: Option<String>) -> Resu
             let until = {
                 let mut ui = state.ui.lock().unwrap();
                 let until = ui.coach_limits.snooze(now_s).ok_or("No snoozes left this hour.")?;
+                ui.coach_days.today.counts.snoozes += 1;
                 save_ui(&state, &ui);
                 until
             };
@@ -1852,6 +2081,7 @@ fn coach_answer(app: AppHandle, answer: String, task_id: Option<String>) -> Resu
             {
                 let mut ui = state.ui.lock().unwrap();
                 ui.coach_limits.take_break(now_s, &block).ok_or("No breaks left in this focus block.")?;
+                ui.coach_days.today.counts.breaks += 1;
                 save_ui(&state, &ui);
             }
             state.coach.lock().unwrap().ladder.restart();
@@ -1877,9 +2107,7 @@ fn coach_answer(app: AppHandle, answer: String, task_id: Option<String>) -> Resu
         }
         _ => {}
     }
-    if let Some(window) = app.get_webview_window(COACH) {
-        let _ = window.hide();
-    }
+    hide_popup(&app);
     set_takeover_up(&app, false);
     coach_check(&app);
     Ok(())
@@ -1928,9 +2156,7 @@ fn coach_pause(app: AppHandle, minutes: Option<i64>) {
         ui.coach_paused_until = Some(until);
         save_ui(&state, &ui);
     }
-    if let Some(window) = app.get_webview_window(COACH) {
-        let _ = window.hide();
-    }
+    hide_popup(&app);
     coach_check(&app);
 }
 
@@ -2085,6 +2311,9 @@ pub fn run() {
             coach_resume,
             coach_end_break,
             coach_work_undo,
+            coach_summary,
+            coach_summary_close,
+            coach_fit,
             voice_status,
             voice_download,
             voice_remove,

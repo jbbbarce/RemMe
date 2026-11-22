@@ -57,6 +57,11 @@ describe("Coach settings", () => {
     expect(c.realTalkAfter).toBe(20);
   });
 
+  it("keep the daily summary on unless switched off", () => {
+    expect(coachFrom({}).dailySummary).toBe(true);
+    expect(coachFrom({ dailySummary: false }).dailySummary).toBe(false);
+  });
+
   it("keep the Takeover on by default and after the Push", () => {
     expect(coachFrom({}).takeover).toBe(true);
     expect(coachFrom({}).takeoverAfter).toBe(10);

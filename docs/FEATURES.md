@@ -1,6 +1,6 @@
 # RemMe features
 
-Everything RemMe can do, from the first sticky-note version to 0.19.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
+Everything RemMe can do, from the first sticky-note version to 0.20.0, and when each part arrived. For how it is built, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Contents
 
@@ -51,6 +51,7 @@ Everything RemMe can do, from the first sticky-note version to 0.19.0, and when 
 | 0.17.0 | 19 Nov | Coach: focus hours, a distraction list, the Nudge and Push popups, real talk, Pause and the tray marker. Old CSS removed. |
 | 0.18.0 | 20 Nov | Coach's natural voice: the Push and real talk spoken aloud, on your PC. |
 | 0.19.0 | 20 Nov | Coach's Takeover: the screen dims until you start focus, snooze or take a break, with limits on both. **This is for work** for an hour. Coach's popups no longer take the keyboard. |
+| 0.20.0 | 22 Nov | Coach's daily summary: a card when your focus hours end, and **Today's summary** any time. Fixes an invisible Coach popup that stayed in the bottom-right corner after you answered it in 0.19.0. |
 
 ## Before the rewrite: the WPF sticky notes
 
@@ -233,8 +234,19 @@ From 0.17.0. Off until you turn it on in **Settings → Coach**. Coach is for pr
   - In a game running exclusive full-screen, where the overlay would be hidden, Coach shows the Push with its sound instead.
   - Switch it off with **Takeover** in **Settings → Coach**; the Push then repeats instead.
 - **This is for work** (0.19.0): a button on the Nudge and Push when you're on a distraction. Coach ignores that list entry (for example the YouTube site or the steam app) for **1 hour**. The Coach bar shows "YouTube allowed for work until 4:10 pm" with **Undo**. Only the entry and its end time are saved, never a window title. It isn't offered on the Takeover.
-- **Coming next**:
-  - 0.20.0: a daily summary.
+- **Daily summary** (0.20.0): Coach's account of the day.
+  - **When**: a card shows by itself once your day's **last focus-hours range** ends, if you had at least 15 minutes of focus time. It waits for a Takeover to clear, or for a focus session running past the end. Days with only focus sessions get no automatic card.
+  - **Missed it?** If RemMe wasn't running when the day ended, the card shows the next time it starts, titled **Yesterday**.
+  - **Any time**: **Today's summary** in the tray's **Coach** menu and the Coach bar's menu shows today so far. **Yesterday's summary** is offered there until you've seen it.
+  - **What it shows**:
+    - Coach's line for the day, by how much of the watched time was on track: praise at 80 % or more, a nudge between 50 and 80 %, and a blunt line under 50 % (real talk, such as "You planned 4 h. You gave it 1 h.", when that's on).
+    - Focus time, **on track** with its %, your **top 3 distractions** with minutes, idle, time **allowed for work**, and breaks.
+    - Coach's counts: "6 nudges · 2 pushes · 1 takeover · 1 snooze".
+    - Gaps in your focus hours: "Coach was paused for 45 min", "Coach was switched off for 20 min", "RemMe wasn't running for 1 h 10 min".
+  - **The %** counts time on track and allowed for work, out of the time Coach watched: breaks and gaps don't lower it.
+  - **The card** sits in the bottom-right like the Nudge, has no sound, isn't spoken, doesn't take the keyboard, and stays until you close it.
+  - **Kept**: today's totals and the last day's until you've seen it, in `ui-state.json`. Minutes per distraction by list name and counts only, never window titles.
+  - Switch the automatic card off with **Daily summary** in **Settings → Coach**; **Today's summary** still works.
 
 ## Pomodoro timer
 
@@ -356,11 +368,10 @@ These were built and tested by simulated input, but not yet seen working on a re
 - The calendar's ↻ tooltip with a real mouse, and how many chips fit in a month cell on other window sizes.
 - Dragging cards between the new shared-width board columns with a real mouse.
 - Coach with a real browser on YouTube (tested with Notepad as the distraction; sites are covered by unit tests), the tray's Coach menu and the amber dot (Windows draws these), the Coach popup on a second monitor, and the floating list's Coach button.
+- Coach's daily summary across a real midnight (tested by moving the saved day back a date), with real Nudges and Pushes counted live (the test day's counts were seeded), with the **Daily summary** switch off, and from the tray menu (Windows draws it; the same command was tested from the Coach bar).
 - Coach's Takeover on a second monitor, its spoken line (the voice wasn't downloaded for the test), the exclusive full-screen fallback (no full-screen game was tried), and the tray menu's greyed-out Pause during a Takeover (Windows draws the menu). Everything else in the Takeover was checked on the real screen with Notepad as the distraction.
 - Hearing Coach's voice out loud (checked by measuring the audio: real speech, about 3 seconds per line), a spoken Push from a real off-track stretch with the speakers on, and the voice on slower PCs.
 
 ## Planned
 
-- **Coach, the rest** (see [Coach](#coach)):
-  - 0.20.0: the daily summary
 - **Later**, each after its own grilling: an Android version, and a free open-source AI that runs on the PC.

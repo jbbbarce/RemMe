@@ -72,6 +72,48 @@ const IDLE = [
   "No sign of you for a while. Back to {reminder}?",
 ];
 
+/**
+ * The daily summary's line, by how much of the watched time was on track. {planned} is the focus
+ * time and {focused} the time on track, as durations.
+ */
+const SUMMARY_GOOD = [
+  "Solid day. You did what you said you'd do.",
+  "{focused} on track. That's how it's done.",
+  "You showed up and stayed. Do it again tomorrow.",
+  "Good work. Keep this going.",
+];
+
+const SUMMARY_OK = [
+  "Not bad. A bit tighter tomorrow.",
+  "{focused} of {planned} on track. You can push that higher.",
+  "Some focus, some drift. Aim for more tomorrow.",
+  "Decent. Close the gaps next time.",
+];
+
+const SUMMARY_LOW = [
+  "Rough day. Tomorrow's a fresh start.",
+  "{focused} of {planned} on track. Let's do better tomorrow.",
+  "Today got away from you. Plan one thing and start with it tomorrow.",
+  "Not your best day. Pick it back up tomorrow.",
+];
+
+/** A low day with real talk on. */
+const SUMMARY_LOW_REAL = [
+  "You planned {planned}. You gave it {focused}.",
+  "Today you chose the easy thing. Tomorrow, choose different.",
+  "Your goals didn't move today. That's on you, and so is tomorrow.",
+  "Be honest: was today worth it?",
+];
+
+/** The summary line for a band, filled in. `random` is for tests. */
+export function summaryLine(band: "good" | "ok" | "low", realTalk: boolean, planned: string, focused: string, random = Math.random): string {
+  const pool = band === "good" ? SUMMARY_GOOD : band === "ok" ? SUMMARY_OK : realTalk ? SUMMARY_LOW_REAL : SUMMARY_LOW;
+  // With nothing on track there's no duration to show, so skip lines that need one.
+  const fits = focused ? pool : pool.filter((l) => !l.includes("{focused}"));
+  const line = fits[Math.floor(random() * fits.length) % fits.length];
+  return line.replaceAll("{planned}", planned || "your focus time").replaceAll("{focused}", focused);
+}
+
 export interface LineContext {
   reminder: string | null;
   distraction: string | null;

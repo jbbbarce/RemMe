@@ -58,6 +58,7 @@ For every feature with the version it arrived in, a shortcuts table and the app'
     - Choose Heart, Bella, Emma, Michael or Fenrir, optionally a different voice for real talk, plus speed and volume. **Test** plays a sample.
     - **Remove voice** frees the space.
     - With Speak on, the Takeover is spoken too.
+  - **Daily summary:** when your focus hours end, a quiet card shows how the day went: focus time, time on track with its %, your top distractions, idle time, Coach's counts, and any time it was paused or RemMe wasn't running. Open **Today's summary** any time from the tray's **Coach** menu or the Coach bar. Missed it? It shows as **Yesterday** the next time RemMe starts.
   - **Pausing:** pause it for 15 minutes, an hour or the rest of the day from the tray's **Coach** menu, the sidebar's Coach bar or the floating list. The tray tooltip says whether it's watching.
   - **Privacy:** it reads only the front window's app and title and how long since you last used the mouse or keyboard. It never takes screenshots, never stores what it reads, sends nothing anywhere, and never closes your apps.
 - **Pomodoro timer:** 25-minute focus sessions with 5-minute breaks, and a 15-minute long break after every fourth. The timer is at the bottom of the sidebar and in the floating list's header.

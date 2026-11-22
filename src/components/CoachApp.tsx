@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Coach, Dismiss } from "../icons";
-import { fill, pickLine } from "../coachLines";
+import { fill, pickLine, summaryLine } from "../coachLines";
+import { bandOf, countsLine, formatDuration, gapLines, totalRows, type Summary } from "../summary";
 import { speak } from "../voice";
 import type { AppData } from "../types";
 
@@ -71,9 +72,64 @@ export function playPush() {
   }
 }
 
-/** The Coach popup window: one Nudge or Push at a time. */
+/** The daily summary card: a quiet report, with no sound or speech. It fits the window to itself. */
+function SummaryCard({ summary, onClose }: { summary: Summary; onClose(): void }) {
+  const card = useRef<HTMLDivElement>(null);
+  const [line] = useState(() => {
+    const band = bandOf(summary.percent);
+    if (!band) return "No focus time to report yet.";
+    return summaryLine(band, summary.realTalk, formatDuration(summary.day.focus - summary.day.breaks), formatDuration(summary.day.onTrack));
+  });
+  useEffect(() => {
+    const height = card.current?.scrollHeight;
+    if (height) invoke("coach_fit", { height: height + 2 }).catch(() => {});
+  }, [summary]);
+  const rows = totalRows(summary);
+  const counts = countsLine(summary.day.counts);
+  const gaps = gapLines(summary);
+  return (
+    <div ref={card} className="coach-card summary" role="dialog" aria-label="Coach's daily summary" aria-describedby="summary-line">
+      <header className="coach-head">
+        <Coach size={16} />
+        <span className="coach-name">
+          {summary.which === "yesterday" ? "Yesterday" : summary.soFar ? "Today so far" : "Today"} · {summary.date}
+        </span>
+        <button className="icon-btn" aria-label="Close" onClick={onClose}>
+          <Dismiss size={13} />
+        </button>
+      </header>
+      <p className="coach-line" id="summary-line">
+        {line}
+      </p>
+      {rows.length > 0 && (
+        <dl className="summary-rows">
+          {rows.map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {counts && <p className="summary-counts">{counts}</p>}
+      {gaps.map((g) => (
+        <p key={g} className="summary-gap">
+          {g}
+        </p>
+      ))}
+      <div className="coach-actions">
+        <button className="btn primary" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** The Coach popup window: one Nudge or Push at a time, or the daily summary. */
 export function CoachApp({ data }: { data: AppData }) {
   const [step, setStep] = useState<CoachStep | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [line, setLine] = useState("");
   const timer = useRef<number | undefined>(undefined);
   const coach = data.settings.coach;
@@ -86,6 +142,7 @@ export function CoachApp({ data }: { data: AppData }) {
   useEffect(() => {
     const unlisten = listen<CoachStep>("coach-step", ({ payload }) => {
       const filled = lineFor(payload, ownRef.current);
+      setSummary(null);
       setStep(payload);
       setLine(filled);
       window.clearTimeout(timer.current);
@@ -93,11 +150,25 @@ export function CoachApp({ data }: { data: AppData }) {
       if (payload.step === "push") stopSpeech.current = soundAndSpeak(filled, payload.realTalk, coachRef.current);
       else timer.current = window.setTimeout(() => answer("dismiss", null), NUDGE_MS);
     });
+    // Its own event, as with the Takeover's.
+    const unlistenSummary = listen<Summary>("coach-summary", ({ payload }) => {
+      window.clearTimeout(timer.current);
+      stopSpeech.current();
+      setStep(null);
+      setSummary(payload);
+    });
     return () => {
       window.clearTimeout(timer.current);
       unlisten.then((stop) => stop(), () => {});
+      unlistenSummary.then((stop) => stop(), () => {});
     };
   }, []);
+
+  const closeSummary = () => {
+    const which = summary?.which ?? "today";
+    setSummary(null);
+    invoke("coach_summary_close", { which }).catch(() => {});
+  };
 
   const answer = (kind: "back" | "focus" | "work" | "dismiss", taskId: string | null) => {
     window.clearTimeout(timer.current);
@@ -106,6 +177,7 @@ export function CoachApp({ data }: { data: AppData }) {
     invoke("coach_answer", { answer: kind, taskId }).catch(() => {});
   };
 
+  if (summary) return <SummaryCard key={summary.which + summary.date} summary={summary} onClose={closeSummary} />;
   if (!step) return null;
   const id = step.named?.id ?? null;
   const push = step.step === "push";

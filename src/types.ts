@@ -122,6 +122,8 @@ export interface CoachSettings {
   takeover: boolean;
   /** Minutes off track without a stop before the Takeover; always after the Push. */
   takeoverAfter: number;
+  /** A summary card when your focus hours end each day. Counting runs either way. */
+  dailySummary: boolean;
   /** Your own real-talk lines, added to the built-in ones. */
   realTalkLines: string[];
   /** Coach speaks the Push aloud, in a natural voice that runs on this PC. */
